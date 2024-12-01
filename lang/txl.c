@@ -164,8 +164,7 @@ static ModeDef txl_mode = {
 
 static int txl_init(QEmacsState *qs)
 {
-    qe_register_mode(&txl_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &txl_mode, MODEF_SYNTAX);
     return 0;
 }
 

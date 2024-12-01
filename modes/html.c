@@ -2,7 +2,7 @@
  * Graphical HTML mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2003-2023 Charlie Gordon.
+ * Copyright (c) 2003-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -110,11 +110,12 @@ static void recompute_offset(EditState *s)
 }
 
 /* output error message in error buffer */
-void css_error(const char *filename, int line_num, const char *msg)
+void css_error(void *error_opaque, const char *filename, int line_num, const char *msg)
 {
+    QEmacsState *qs = error_opaque;
     EditBuffer *b;
 
-    b = eb_find_new(HTML_ERROR_BUFFER, BF_READONLY | BF_UTF8);
+    b = qe_new_buffer(qs, HTML_ERROR_BUFFER, BC_REUSE | BF_READONLY | BF_UTF8);
     if (!b)
         return;
     b->flags &= ~BF_READONLY;
@@ -153,6 +154,7 @@ static int html_test_abort(qe__unused__ void *opaque)
 
 static void html_display(EditState *s)
 {
+    QEmacsState *qs = s->qs;
     HTMLState *hs;
     CSSRect cursor_pos;
     DirType dirc;
@@ -187,8 +189,9 @@ static void html_display(EditState *s)
         css_delete_document(&hs->css_ctx);
 
         /* find error message buffer */
-        b = eb_find(HTML_ERROR_BUFFER);
+        b = qe_find_buffer_name(qs, HTML_ERROR_BUFFER);
         if (b) {
+            // FIXME: should use eb_clear()?
             eb_delete(b, 0, b->total_size);
         }
 
@@ -209,7 +212,7 @@ static void html_display(EditState *s)
         hs->top_box = xml_parse_buffer(s->b, s->b->name, 0, s->b->total_size,
                                        hs->css_ctx->style_sheet,
                                        hs->parse_flags,
-                                       html_test_abort, NULL);
+                                       html_test_abort, NULL, qs);
         timer_stop("xml_parse_buffer");
         if (!hs->top_box)
             return;
@@ -333,7 +336,7 @@ static void html_display(EditState *s)
         }
 
         /* display cursor */
-        if (cursor_found && s->qe_state->active_window == s) {
+        if (cursor_found && qs->active_window == s) {
             int x, y, w, h;
 
             x = cursor_pos.x1;
@@ -568,7 +571,7 @@ static void html_move_up_down(EditState *s, int dir)
     if (!hs->up_to_date)
         return;
 
-    if (s->qe_state->last_cmd_func != (CmdFunc)do_up_down)
+    if (s->qs->last_cmd_func != (CmdFunc)do_up_down)
         s->up_down_last_x = -1;
 
     html_move_up_down1(s, dir, 0);
@@ -803,7 +806,7 @@ static void load_default_style_sheet(HTMLState *hs, const char *stylesheet_str,
 
     style_sheet = css_new_style_sheet();
 
-    css_parse_style_sheet_str(style_sheet, stylesheet_str, flags);
+    css_parse_style_sheet_str(style_sheet, hs->base.qs, stylesheet_str, flags);
 
     hs->default_style_sheet = style_sheet;
 }
@@ -943,8 +946,8 @@ static int html_init(QEmacsState *qs)
 {
     css_init();
 
-    qe_register_mode(&html_mode, MODEF_VIEW);
-    qe_register_commands(&html_mode, html_commands, countof(html_commands));
+    qe_register_mode(qs, &html_mode, MODEF_VIEW);
+    qe_register_commands(qs, &html_mode, html_commands, countof(html_commands));
 
     return 0;
 }

@@ -71,9 +71,8 @@ static InputMethod unicode_input_method = {
     "unicode", unicode_input, NULL, NULL,
 };
 
-void register_input_method(InputMethod *m)
+void qe_register_input_method(QEmacsState *qs, InputMethod *m)
 {
-    QEmacsState *qs = &qe_state;
     InputMethod **p;
 
     p = &qs->input_methods;
@@ -85,7 +84,7 @@ void register_input_method(InputMethod *m)
 }
 
 static void input_complete(CompleteState *cp, CompleteFunc enumerate) {
-    QEmacsState *qs = cp->s->qe_state;
+    QEmacsState *qs = cp->s->qs;
     InputMethod *m;
 
     for (m = qs->input_methods; m != NULL; m = m->next) {
@@ -93,9 +92,8 @@ static void input_complete(CompleteState *cp, CompleteFunc enumerate) {
     }
 }
 
-static InputMethod *find_input_method(const char *name)
+static InputMethod *qe_find_input_method(QEmacsState *qs, const char *name)
 {
-    QEmacsState *qs = &qe_state;
     InputMethod *m;
 
     for (m = qs->input_methods; m != NULL; m = m->next) {
@@ -107,7 +105,7 @@ static InputMethod *find_input_method(const char *name)
 
 void do_set_input_method(EditState *s, const char *name)
 {
-    InputMethod *m = find_input_method(name);
+    InputMethod *m = qe_find_input_method(s->qs, name);
 
     if (m) {
         s->input_method = m;
@@ -130,9 +128,9 @@ static CompletionDef input_completion = {
     .enumerate = input_complete,
 };
 
-void input_methods_init(QEmacsState *qs)
+void qe_input_methods_init(QEmacsState *qs)
 {
-    register_input_method(&default_input_method);
-    register_input_method(&unicode_input_method);
-    qe_register_completion(&input_completion);
+    qe_register_input_method(qs, &default_input_method);
+    qe_register_input_method(qs, &unicode_input_method);
+    qe_register_completion(qs, &input_completion);
 }

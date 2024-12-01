@@ -209,9 +209,8 @@ static ModeDef antlr_mode = {
 
 static int ebnf_init(QEmacsState *qs)
 {
-    qe_register_mode(&antlr_mode, MODEF_SYNTAX);
-    qe_register_mode(&ebnf_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &antlr_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &ebnf_mode, MODEF_SYNTAX);
     return 0;
 }
 

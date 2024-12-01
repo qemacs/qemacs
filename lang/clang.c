@@ -223,9 +223,15 @@ static void c_colorize_line(QEColorizeContext *cp,
 
         switch (c) {
         case '*':
+            /* lone star at the beginning of a line in a shell buffer
+             * is treated as a comment start.  This improves colorization
+             * of diff and git output.
+             */
             if (start == indent && cp->partial_file
-            &&  (i == n || str[i] == ' ' || str[i] == '/'))
+            &&  (i == n || str[i] == ' ' || str[i] == '/')) {
+                i--;
                 goto parse_comment2;
+            }
             goto normal;
         case '/':
             if (str[i] == '*') {
@@ -826,7 +832,7 @@ void c_indent_line(EditState *s, int offset0)
         if (pos1 == len || cp->sbuf[0] == C_STYLE_PREPROCESS)
             continue;
         if (c_line_has_label(s, cp->buf, len, cp->sbuf)) {
-            pos1 = pos1 - s->qe_state->c_label_indent + s->indent_width;
+            pos1 = pos1 - s->qs->c_label_indent + s->indent_width;
         }
         /* scan the line from end to start */
         for (off = len; off-- > 0;) {
@@ -1042,7 +1048,7 @@ void c_indent_line(EditState *s, int offset0)
                 break;
             }
             if (c_line_has_label(s, cp->buf + i, len - i, cp->sbuf + i)) {
-                pos -= s->indent_width + s->qe_state->c_label_indent;
+                pos -= s->indent_width + s->qs->c_label_indent;
                 break;
             }
             break;
@@ -1124,7 +1130,7 @@ done:
 
 static void do_c_indent(EditState *s)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
 
     if (!s->region_style
     &&  !(s->b->flags & BF_PREVIEW)
@@ -1253,7 +1259,7 @@ static void do_c_list_conditionals(EditState *s)
     int offset, offset1;
     EditBuffer *b;
 
-    b = eb_scratch("Preprocessor conditionals", BF_UTF8);
+    b = qe_new_buffer(s->qs, "Preprocessor conditionals", BC_REUSE | BC_CLEAR | BF_UTF8);
     if (!b)
         return;
 
@@ -4305,68 +4311,68 @@ static ModeDef jakt_mode = {
 
 static int c_init(QEmacsState *qs)
 {
-    qe_register_mode(&c_mode, MODEF_SYNTAX);
-    qe_register_commands(&c_mode, c_commands, countof(c_commands));
-    qe_register_mode(&cpp_mode, MODEF_SYNTAX);
-    qe_register_mode(&js_mode, MODEF_SYNTAX);
-    qe_register_mode(&v8_mode, MODEF_SYNTAX);
-    qe_register_mode(&bee_mode, MODEF_SYNTAX);
-    qe_register_mode(&java_mode, MODEF_SYNTAX);
-    qe_register_mode(&php_mode, MODEF_SYNTAX);
-    qe_register_mode(&go_mode, MODEF_SYNTAX);
-    qe_register_mode(&yacc_mode, MODEF_SYNTAX);
-    qe_register_mode(&lex_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &c_mode, MODEF_SYNTAX);
+    qe_register_commands(qs, &c_mode, c_commands, countof(c_commands));
+    qe_register_mode(qs, &cpp_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &js_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &v8_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &bee_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &java_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &php_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &go_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &yacc_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &lex_mode, MODEF_SYNTAX);
 #ifndef CONFIG_TINY
-    qe_register_mode(&idl_mode, MODEF_SYNTAX);
-    qe_register_mode(&carbon_mode, MODEF_SYNTAX);
-    qe_register_mode(&c2_mode, MODEF_SYNTAX);
-    qe_register_mode(&objc_mode, MODEF_SYNTAX);
-    qe_register_mode(&csharp_mode, MODEF_SYNTAX);
-    qe_register_mode(&awk_mode, MODEF_SYNTAX);
-    qe_register_mode(&css_mode, MODEF_SYNTAX);
-    qe_register_mode(&less_mode, MODEF_SYNTAX);
-    qe_register_mode(&json_mode, MODEF_SYNTAX);
-    qe_register_mode(&ts_mode, MODEF_SYNTAX);
-    qe_register_mode(&jspp_mode, MODEF_SYNTAX);
-    qe_register_mode(&koka_mode, MODEF_SYNTAX);
-    qe_register_mode(&as_mode, MODEF_SYNTAX);
-    qe_register_mode(&scala_mode, MODEF_SYNTAX);
-    qe_register_mode(&d_mode, MODEF_SYNTAX);
-    qe_register_mode(&limbo_mode, MODEF_SYNTAX);
-    qe_register_mode(&cyclone_mode, MODEF_SYNTAX);
-    qe_register_mode(&ch_mode, MODEF_SYNTAX);
-    qe_register_mode(&squirrel_mode, MODEF_SYNTAX);
-    qe_register_mode(&ici_mode, MODEF_SYNTAX);
-    qe_register_mode(&jsx_mode, MODEF_SYNTAX);
-    qe_register_mode(&haxe_mode, MODEF_SYNTAX);
-    qe_register_mode(&dart_mode, MODEF_SYNTAX);
-    qe_register_mode(&pike_mode, MODEF_SYNTAX);
-    qe_register_mode(&idl_mode, MODEF_SYNTAX);
-    qe_register_mode(&calc_mode, MODEF_SYNTAX);
-    qe_register_mode(&enscript_mode, MODEF_SYNTAX);
-    qe_register_mode(&qscript_mode, MODEF_SYNTAX);
-    qe_register_mode(&ec_mode, MODEF_SYNTAX);
-    qe_register_mode(&sl_mode, MODEF_SYNTAX);
-    qe_register_mode(&csl_mode, MODEF_SYNTAX);
-    qe_register_mode(&neko_mode, MODEF_SYNTAX);
-    qe_register_mode(&nml_mode, MODEF_SYNTAX);
-    qe_register_mode(&alloy_mode, MODEF_SYNTAX);
-    qe_register_mode(&scilab_mode, MODEF_SYNTAX);
-    qe_register_mode(&kotlin_mode, MODEF_SYNTAX);
-    qe_register_mode(&cbang_mode, MODEF_SYNTAX);
-    qe_register_mode(&vala_mode, MODEF_SYNTAX);
-    qe_register_mode(&pawn_mode, MODEF_SYNTAX);
-    qe_register_mode(&cminus_mode, MODEF_SYNTAX);
-    qe_register_mode(&gmscript_mode, MODEF_SYNTAX);
-    qe_register_mode(&wren_mode, MODEF_SYNTAX);
-    qe_register_mode(&jack_mode, MODEF_SYNTAX);
-    qe_register_mode(&smac_mode, MODEF_SYNTAX);
-    qe_register_mode(&v_mode, MODEF_SYNTAX);
-    qe_register_mode(&protobuf_mode, MODEF_SYNTAX);
-    qe_register_mode(&odin_mode, MODEF_SYNTAX);
-    qe_register_mode(&salmon_mode, MODEF_SYNTAX);
-    qe_register_mode(&ppl_mode, MODEF_SYNTAX);
-    qe_register_mode(&jakt_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &idl_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &carbon_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &c2_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &objc_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &csharp_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &awk_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &css_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &less_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &json_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &ts_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &jspp_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &koka_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &as_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &scala_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &d_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &limbo_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &cyclone_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &ch_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &squirrel_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &ici_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &jsx_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &haxe_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &dart_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &pike_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &idl_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &calc_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &enscript_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &qscript_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &ec_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &sl_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &csl_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &neko_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &nml_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &alloy_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &scilab_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &kotlin_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &cbang_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &vala_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &pawn_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &cminus_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &gmscript_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &wren_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &jack_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &smac_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &v_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &protobuf_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &odin_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &salmon_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &ppl_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &jakt_mode, MODEF_SYNTAX);
 #endif
     return 0;
 }

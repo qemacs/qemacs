@@ -172,7 +172,7 @@ static size_t input_method_size;
 #endif
 static void *input_method_ptr;
 
-int load_input_methods(const char *filename)
+int qe_load_input_methods(QEmacsState *qs, const char *filename)
 {
     ssize_t file_size;
     int fd, offset;
@@ -220,19 +220,19 @@ int load_input_methods(const char *filename)
             m->data = file_ptr + offset;
             m->input_match = kmap_input;
             m->name = (const char*)p;
-            register_input_method(m);
+            qe_register_input_method(qs, m);
         }
         p += strlen((const char *)p) + 1;
     }
     return 0;
 
   fail:
-    unload_input_methods();
+    qe_unload_input_methods(qs);
     close(fd);
     return -1;
 }
 
-void unload_input_methods(void)
+void qe_unload_input_methods(QEmacsState *qs)
 {
     /* Should unregister input methods, but this is only called upon exit */
 #ifdef CONFIG_MMAP

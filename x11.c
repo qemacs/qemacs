@@ -58,6 +58,7 @@ static void xv_init(QEditScreen *s);
 static void x11_handle_event(void *opaque);
 
 typedef struct X11State {
+    QEmacsState *qs;
     Display *display;
     int xscreen;
     Window window;
@@ -192,7 +193,7 @@ static int x11_dpy_probe(void)
     return 1;
 }
 
-static int x11_dpy_init(QEditScreen *s, int w, int h)
+static int x11_dpy_init(QEditScreen *s, QEmacsState *qs, int w, int h)
 {
     XSizeHints hint;
     int xsize, ysize;
@@ -205,6 +206,11 @@ static int x11_dpy_init(QEditScreen *s, int w, int h)
     XGCValues gc_val;
     X11State *xs = qe_mallocz(X11State);
 
+    if (xs == NULL) {
+        fprintf(stderr, "Cannot allocate X11State.\n");
+        return -1;
+    }
+    s->qs = xs->qs = qs;
     s->priv_data = xs;
     s->media = CSS_MEDIA_SCREEN;
 
@@ -691,7 +697,6 @@ static void get_entry(char *buf, int buf_size, const char **pp)
 
 static QEFont *x11_dpy_open_font(QEditScreen *s, int style, int size)
 {
-    QEmacsState *qs = &qe_state;
     X11State *xs = s->priv_data;
     char family[128];
     const char *family_list, *p1;
@@ -710,7 +715,7 @@ static QEFont *x11_dpy_open_font(QEditScreen *s, int style, int size)
     font_index = ((style & QE_FONT_FAMILY_MASK) >> QE_FONT_FAMILY_SHIFT) - 1;
     if ((unsigned)font_index >= NB_FONT_FAMILIES)
         font_index = 0; /* fixed font is default */
-    family_list = qs->system_fonts[font_index];
+    family_list = s->qs->system_fonts[font_index];
     if (family_list[0] == '\0')
         family_list = default_x11_fonts[font_index];
 
@@ -1111,7 +1116,6 @@ static Bool test_event(qe__unused__ Display *dpy, XEvent *ev,
 static void x11_dpy_selection_request(QEditScreen *s)
 {
     X11State *xs = s->priv_data;
-    QEmacsState *qs = &qe_state;
     Window w;
     Atom prop;
     Atom utf8;
@@ -1142,7 +1146,7 @@ static void x11_dpy_selection_request(QEditScreen *s)
     prop = xev.xselection.property;
 
     /* copy GUI selection a new yank buffer */
-    b = new_yank_buffer(qs, NULL);
+    b = qe_new_yank_buffer(s->qs, NULL);
     eb_set_charset(b, &charset_utf8, EOL_UNIX);
 
     nread = 0;
@@ -1172,7 +1176,7 @@ static void selection_send(X11State *xs, XSelectionRequestEvent *rq)
 {
     static Atom xa_targets = None;
     static Atom xa_formats[] = { None, None, None, None };
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = xs->qs;
     unsigned char *buf;
     XEvent ev;
     EditBuffer *b;
@@ -1306,7 +1310,7 @@ static void qe_expose_add(QEditScreen *s, QExposeRegion *rgn,
 static void qe_expose_flush(QEditScreen *s, QExposeRegion *rgn)
 {
     if (rgn->pending) {
-        QEmacsState *qs = &qe_state;
+        QEmacsState *qs = s->qs;
         QEEvent ev1, *ev = qe_event_clear(&ev1);
 
         /* Ignore expose region */
@@ -1320,7 +1324,7 @@ static void qe_expose_flush(QEditScreen *s, QExposeRegion *rgn)
 static void x11_handle_event(void *opaque)
 {
     QEditScreen *s = opaque;
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qs;
     X11State *xs = s->priv_data;
     char buf[16];
     XEvent xev;
@@ -1449,7 +1453,7 @@ static void x11_handle_event(void *opaque)
                 key_state = KEY_STATE_COMMAND;
 #endif
 #if 0
-            // XXX: should use eb_trace_bytes(buf, out->len, EB_TRACE_KEY);
+            // XXX: should use qe_trace_bytes(qs, buf, out->len, EB_TRACE_KEY);
             fprintf(stderr, "keysym=%lx  state=%lx%s%s%s  len=%d  buf[0]='\\x%02x'\n",
                     (long)keysym, (long)xev.xkey.state,
                     (key_state & KEY_STATE_SHIFT) ? " shft" : "",
@@ -1948,20 +1952,20 @@ static QEDisplay x11_dpy = {
     NULL, /* dpy_describe */
     NULL, /* dpy_sound_bell */
     NULL, /* dpy_suspend */
+    qe_dpy_error, /* dpy_error */
     NULL, /* next */
 };
 
 static void x11_list_fonts(EditState *s, int argval)
 {
-    QEmacsState *qs = s->qe_state;
-    QEditScreen *screen = qs->screen;
+    QEditScreen *screen = s->qs->screen;
     X11State *xs = screen->priv_data;
     char buf[80];
     EditBuffer *b;
     int i, count;
     char **list;
 
-    b = new_help_buffer();
+    b = new_help_buffer(s);
     if (!b)
         return;
 
@@ -1999,11 +2003,11 @@ static CmdLineOptionDef cmd_options[] = {
 };
 
 static int x11_init(QEmacsState *qs) {
-    qe_register_cmd_line_options(cmd_options);
-    qe_register_commands(NULL, x11_commands, countof(x11_commands));
+    qe_register_cmd_line_options(qs, cmd_options);
+    qe_register_commands(qs, NULL, x11_commands, countof(x11_commands));
     if (force_tty)
         return 0;
-    return qe_register_display(&x11_dpy);
+    return qe_register_display(qs, &x11_dpy);
 }
 
 qe_module_init(x11_init);

@@ -362,7 +362,7 @@ extern int32 atomic_get_and_set(int32 *p, int32 v);
 static void haiku_handle_event(void *opaque)
 {
     QEditScreen *s = (QEditScreen *)opaque;
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qs;
     WindowState *ctx = (WindowState *)s->priv_data;
     bigtime_t timestamp_ms;
     BMessage *event;
@@ -895,13 +895,12 @@ static QEDisplay haiku_dpy = {
     NULL, /* dpy_describe */
     NULL, /* dpy_sound_bell */
     NULL, /* dpy_suspend */
+    qe_dpy_error, /* dpy_error */
     NULL, /* next */
 };
 
 static int haiku_module_init(QEmacsState *qs)
 {
-    QEmacsState *qs = &qe_state;
-
     /* override default res path, to find config file at native location */
     BPath path;
     BString old(":");
@@ -916,7 +915,7 @@ static int haiku_module_init(QEmacsState *qs)
     if (force_tty)
         return 0;
 
-    return qe_register_display(&haiku_dpy);
+    return qe_register_display(qs, &haiku_dpy);
 }
 
 qe_module_init(haiku_module_init);

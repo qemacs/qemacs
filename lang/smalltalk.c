@@ -196,8 +196,7 @@ static ModeDef smalltalk_mode = {
 
 static int smalltalk_init(QEmacsState *qs)
 {
-    qe_register_mode(&smalltalk_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &smalltalk_mode, MODEF_SYNTAX);
     return 0;
 }
 

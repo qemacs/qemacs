@@ -2,7 +2,7 @@
  * Charset definitions and functions for QEmacs
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -103,13 +103,13 @@ struct CharsetDecodeState {
 
 struct QEmacsState;
 void charset_init(struct QEmacsState *qs);
-int charset_more_init(struct QEmacsState *qs);
-int charset_jis_init(struct QEmacsState *qs);
+int qe_charset_more_init(struct QEmacsState *qs);
+int qe_charset_jis_init(struct QEmacsState *qs);
 
-void qe_register_charset(struct QECharset *charset);
+void qe_register_charset(struct QEmacsState *qs, struct QECharset *charset);
 void charset_complete(CompleteState *cp, CompleteFunc enumerate);
 
-QECharset *find_charset(const char *str);
+QECharset *qe_find_charset(struct QEmacsState *qs, const char *str);
 void charset_decode_init(CharsetDecodeState *s, QECharset *charset,
                          EOLType eol_type);
 void charset_decode_close(CharsetDecodeState *s);

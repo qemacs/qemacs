@@ -265,8 +265,7 @@ static ModeDef elm_mode = {
 
 static int elm_init(QEmacsState *qs)
 {
-    qe_register_mode(&elm_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &elm_mode, MODEF_SYNTAX);
     return 0;
 }
 

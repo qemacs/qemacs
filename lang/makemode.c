@@ -262,8 +262,8 @@ static ModeDef cmake_mode = {
 
 static int makefile_init(QEmacsState *qs)
 {
-    qe_register_mode(&makefile_mode, MODEF_SYNTAX);
-    qe_register_mode(&cmake_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &makefile_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &cmake_mode, MODEF_SYNTAX);
 
     return 0;
 }

@@ -288,8 +288,7 @@ static ModeDef julia_mode = {
 
 static int julia_init(QEmacsState *qs)
 {
-    qe_register_mode(&julia_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &julia_mode, MODEF_SYNTAX);
     return 0;
 }
 

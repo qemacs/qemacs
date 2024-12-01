@@ -117,6 +117,13 @@ void unregister_bottom_half(void (*cb)(void *opaque), void *opaque);
 QETimer *qe_add_timer(int delay, void *opaque, void (*cb)(void *opaque));
 void qe_kill_timer(QETimer **tip);
 
+/* opaque argument for url_main_loop */
+typedef struct QEArgs {
+    QEmacsState *qs;
+    int argc;
+    char **argv;
+} QEArgs;
+
 /* main loop for Unix programs using liburlio */
 void url_main_loop(void (*init)(void *opaque), void *opaque);
 
@@ -157,7 +164,7 @@ typedef struct CmdLineOptionDef {
         int *int_ptr;
         const char **string_ptr;
         void (*func_noarg)(void);
-        void (*func_arg)(const char *);
+        void (*func_arg)(QEmacsState *qs, const char *);
         struct CmdLineOptionDef *next;
     } u;
 } CmdLineOptionDef;
@@ -171,10 +178,10 @@ typedef struct CmdLineOptionDef {
 #define CMD_LINE_FARG(s,n,a,p,h) { s "|" n "|" a "|" h, CMD_LINE_TYPE_FARG, TRUE, { .func_arg = p }}
 #define CMD_LINE_LINK()          { NULL, CMD_LINE_TYPE_NEXT, FALSE, { NULL }}
 
-void qe_register_cmd_line_options(CmdLineOptionDef *table);
+void qe_register_cmd_line_options(QEmacsState *qs, CmdLineOptionDef *table);
 
-int find_resource_file(char *path, int path_size, const char *pattern);
-FILE *open_resource_file(const char *name);
+int qe_find_resource_file(QEmacsState *qs, char *path, int path_size, const char *pattern);
+FILE *qe_open_resource_file(QEmacsState *qs, const char *name);
 
 /* qe event handling */
 
@@ -240,10 +247,10 @@ static inline QEEvent *qe_event_clear(QEEvent *ev) {
 void qe_handle_event(QEmacsState *qs, QEEvent *ev);
 /* CG: Should optionally attach grab to a window */
 /* CG: Should deal with opaque object life cycle */
-void qe_grab_keys(void (*cb)(void *opaque, int key), void *opaque);
-void qe_ungrab_keys(void);
+void qe_grab_keys(QEmacsState *qs, void (*cb)(void *opaque, int key), void *opaque);
+void qe_ungrab_keys(QEmacsState *qs);
 KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, KeyDef *kd, int exact);
-KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m, int exact);
+KeyDef *qe_find_current_binding(QEmacsState *qs, unsigned int *keys, int nb_keys, ModeDef *m, int exact);
 
 /* colorize & transform a line, lower level then ColorizeFunc */
 /* XXX: should return `len`, the number of valid codepoints copied to
@@ -367,8 +374,11 @@ typedef struct EditBufferDataType {
 #define BF_STYLE8    0x4000  /* buffer has 8 byte styles */
 #define BF_STYLE_COMP  (QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 : QE_TERM_STYLE_BITS <= 32 ? BF_STYLE4 : BF_STYLE8)
 #define BF_IS_STYLE  0x8000  /* buffer is a styles buffer */
-#define BF_IS_LOG    0x10000  /* buffer is a log buffer */
-#define BF_SHELL     0x20000  /* buffer is a shell buffer */
+#define BF_IS_LOG   0x10000  /* buffer is a log buffer */
+#define BF_SHELL    0x20000  /* buffer is a shell buffer */
+/* buffer creation flags */
+#define BC_REUSE   0x100000  /* reuse existing buffer with same name */
+#define BC_CLEAR   0x200000  /* erase found buffer with same name */
 
 struct EditBuffer {
     OWNED Page *page_table;
@@ -479,9 +489,16 @@ typedef struct LogBuffer {
     int size;
 } LogBuffer;
 
-void eb_trace_bytes(const void *buf, int size, int state);
+void qe_trace_bytes(QEmacsState *qs, const void *buf, int size, int state);
+void qe_data_init(QEmacsState *qs);
 
-void eb_init(QEmacsState *qs);
+EditBuffer *qe_find_buffer_name(QEmacsState *qs, const char *name);
+EditBuffer *qe_find_buffer_file(QEmacsState *qs, const char *filename);
+EditBuffer *qe_new_buffer(QEmacsState *qs, const char *name, int flags);
+void eb_clear(EditBuffer *b);
+void eb_free(EditBuffer **ep);
+EditState *eb_find_window(EditBuffer *b, EditState *def);
+
 int eb_read_one_byte(EditBuffer *b, int offset);
 int eb_read(EditBuffer *b, int offset, void *buf, int size);
 int eb_write(EditBuffer *b, int offset, const void *buf, int size);
@@ -492,23 +509,15 @@ int eb_insert(EditBuffer *b, int offset, const void *buf, int size);
 int eb_delete(EditBuffer *b, int offset, int size);
 int eb_replace(EditBuffer *b, int offset, int size, const void *buf, int size1);
 void eb_free_log_buffer(EditBuffer *b);
-EditBuffer *eb_new(const char *name, int flags);
-EditBuffer *eb_scratch(const char *name, int flags);
-void eb_clear(EditBuffer *b);
-void eb_free(EditBuffer **ep);
-EditBuffer *eb_find(const char *name);
-EditBuffer *eb_find_new(const char *name, int flags);
-EditBuffer *eb_find_file(const char *filename);
-EditState *eb_find_window(EditBuffer *b, EditState *e);
 
 void eb_set_charset(EditBuffer *b, QECharset *charset, EOLType eol_type);
-qe__attr_nonnull((3))
+qe__attr_nonnull((1,3))
 char32_t eb_nextc(EditBuffer *b, int offset, int *next_ptr);
-qe__attr_nonnull((3))
+qe__attr_nonnull((1,3))
 char32_t eb_prevc(EditBuffer *b, int offset, int *prev_ptr);
-qe__attr_nonnull((3))
+qe__attr_nonnull((1,3))
 char32_t eb_next_glyph(EditBuffer *b, int offset, int *next_ptr);
-qe__attr_nonnull((3))
+qe__attr_nonnull((1,3))
 char32_t eb_prev_glyph(EditBuffer *b, int offset, int *prev_ptr);
 int eb_skip_accents(EditBuffer *b, int offset);
 int eb_skip_glyphs(EditBuffer *b, int offset, int n);
@@ -608,12 +617,10 @@ int eb_is_in_indentation(EditBuffer *b, int offset);
 int eb_goto_eol(EditBuffer *b, int offset);
 int eb_next_line(EditBuffer *b, int offset);
 
-int eb_count_buffers(QEmacsState *qs, EditBuffer *b0, int *totalp, int mask, int val);
-EditBuffer *eb_get_buffer_from_index(QEmacsState *qs, int index, int mask, int val);
+int qe_count_buffers(QEmacsState *qs, EditBuffer *b0, int *totalp, int mask, int val);
+EditBuffer *qe_get_buffer_from_index(QEmacsState *qs, int index, int mask, int val);
 
-void eb_register_data_type(EditBufferDataType *bdt);
-EditBufferDataType *eb_probe_data_type(const char *filename, int st_mode,
-                                       uint8_t *buf, int buf_size);
+void qe_register_data_type(QEmacsState *qs, EditBufferDataType *bdt);
 void eb_set_data_type(EditBuffer *b, EditBufferDataType *bdt);
 void eb_invalidate_raw_data(EditBuffer *b);
 extern EditBufferDataType raw_data_type;
@@ -646,16 +653,16 @@ void eb_delete_properties(EditBuffer *b, int offset, int offset2);
 
 #else /* QE_MODULE */
 
-void init_all_modules(QEmacsState *qs);
-void exit_all_modules(QEmacsState *qs);
+void qe_init_all_modules(QEmacsState *qs);
+void qe_exit_all_modules(QEmacsState *qs);
 
 #define qe_module_init(fn) \
-        extern int module_##fn(QEmacsState *qs); \
-        int module_##fn(QEmacsState *qs) { return fn(qs); }
+        extern int qe_module_##fn(QEmacsState *qs); \
+        int qe_module_##fn(QEmacsState *qs) { return fn(qs); }
 
 #define qe_module_exit(fn) \
-        extern void module_##fn(QEmacsState *qs); \
-        void module_##fn(QEmacsState *qs) { fn(qs); }
+        extern void qe_module_##fn(QEmacsState *qs); \
+        void qe_module_##fn(QEmacsState *qs) { fn(qs); }
 
 #endif /* QE_MODULE */
 
@@ -780,7 +787,7 @@ struct EditState {
     OWNED char *caption;  /* optional window caption or title, utf8 */
     //const char *mode_line;
     //const char *title;
-    struct QEmacsState *qe_state;
+    struct QEmacsState *qs;
     struct QEditScreen *screen; /* copy of qe_state->screen */
     /* display shadow to optimize redraw */
     char modeline_shadow[MAX_SCREEN_WIDTH];
@@ -824,6 +831,7 @@ struct QEModeData {
     ModeDef *mode;
     EditState *s;
     EditBuffer *b;
+    QEmacsState *qs;
     /* Other mode specific data follows */
 };
 
@@ -941,6 +949,20 @@ typedef struct QEStyleDef {
 extern QEStyleDef qe_styles[QE_STYLE_NB];
 
 /* QEmacs state structure */
+
+#define MAX_KEYS 10
+
+typedef struct QEKeyContext {
+    int has_arg;
+    int argval;
+    int is_escape;
+    int nb_keys;
+    int describe_key; /* if true, the following command is only displayed */
+    void (*grab_key_cb)(void *opaque, int key);
+    void *grab_key_opaque;
+    unsigned int keys[MAX_KEYS];
+    char buf[128];
+} QEKeyContext;
 
 #define NB_YANK_BUFFERS 10
 
@@ -1080,6 +1102,10 @@ struct QEmacsState {
     u8 *input_buf;
     u8 input_buf_def[32];
     struct Equivalent *first_equivalent;
+
+    /* key dispatching */
+    QEKeyContext key_ctx;
+
     /* mouse handling */
     EditState *motion_target;
     int motion_type, motion_border, motion_x, motion_y;
@@ -1088,8 +1114,6 @@ struct QEmacsState {
 #define DEFAULT_DOUBLE_CLICK_THRESHOLD  500  /* half a second */
     int mouse_clicks; /* 1..3 */
 };
-
-extern QEmacsState qe_state;
 
 struct QETraceDef {
     int flags;
@@ -1103,8 +1127,6 @@ extern size_t const qe_trace_defs_count;
 
 /* dynamic key binding storage */
 
-#define MAX_KEYS 10
-
 struct KeyDef {
     struct KeyDef *next;
     const struct CmdDef *cmd;
@@ -1112,7 +1134,7 @@ struct KeyDef {
     unsigned int keys[1];
 };
 
-void unget_key(int key);
+void qe_unget_key(QEmacsState *qs, int key);
 
 /* command definitions */
 
@@ -1210,14 +1232,14 @@ typedef struct CmdDef {
 /* command not implemented yet */
 #define CMDx(name, bindings, desc, ...)
 
-ModeDef *qe_find_mode(const char *name, int flags);
-ModeDef *qe_find_mode_filename(const char *filename, int flags);
-void qe_register_mode(ModeDef *m, int flags);
+ModeDef *qe_find_mode(QEmacsState *qs, const char *name, int flags);
+ModeDef *qe_find_mode_filename(QEmacsState *qs, const char *filename, int flags);
+void qe_register_mode(QEmacsState *qs, ModeDef *m, int flags);
 void mode_complete(CompleteState *cp, CompleteFunc enumerate);
-int qe_register_commands(ModeDef *m, const CmdDef *cmds, int len);
-int qe_register_bindings(KeyDef **lp, const char *cmd_name, const char *keys);
+int qe_register_commands(QEmacsState *qs, ModeDef *m, const CmdDef *cmds, int len);
+int qe_register_bindings(QEmacsState *qs, KeyDef **lp, const char *cmd_name, const char *keys);
 int qe_register_transient_binding(QEmacsState *qs, const char *cmd_name, const char *keys);
-const CmdDef *qe_find_cmd(const char *cmd_name);
+const CmdDef *qe_find_cmd(QEmacsState *qs, const char *cmd_name);
 int qe_get_prototype(const CmdDef *d, char *buf, int size);
 
 /* text display system */
@@ -1368,19 +1390,19 @@ struct InputMethod {
     InputMethod *next;
 };
 
-void register_input_method(InputMethod *m);
+void qe_register_input_method(QEmacsState *qs, InputMethod *m);
 void do_set_input_method(EditState *s, const char *method);
 void do_switch_input_method(EditState *s);
-void input_methods_init(QEmacsState *qs);
-int load_input_methods(const char *filename);
-void unload_input_methods(void);
+void qe_input_methods_init(QEmacsState *qs);
+int qe_load_input_methods(QEmacsState *qs, const char *filename);
+void qe_unload_input_methods(QEmacsState *qs);
 
 /* the following will be suppressed */
 #define LINE_MAX_SIZE 256
 
 /* minibuffer & status */
 
-void minibuffer_init(QEmacsState *qs);
+void qe_minibuffer_init(QEmacsState *qs);
 
 typedef struct CompletionDef {
     const char *name;
@@ -1391,7 +1413,7 @@ typedef struct CompletionDef {
     /* get the entry string from the line in the popup window */
     int (*get_entry)(EditState *s, char *dest, int size, int offset);
     /* convert final string to a number */
-    long (*convert_entry)(const char *s, const char **endp);
+    long (*convert_entry)(EditState *s, const char *str, const char **endp);
 #define CF_FILENAME        1
 #define CF_NO_FUZZY        2
 #define CF_SPACE_OK        4
@@ -1406,15 +1428,18 @@ typedef struct CompletionDef {
     struct CompletionDef *next;
 } CompletionDef;
 
-void qe_register_completion(CompletionDef *cp);
+void qe_register_completion(QEmacsState *qs, CompletionDef *cp);
 
 void put_status(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
 void put_error(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
+void qe_put_error(QEmacsState *qs, const char *fmt, ...) qe__attr_printf(2,3);
+void qe_dpy_error(QEditScreen *s, const char *fmt, ...) qe__attr_printf(2,3);
+
 void minibuffer_edit(EditState *e, const char *input, const char *prompt,
                      StringArray *hist, const char *completion_name,
                      void (*cb)(void *opaque, char *buf, CompletionDef *completion),
                      void *opaque);
-StringArray *qe_get_history(const char *name);
+StringArray *qe_get_history(QEmacsState *qs, const char *name);
 void command_complete(CompleteState *cp, CompleteFunc enumerate);
 int eb_command_print_entry(EditBuffer *b, const CmdDef *d, EditState *s);
 int command_print_entry(CompleteState *cp, EditState *s, const char *name);
@@ -1470,8 +1495,9 @@ void compute_client_area(EditState *s);
 void edit_close(EditState **sp);
 EditState *edit_new(EditBuffer *b,
                     int x1, int y1, int width, int height, int flags);
-EditBuffer *check_buffer(EditBuffer **sp);
-EditState *check_window(EditState **sp);
+EditBuffer *qe_check_buffer(QEmacsState *qs, EditBuffer **sp);
+EditState *qe_check_window(QEmacsState *qs, EditState **sp);
+void qe_kill_buffer(QEmacsState *qs, EditBuffer *b);
 int get_glyph_width(QEditScreen *screen, EditState *s, QETermStyle style, char32_t c);
 int get_line_height(QEditScreen *screen, EditState *s, QETermStyle style);
 void do_refresh(EditState *s);
@@ -1487,7 +1513,7 @@ void do_split_window(EditState *s, int prop, int side_by_side);
 void do_create_window(EditState *s, const char *filename, const char *layout);
 void qe_save_window_layout(EditState *s, EditBuffer *b);
 
-void edit_display(QEmacsState *qs);
+void qe_display(QEmacsState *qs);
 void edit_invalidate(EditState *s, int all);
 void display_mode_line(EditState *s);
 int edit_set_mode(EditState *s, ModeDef *m);
@@ -1524,7 +1550,6 @@ void do_search_string(EditState *s, const char *search_str, int dir);
 void do_refresh_complete(EditState *s);
 void do_kill_buffer(EditState *s, const char *bufname, int force);
 void switch_to_buffer(EditState *s, EditBuffer *b);
-void qe_kill_buffer(EditBuffer *b);
 
 /* text mode */
 
@@ -1554,7 +1579,7 @@ void do_delete_char(EditState *s, int argval);
 void do_indent_rigidly_by(EditState *s, int start, int end, int argval);
 void do_indent_rigidly_to_tab_stop(EditState *s, int start, int end, int dir);
 void do_tabulate(EditState *s, int argval);
-EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base);
+EditBuffer *qe_new_yank_buffer(QEmacsState *qs, EditBuffer *base);
 void do_append_next_kill(EditState *s);
 void do_kill(EditState *s, int p1, int p2, int dir, int keep);
 void do_kill_region(EditState *s);
@@ -1579,6 +1604,7 @@ void text_mouse_goto(EditState *s, int x, int y, QEEvent *ev);
 void basic_mode_line(EditState *s, buf_t *out, int c1);
 void text_mode_line(EditState *s, buf_t *out);
 void do_toggle_full_screen(EditState *s);
+void qe_toggle_control_h(QEmacsState *qs, int set);
 void do_toggle_control_h(EditState *s, int set);
 
 /* misc */
@@ -1588,7 +1614,6 @@ void do_set_trace_flags(EditState *s, int flags);
 void do_toggle_trace_mode(EditState *s, int argval);
 void do_set_trace_options(EditState *s, const char *options);
 void do_cd(EditState *s, const char *name);
-int qe_register_command_binding(ModeDef *m, const CmdDef *d, const char *keystr);
 void do_set_key(EditState *s, const char *keystr, const char *cmd_name, int local);
 void do_unset_key(EditState *s, const char *keystr, int local);
 void do_bof(EditState *s);
@@ -1611,7 +1636,7 @@ void do_center_cursor(EditState *s, int force);
 void do_quoted_insert(EditState *s, int argval);
 void do_overwrite_mode(EditState *s, int argval);
 // should take argval
-void maybe_set_mark(EditState *s);
+void do_maybe_set_mark(EditState *s);
 void do_set_mark(EditState *s);
 void do_mark_whole_buffer(EditState *s);
 void do_yank(EditState *s);
@@ -1688,15 +1713,13 @@ void do_delete_other_windows(EditState *s, int all);
 void do_hide_window(EditState *s, int set);
 void do_delete_hidden_windows(EditState *s);
 void do_describe_key_briefly(EditState *s, const char *keystr, int argval);
-EditBuffer *new_help_buffer(void);
+EditBuffer *new_help_buffer(EditState *s);
 void do_help_for_help(EditState *s);
 void qe_event_init(QEmacsState *qs);
 void window_get_min_size(EditState *s, int *w_ptr, int *h_ptr);
 int window_resize(EditState *s, int target_w, int target_h);
 void wheel_scroll_up_down(EditState *s, int dir);
 void qe_mouse_event(QEmacsState *qs, QEEvent *ev);
-void set_user_option(const char *user);
-void set_tty_charset(const char *name);
 
 /* values */
 
@@ -1818,7 +1841,7 @@ enum {
 };
 void do_transpose(EditState *s, int cmd);
 
-int qe_list_bindings(const CmdDef *d, ModeDef *mode, int inherit, char *buf, int size);
+int qe_list_bindings(QEmacsState *qs, const CmdDef *d, ModeDef *mode, int inherit, char *buf, int size);
 void do_show_bindings(EditState *s, const char *cmd_name);
 void do_describe_bindings(EditState *s, int argval);
 void do_apropos(EditState *s, const char *str);
@@ -1907,8 +1930,10 @@ void shell_colorize_line(QEColorizeContext *cp,
 #define SF_AUTO_CODING   0x08
 #define SF_AUTO_MODE     0x10
 #define SF_BUFED_MODE    0x20
-EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
-                             const char *bufname, const char *caption,
-                             const char *path,
-                             const char *cmd, int shell_flags);
+#define SF_REUSE_BUFFER  0x1000
+#define SF_ERASE_BUFFER  0x2000
+EditBuffer *qe_new_shell_buffer(QEmacsState *qs, EditBuffer *b0, EditState *e,
+                                const char *bufname, const char *caption,
+                                const char *path, const char *cmd,
+                                int shell_flags);
 #endif

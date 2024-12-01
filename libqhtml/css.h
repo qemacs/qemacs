@@ -2,7 +2,7 @@
  * CSS core for qemacs.
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2007-2023 Charlie Gordon.
+ * Copyright (c) 2007-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -532,15 +532,16 @@ typedef struct CSSStyleSheet {
     CSSStyleSheetEntry *tag_hash[CSS_TAG_HASH_SIZE];
 } CSSStyleSheet;
 
-typedef struct {
+typedef struct CSSParseState {
+    void *error_opaque;
     const char *ptr;
-    int line_num;
     const char *filename;
+    int line_num;
     int ignore_case; /* true if case must be ignored (convert to lower case) */
 } CSSParseState;
 
 CSSStyleSheet *css_new_style_sheet(void);
-void css_parse_style_sheet_str(CSSStyleSheet *s, const char *buffer, int flags);
+void css_parse_style_sheet_str(CSSStyleSheet *s, void *error_opaque, const char *buffer, int flags);
 void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b);
 void css_free_style_sheet(CSSStyleSheet **sp);
 void css_dump_style_sheet(CSSStyleSheet *s);
@@ -683,14 +684,16 @@ typedef const struct QECharset QECharset;
 
 XMLState *xml_begin(CSSStyleSheet *style_sheet, int flags,
                     CSSAbortFunc *abort_func, void *abort_opaque,
-                    const char *filename, QECharset *charset);
+                    void *error_opaque, const char *filename,
+                    QECharset *charset);
 int xml_parse(XMLState *s, char *buf, int buf_len);
 CSSBox *xml_end(XMLState **sp);
 
 CSSBox *xml_parse_buffer(struct EditBuffer *b, const char *name,
                          int offset_start, int offset_end,
                          CSSStyleSheet *style_sheet, int flags,
-                         CSSAbortFunc *abort_func, void *abort_opaque);
+                         CSSAbortFunc *abort_func, void *abort_opaque,
+                         void *error_opaque);
 int find_entity(const char *str);
 const char *find_entity_str(int code);
 
@@ -699,9 +702,7 @@ const char *find_entity_str(int code);
 /* The following functions must be provided by the user */
 
 /* error reporting during parsing */
-void html_error(int line_num, const char *fmt, va_list ap);
-
-void css_error(const char *filename, int line_num, const char *msg);
+void css_error(void *error_opaque, const char *filename, int line_num, const char *msg);
 
 /* file handling (for external scripts/css) */
 struct CSSFile;

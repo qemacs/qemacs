@@ -2,7 +2,7 @@
  * Hexadecimal modes for QEmacs.
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2002-2023 Charlie Gordon.
+ * Copyright (c) 2002-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -372,12 +372,12 @@ static ModeDef hex_mode = {
 static int hex_init(QEmacsState *qs)
 {
     /* first register mode(s) */
-    qe_register_mode(&binary_mode, MODEF_VIEW);
-    qe_register_mode(&hex_mode, MODEF_VIEW);
+    qe_register_mode(qs, &binary_mode, MODEF_VIEW);
+    qe_register_mode(qs, &hex_mode, MODEF_VIEW);
 
     /* commands and default keys */
-    qe_register_commands(&binary_mode, binary_commands, countof(binary_commands));
-    qe_register_commands(&hex_mode, hex_commands, countof(hex_commands));
+    qe_register_commands(qs, &binary_mode, binary_commands, countof(binary_commands));
+    qe_register_commands(qs, &hex_mode, hex_commands, countof(hex_commands));
 
     return 0;
 }

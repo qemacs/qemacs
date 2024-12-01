@@ -207,8 +207,7 @@ static ModeDef sql_mode = {
 
 static int sql_init(QEmacsState *qs)
 {
-    qe_register_mode(&sql_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &sql_mode, MODEF_SYNTAX);
     return 0;
 }
 

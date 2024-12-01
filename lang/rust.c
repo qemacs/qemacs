@@ -282,8 +282,7 @@ static ModeDef rust_mode = {
 
 static int rust_init(QEmacsState *qs)
 {
-    qe_register_mode(&rust_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &rust_mode, MODEF_SYNTAX);
     return 0;
 }
 

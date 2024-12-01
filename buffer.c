@@ -546,22 +546,24 @@ int eb_delete(EditBuffer *b, int offset, int size)
 /* Verify that window still exists, return argument or NULL,
  * update handle if window is invalid.
  */
-EditBuffer *check_buffer(EditBuffer **sp)
+EditBuffer *qe_check_buffer(QEmacsState *qs, EditBuffer **sp)
 {
-    QEmacsState *qs = &qe_state;
+    EditBuffer *b0 = *sp;
     EditBuffer *b;
 
+    if (b0 == NULL)
+        return NULL;
+
     for (b = qs->first_buffer; b != NULL; b = b->next) {
-        if (b == *sp)
+        if (b == b0)
             return b;
     }
     return *sp = NULL;
 }
 
 #ifdef CONFIG_TINY
-EditBuffer *eb_find(const char *name)
+EditBuffer *qe_find_buffer_name(QEmacsState *qs, const char *name)
 {
-    QEmacsState *qs = &qe_state;
     EditBuffer *b;
 
     b = qs->first_buffer;
@@ -597,7 +599,7 @@ static int eb_cache_locate(EditBuffer **cache, int len, const char *name)
 
 static int eb_cache_remove(EditBuffer *b)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = b->qs;
     EditBuffer **cache = qs->buffer_cache;
     int len = qs->buffer_cache_len;
     int pos = eb_cache_locate(cache, len, b->name);
@@ -616,7 +618,7 @@ static int eb_cache_remove(EditBuffer *b)
 
 static int eb_cache_insert(EditBuffer *b)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = b->qs;
     EditBuffer **cache = qs->buffer_cache;
     int len = qs->buffer_cache_len;
     int pos = eb_cache_locate(cache, len, b->name);
@@ -639,9 +641,8 @@ static int eb_cache_insert(EditBuffer *b)
     return 0;
 }
 
-EditBuffer *eb_find(const char *name)
+EditBuffer *qe_find_buffer_name(QEmacsState *qs, const char *name)
 {
-    QEmacsState *qs = &qe_state;
     EditBuffer **cache = qs->buffer_cache;
     int len = qs->buffer_cache_len;
     int pos = eb_cache_locate(cache, len, name);
@@ -681,7 +682,7 @@ int eb_set_buffer_name(EditBuffer *b, const char *name1)
     }
     n = 0;
     /* do not allow an empty name */
-    while ((b1 = eb_find(name)) != NULL || *name == '\0') {
+    while ((b1 = qe_find_buffer_name(b->qs, name)) != NULL || *name == '\0') {
         if (b == b1)
             return 0;
         n++;
@@ -694,21 +695,24 @@ int eb_set_buffer_name(EditBuffer *b, const char *name1)
     return eb_cache_insert(b);
 }
 
-EditBuffer *eb_new(const char *name, int flags)
+EditBuffer *qe_new_buffer(QEmacsState *qs, const char *name, int flags)
 {
-    QEmacsState *qs = &qe_state;
     EditBuffer *b;
     EditBuffer **pb;
+
+    if (flags & BC_REUSE) {
+        b = qe_find_buffer_name(qs, name);
+        if (b != NULL) {
+            if (flags & BC_CLEAR)
+                eb_clear(b);
+            return b;
+        }
+    }
+    flags &= ~(BC_REUSE | BC_CLEAR);
 
     b = qe_mallocz(EditBuffer);
     if (!b)
         return NULL;
-
-    /* set the buffer name to a unique name */
-    if (eb_set_buffer_name(b, name)) {
-        qe_free(&b);
-        return NULL;
-    }
 
     b->qs = qs;
     b->flags = flags & ~BF_STYLES;
@@ -723,6 +727,15 @@ EditBuffer *eb_new(const char *name, int flags)
     b->tab_width = qs->default_tab_width;
     b->fill_column = qs->default_fill_column;
     b->eol_type = qs->default_eol_type;
+
+    /* set the buffer name to a unique name */
+    // XXX: `b` is not in the buffer list nor in the buffer cache
+    //      `eb_set_buffer_name` will insert it into the cache.
+    //      This is somewhat sloppy.
+    if (eb_set_buffer_name(b, name)) {
+        qe_free(&b);
+        return NULL;
+    }
 
     /* add buffer in global buffer list (at end for system buffers) */
     pb = &qs->first_buffer;
@@ -749,18 +762,6 @@ EditBuffer *eb_new(const char *name, int flags)
 
     if (flags & BF_STYLES)
         eb_create_style_buffer(b, flags);
-
-    return b;
-}
-
-/* Return an empty scratch buffer, create one if necessary */
-EditBuffer *eb_scratch(const char *name, int flags)
-{
-    EditBuffer *b;
-
-    b = eb_find_new(name, flags);
-    if (b != NULL)
-        eb_clear(b);
 
     return b;
 }
@@ -794,7 +795,7 @@ void eb_free(EditBuffer **bp)
 {
     if (*bp) {
         EditBuffer *b = *bp;
-        QEmacsState *qs = &qe_state;
+        QEmacsState *qs = b->qs;
         EditBuffer **pb;
         EditBuffer *b1;
 
@@ -844,27 +845,14 @@ void eb_free(EditBuffer **bp)
     }
 }
 
-EditBuffer *eb_find_new(const char *name, int flags)
+EditBuffer *qe_find_buffer_file(QEmacsState *qs, const char *filename)
 {
     EditBuffer *b;
 
-    b = eb_find(name);
-    if (!b)
-        b = eb_new(name, flags);
-    return b;
-}
-
-EditBuffer *eb_find_file(const char *filename)
-{
-    QEmacsState *qs = &qe_state;
-    EditBuffer *b;
-
-    b = qs->first_buffer;
-    while (b != NULL) {
+    for (b = qs->first_buffer; b != NULL; b = b->next) {
         /* XXX: should also use stat to ensure this is same file */
         if (strequal(b->filename, filename))
             return b;
-        b = b->next;
     }
     return NULL;
 }
@@ -872,19 +860,20 @@ EditBuffer *eb_find_file(const char *filename)
 /* Find a window attached to a given buffer, different from s */
 EditState *eb_find_window(EditBuffer *b, EditState *s)
 {
-    QEmacsState *qs = &qe_state;
     EditState *e;
 
-    for (e = qs->first_window; e != NULL; e = e->next_window) {
+    if (!b)
+        return NULL;
+
+    for (e = b->qs->first_window; e != NULL; e = e->next_window) {
         if (e != s && e->b == b)
             break;
     }
     return e;
 }
 
-void eb_trace_bytes(const void *buf, int size, int state)
+void qe_trace_bytes(QEmacsState *qs, const void *buf, int size, int state)
 {
-    QEmacsState *qs = &qe_state;
     EditBuffer *b = qs->trace_buffer;
     EditState *e;
     const char *str = NULL;
@@ -1038,7 +1027,9 @@ int eb_create_style_buffer(EditBuffer *b, int flags)
     } else {
         char name[MAX_BUFFERNAME_SIZE];
         snprintf(name, sizeof(name), "*S<%.*s>", MAX_BUFFERNAME_SIZE - 5, b->name);
-        b->b_styles = eb_new(name, BF_SYSTEM | BF_IS_STYLE | BF_RAW);
+        b->b_styles = qe_new_buffer(b->qs, name, BF_SYSTEM | BF_IS_STYLE | BF_RAW);
+        if (!b->b_styles)
+            return -1;
         b->flags |= flags & BF_STYLES;
         b->style_shift = (((unsigned)flags & BF_STYLES) / BF_STYLE1) - 1;
         b->style_bytes = 1 << b->style_shift;
@@ -1154,7 +1145,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
          * referenced by name.
          */
         snprintf(buf, sizeof(buf), "*L<%.*s>", MAX_BUFFERNAME_SIZE - 5, b->name);
-        b->log_buffer = eb_new(buf, BF_SYSTEM | BF_IS_LOG | BF_RAW);
+        b->log_buffer = qe_new_buffer(b->qs, buf, BF_SYSTEM | BF_IS_LOG | BF_RAW);
         if (!b->log_buffer)
             return;
         b->log_new_index = 0;
@@ -1229,7 +1220,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
 
 void do_undo(EditState *s)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     EditBuffer *b = s->b;
     int log_index, size_trailer;
     LogBuffer lb;
@@ -1244,8 +1235,8 @@ void do_undo(EditState *s)
     s->multi_cursor_active = 0;
 
     /* Should actually keep undo state current until new logs are added */
-    if (s->qe_state->last_cmd_func != (CmdFunc)do_undo
-    &&  s->qe_state->last_cmd_func != (CmdFunc)do_redo) {
+    if (qs->last_cmd_func != (CmdFunc)do_undo
+    &&  qs->last_cmd_func != (CmdFunc)do_redo) {
         b->log_current = 0;
     }
 
@@ -1328,8 +1319,8 @@ void do_redo(EditState *s)
     s->region_style = 0;
 
     /* Should actually keep undo state current until new logs are added */
-    if (s->qe_state->last_cmd_func != (CmdFunc)do_undo
-    &&  s->qe_state->last_cmd_func != (CmdFunc)do_redo) {
+    if (s->qs->last_cmd_func != (CmdFunc)do_undo
+    &&  s->qs->last_cmd_func != (CmdFunc)do_redo) {
         b->log_current = 0;
     }
 
@@ -1720,6 +1711,8 @@ int eb_goto_pos(EditBuffer *b, int line1, int col1)
     offset = 0;
 
     p = b->page_table;
+    if (!p)
+        return 0;
     p_end = b->page_table + b->nb_pages;
     while (p < p_end) {
         if (!(p->flags & PG_VALID_POS)) {
@@ -1764,6 +1757,8 @@ int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset)
     line = 0;
     col = 0;
     p = b->page_table;
+    if (!p)
+        goto the_end;
     p_end = p + b->nb_pages;
     for (;;) {
         if (p >= p_end)
@@ -2024,7 +2019,7 @@ int eb_raw_buffer_load1(EditBuffer *b, FILE *f, int offset)
     unsigned char buf[IOBUF_SIZE];
     int len, size, inserted;
 
-    //put_status(NULL, "loading %s", filename);
+    //put_status(b->qs->active_window, "loading %s", filename);
     size = inserted = 0;
     for (;;) {
         len = fread(buf, 1, IOBUF_SIZE, f);
@@ -2037,7 +2032,7 @@ int eb_raw_buffer_load1(EditBuffer *b, FILE *f, int offset)
         offset += len;
         size += len;
     }
-    //put_status(NULL, "");
+    //put_status(b->qs->active_window, "");
     return size;
 }
 
@@ -2063,7 +2058,7 @@ int eb_mmap_buffer(EditBuffer *b, const char *filename)
     if (fd < 0)
         return -1;
     file_size = lseek(fd, 0, SEEK_END);
-    //put_status(NULL, "mapping %s", filename);
+    //put_status(b->qs->active_window, "mapping %s", filename);
     file_ptr = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd, 0);
     if ((void*)file_ptr == MAP_FAILED) {
         close(fd);
@@ -2096,14 +2091,13 @@ int eb_mmap_buffer(EditBuffer *b, const char *filename)
     }
     // XXX: not needed
     b->map_handle = fd;
-    //put_status(NULL, "");
+    //put_status(b->qs->active_window, "");
     return 0;
 }
 #endif
 
 static int raw_buffer_load(EditBuffer *b, FILE *f)
 {
-    QEmacsState *qs = &qe_state;
     struct stat st;
 
     /* TODO: Should produce error messages */
@@ -2112,12 +2106,12 @@ static int raw_buffer_load(EditBuffer *b, FILE *f)
         return -1;
 
 #ifdef CONFIG_MMAP
-    if (st.st_size >= qs->mmap_threshold) {
+    if (st.st_size >= b->qs->mmap_threshold) {
         if (!eb_mmap_buffer(b, b->filename))
             return 0;
     }
 #endif
-    if (st.st_size <= qs->max_load_size) {
+    if (st.st_size <= b->qs->max_load_size) {
         return eb_raw_buffer_load1(b, f, 0);
     }
     return -1;
@@ -2136,7 +2130,7 @@ static int raw_buffer_save(EditBuffer *b, int start, int end,
     if (fd < 0)
         return -1;
 
-    //put_status(NULL, "writing %s", filename);
+    //put_status(b->qs->active_window, "writing %s", filename);
     if (end < start) {
         int tmp = start;
         start = end;
@@ -2163,7 +2157,7 @@ static int raw_buffer_save(EditBuffer *b, int start, int end,
         size -= len;
     }
     close(fd);
-    //put_status(NULL, "");
+    //put_status(b->qs->active_window, "");
     return written;
 }
 
@@ -2480,7 +2474,9 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
         b = dest;
         if (!styles_flags
         &&  ((b->flags & BF_SAVELOG) || dest_offset != b->total_size)) {
-            b = eb_new("*tmp*", BF_SYSTEM);
+            b = qe_new_buffer(b->qs, "*tmp*", BF_SYSTEM);
+            if (!b)
+                return 0;
             eb_set_charset(b, dest->charset, dest->eol_type);
             offset1 = 0;
         }
@@ -2812,9 +2808,8 @@ void eb_delete_properties(EditBuffer *b, int offset, int offset2) {
 
 /* buffer data type handling */
 
-void eb_register_data_type(EditBufferDataType *bdt)
+void qe_register_data_type(QEmacsState *qs, EditBufferDataType *bdt)
 {
-    QEmacsState *qs = &qe_state;
     EditBufferDataType **lp;
 
     lp = &qs->first_buffer_data_type;
@@ -2840,7 +2835,6 @@ int eb_write_buffer(EditBuffer *b, int start, int end, const char *filename)
  */
 int eb_save_buffer(EditBuffer *b)
 {
-    QEmacsState *qs = &qe_state;
     int ret, st_mode;
     char buf1[MAX_FILENAME_SIZE];
     const char *filename;
@@ -2855,7 +2849,7 @@ int eb_save_buffer(EditBuffer *b)
     if (stat(filename, &st) == 0)
         st_mode = st.st_mode & 0777;
 
-    if (!qs->backup_inhibited
+    if (!b->qs->backup_inhibited
     &&  strlen(filename) < MAX_FILENAME_SIZE - 1) {
         /* backup old file if present */
         if (snprintf(buf1, sizeof(buf1), "%s~", filename) < ssizeof(buf1)) {
@@ -2898,7 +2892,7 @@ EditBufferDataType raw_data_type = {
 };
 
 /* init buffer handling */
-void eb_init(QEmacsState *qs)
+void qe_data_init(QEmacsState *qs)
 {
-    eb_register_data_type(&raw_data_type);
+    qe_register_data_type(qs, &raw_data_type);
 }

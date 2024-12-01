@@ -2,7 +2,7 @@
  * Basic Charset functions for QEmacs
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2002-2023 Charlie Gordon.
+ * Copyright (c) 2002-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -974,7 +974,7 @@ struct QECharset charset_ucs4be = {
 /********************************************************/
 /* generic charset functions */
 
-void qe_register_charset(struct QECharset *charset)
+void qe_register_charset(struct QEmacsState *qs, struct QECharset *charset)
 {
     struct QECharset **pp;
 
@@ -1010,7 +1010,7 @@ void charset_complete(CompleteState *cp, CompleteFunc enumerate) {
     }
 }
 
-QECharset *find_charset(const char *name)
+QECharset *qe_find_charset(struct QEmacsState *qs, const char *name)
 {
     QECharset *charset;
 
@@ -1610,14 +1610,14 @@ int charset_goto_char_8bit(CharsetDecodeState *s,
 /********************************************************/
 
 void charset_init(struct QEmacsState *qs) {
-    qe_register_charset(&charset_raw);
-    qe_register_charset(&charset_8859_1);
-    qe_register_charset(&charset_vt100);
-    qe_register_charset(&charset_7bit);
-    qe_register_charset(&charset_utf8);
-    qe_register_charset(&charset_utf8x);
-    qe_register_charset(&charset_ucs2le);
-    qe_register_charset(&charset_ucs2be);
-    qe_register_charset(&charset_ucs4le);
-    qe_register_charset(&charset_ucs4be);
+    qe_register_charset(qs, &charset_raw);
+    qe_register_charset(qs, &charset_8859_1);
+    qe_register_charset(qs, &charset_vt100);
+    qe_register_charset(qs, &charset_7bit);
+    qe_register_charset(qs, &charset_utf8);
+    qe_register_charset(qs, &charset_utf8x);
+    qe_register_charset(qs, &charset_ucs2le);
+    qe_register_charset(qs, &charset_ucs2be);
+    qe_register_charset(qs, &charset_ucs4le);
+    qe_register_charset(qs, &charset_ucs4be);
 }

@@ -4,7 +4,7 @@
  * More Charsets and Tables for QEmacs
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2002-2023 Charlie Gordon.
+ * Copyright (c) 2002-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1838,48 +1838,48 @@ static struct QECharset charset_atarist = {
     .private_table = table_atarist,
 };
 
-int charset_more_init(QEmacsState *qs)
+int qe_charset_more_init(QEmacsState *qs)
 {
-    qe_register_charset(&charset_8859_2);
-    qe_register_charset(&charset_8859_3);
-    qe_register_charset(&charset_8859_4);
-    qe_register_charset(&charset_8859_5);
-    qe_register_charset(&charset_8859_6);
-    qe_register_charset(&charset_8859_7);
-    qe_register_charset(&charset_8859_8);
-    qe_register_charset(&charset_8859_9);
-    qe_register_charset(&charset_8859_10);
-    qe_register_charset(&charset_8859_11);
-    qe_register_charset(&charset_8859_13);
-    qe_register_charset(&charset_8859_14);
-    qe_register_charset(&charset_8859_15);
-    qe_register_charset(&charset_8859_16);
-    qe_register_charset(&charset_cp437);
-    qe_register_charset(&charset_cp737);
-    qe_register_charset(&charset_cp850);
-    qe_register_charset(&charset_cp852);
-    qe_register_charset(&charset_cp866);
-    qe_register_charset(&charset_cp1125);
-    qe_register_charset(&charset_cp1250);
-    qe_register_charset(&charset_cp1251);
-    qe_register_charset(&charset_cp1252);
-    qe_register_charset(&charset_cp1256);
-    qe_register_charset(&charset_cp1257);
-    qe_register_charset(&charset_mac_latin2);
-    qe_register_charset(&charset_mac_roman);
-    qe_register_charset(&charset_kamen);
-    qe_register_charset(&charset_koi8_r);
-    qe_register_charset(&charset_koi8_u);
-    qe_register_charset(&charset_tcvn);
-    qe_register_charset(&charset_viscii);
-    qe_register_charset(&charset_cp037);
-    qe_register_charset(&charset_cp424);
-    qe_register_charset(&charset_cp500);
-    qe_register_charset(&charset_cp875);
-    qe_register_charset(&charset_cp1026);
-    qe_register_charset(&charset_atarist);
+    qe_register_charset(qs, &charset_8859_2);
+    qe_register_charset(qs, &charset_8859_3);
+    qe_register_charset(qs, &charset_8859_4);
+    qe_register_charset(qs, &charset_8859_5);
+    qe_register_charset(qs, &charset_8859_6);
+    qe_register_charset(qs, &charset_8859_7);
+    qe_register_charset(qs, &charset_8859_8);
+    qe_register_charset(qs, &charset_8859_9);
+    qe_register_charset(qs, &charset_8859_10);
+    qe_register_charset(qs, &charset_8859_11);
+    qe_register_charset(qs, &charset_8859_13);
+    qe_register_charset(qs, &charset_8859_14);
+    qe_register_charset(qs, &charset_8859_15);
+    qe_register_charset(qs, &charset_8859_16);
+    qe_register_charset(qs, &charset_cp437);
+    qe_register_charset(qs, &charset_cp737);
+    qe_register_charset(qs, &charset_cp850);
+    qe_register_charset(qs, &charset_cp852);
+    qe_register_charset(qs, &charset_cp866);
+    qe_register_charset(qs, &charset_cp1125);
+    qe_register_charset(qs, &charset_cp1250);
+    qe_register_charset(qs, &charset_cp1251);
+    qe_register_charset(qs, &charset_cp1252);
+    qe_register_charset(qs, &charset_cp1256);
+    qe_register_charset(qs, &charset_cp1257);
+    qe_register_charset(qs, &charset_mac_latin2);
+    qe_register_charset(qs, &charset_mac_roman);
+    qe_register_charset(qs, &charset_kamen);
+    qe_register_charset(qs, &charset_koi8_r);
+    qe_register_charset(qs, &charset_koi8_u);
+    qe_register_charset(qs, &charset_tcvn);
+    qe_register_charset(qs, &charset_viscii);
+    qe_register_charset(qs, &charset_cp037);
+    qe_register_charset(qs, &charset_cp424);
+    qe_register_charset(qs, &charset_cp500);
+    qe_register_charset(qs, &charset_cp875);
+    qe_register_charset(qs, &charset_cp1026);
+    qe_register_charset(qs, &charset_atarist);
 
     return 0;
 }
 
-qe_module_init(charset_more_init);
+qe_module_init(qe_charset_more_init);

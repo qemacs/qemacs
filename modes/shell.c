@@ -84,7 +84,6 @@ typedef struct ShellState {
     int utf8_len;
     EditBuffer *b;
     EditBuffer *b_color; /* color buffer, one byte per char */
-    struct QEmacsState *qe_state;
     const char *ka1, *ka3, *kb2, *kc1, *kc3, *kcbt, *kspd;
     const char *kbeg, *kbs, *kent, *kdch1, *kich1;
     const char *kcub1, *kcud1, *kcuf1, *kcuu1;
@@ -192,7 +191,8 @@ const char *get_shell(void)
 #define QE_TERM_YSIZE  25
 #define QE_TERM_YSIZE_INFINITE  10000
 
-static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
+static int run_process(ShellState *s,
+                       const char *cmd, int *fd_ptr, int *pid_ptr,
                        int cols, int rows, const char *path,
                        int shell_flags)
 {
@@ -204,7 +204,7 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
 
     pty_fd = get_pty(tty_name, sizeof(tty_name));
     if (pty_fd < 0) {
-        put_status(NULL, "run_process: cannot get tty: %s",
+        put_status(s->b->qs->active_window, "run_process: cannot get tty: %s",
                    strerror(errno));
         return -1;
     }
@@ -219,7 +219,7 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
 
     pid = fork();
     if (pid < 0) {
-        put_status(NULL, "run_process: cannot fork");
+        put_status(s->b->qs->active_window, "run_process: cannot fork");
         return -1;
     }
     if (pid == 0) {
@@ -306,18 +306,19 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
 /* VT100 emulation */
 
 static void qe_trace_term(ShellState *s, const char *msg) {
-    eb_trace_bytes(msg, -1, EB_TRACE_FLUSH | EB_TRACE_EMULATE);
-    eb_trace_bytes(": ", -1, EB_TRACE_EMULATE);
-    eb_trace_bytes(s->term_buf, s->term_len, EB_TRACE_EMULATE);
+    QEmacsState *qs = s->base.qs;
+    qe_trace_bytes(qs, msg, -1, EB_TRACE_FLUSH | EB_TRACE_EMULATE);
+    qe_trace_bytes(qs, ": ", -1, EB_TRACE_EMULATE);
+    qe_trace_bytes(qs, s->term_buf, s->term_len, EB_TRACE_EMULATE);
 }
 
 #define TRACE_MSG(s, m)  qe_trace_term(s, m)
 #define TRACE_PRINTF(s, ...)  do { \
-    if (s->qe_state->trace_buffer) { \
-        if (s->qe_state->trace_buffer_state) \
-            eb_putc(s->qe_state->trace_buffer, '\n'); \
-        eb_printf(s->qe_state->trace_buffer, __VA_ARGS__); \
-        s->qe_state->trace_buffer_state = 0; \
+    if (s->base.qs->trace_buffer) { \
+        if (s->base.qs->trace_buffer_state) \
+            eb_putc(s->base.qs->trace_buffer, '\n'); \
+        eb_printf(s->base.qs->trace_buffer, __VA_ARGS__); \
+        s->base.qs->trace_buffer_state = 0; \
     } \
 } while(0)
 
@@ -484,8 +485,8 @@ static void qe_term_write(ShellState *s, const char *buf, int len)
     if (len < 0)
         len = strlen(buf);
 
-    if (s->qe_state->trace_buffer)
-        eb_trace_bytes(buf, len, EB_TRACE_PTY);
+    if (s->base.qs->trace_buffer)
+        qe_trace_bytes(s->base.qs, buf, len, EB_TRACE_PTY);
 
     while (len > 0) {
         ret = write(s->pty_fd, buf, len);
@@ -1268,7 +1269,7 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
 static void qe_term_update_cursor(qe__unused__ ShellState *s)
 {
 #if 0
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->base.qs;
     EditState *e;
 
     if (s->cur_offset == -1)
@@ -1312,8 +1313,8 @@ static void shell_key(void *opaque, int key)
         return;
 
     if (key == KEY_CTRL('o')) {
-        qe_ungrab_keys();
-        unget_key(key);
+        qe_ungrab_keys(s->base.qs);
+        qe_unget_key(s->base.qs, key);
         return;
     }
     p = buf;
@@ -1416,7 +1417,7 @@ static void qe_term_emulate(ShellState *s, int c)
             break;
         case 7:     /* BEL  Bell (Ctrl-G). */
             // XXX: should check for visible-bell
-            put_status(NULL, "Ding!");
+            put_status(s->b->qs->active_window, "Ding!");
             break;
         case 8:     /* BS   Backspace (Ctrl-H). */
             //TRACE_PRINTF(s, "BS: ");
@@ -2162,7 +2163,7 @@ static void qe_term_emulate(ShellState *s, int c)
                     if (s->shell_flags & SF_INTERACTIVE) {
                         /* only grab keys in interactive qe_term buffers */
                         s->grab_keys = 1;
-                        qe_grab_keys(shell_key, s);
+                        qe_grab_keys(s->base.qs, shell_key, s);
                         /* Should also clear screen */
                     }
                     if (!s->use_alternate_screen) {
@@ -2247,7 +2248,7 @@ static void qe_term_emulate(ShellState *s, int c)
                 case 1049:  /* Use Normal Screen Buffer and restore cursor
                        as in DECRC. */
                     if (s->shell_flags & SF_INTERACTIVE) {
-                        qe_ungrab_keys();
+                        qe_ungrab_keys(s->base.qs);
                         s->grab_keys = 0;
                     }
                     if (s->use_alternate_screen) {
@@ -2383,9 +2384,9 @@ static void shell_read_cb(void *opaque)
         return;
 
     b = s->b;
-    qs = s->qe_state;
+    qs = s->base.qs;
     if (qs->trace_buffer)
-        eb_trace_bytes(buf, len, EB_TRACE_SHELL);
+        qe_trace_bytes(qs, buf, len, EB_TRACE_SHELL);
 
     /* Suspend BF_READONLY flag to allow shell output to readonly buffer */
     save_readonly = b->flags & BF_READONLY;
@@ -2437,7 +2438,7 @@ static void shell_read_cb(void *opaque)
     }
 
     /* now we do some refresh (should just invalidate?) */
-    edit_display(qs);
+    qe_display(qs);
     dpy_flush(qs->screen);
 }
 
@@ -2496,7 +2497,7 @@ static void shell_pid_cb(void *opaque, int status)
         return;
 
     b = s->b;
-    qs = s->qe_state;
+    qs = s->base.qs;
 
     *buf = '\0';
     if (s->caption) {
@@ -2541,7 +2542,7 @@ static void shell_pid_cb(void *opaque, int status)
 
     /* remove shell input mode */
     s->grab_keys = 0;
-    qe_ungrab_keys();
+    qe_ungrab_keys(qs);
     for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->b == b) {
             e->interactive = 0;
@@ -2556,27 +2557,35 @@ static void shell_pid_cb(void *opaque, int status)
         //shell_mode_free(b, s);  // called by qe_free_mode_data
         qe_free_mode_data(&s->base);
     }
-    edit_display(qs);
+    qe_display(qs);
     dpy_flush(qs->screen);
 }
 
-EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
-                             const char *bufname, const char *caption,
-                             const char *path,
-                             const char *cmd, int shell_flags)
+EditBuffer *qe_new_shell_buffer(QEmacsState *qs, EditBuffer *b0, EditState *e,
+                                const char *bufname, const char *caption,
+                                const char *path, const char *cmd,
+                                int shell_flags)
 {
-    QEmacsState *qs = &qe_state;
     ShellState *s;
     EditBuffer *b;
     const char *lang;
     int cols, rows;
 
+    if (!b0 && (shell_flags & SF_REUSE_BUFFER)) {
+        b0 = qe_find_buffer_name(qs, bufname);
+        if (b0) {
+            if (shell_flags & SF_ERASE_BUFFER)
+                eb_clear(b0);
+        }
+    }
+
     b = b0;
     if (!b) {
-        b = eb_new(bufname, BF_SAVELOG | BF_SHELL);
+        b = qe_new_buffer(qs, bufname, BF_SAVELOG | BF_SHELL);
         if (!b)
             return NULL;
     }
+    shell_flags &= ~(SF_REUSE_BUFFER | SF_ERASE_BUFFER);
 
     eb_set_buffer_name(b, bufname); /* ensure that the name is unique */
     if (shell_flags & SF_COLOR) {
@@ -2607,7 +2616,6 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
     s->b = b;
     s->pty_fd = -1;
     s->pid = -1;
-    s->qe_state = qs;
     s->caption = caption;
     s->shell_flags = shell_flags;
     s->cur_prompt = s->cur_offset = b->total_size;
@@ -2624,7 +2632,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
     s->cols = cols;
     s->rows = rows;
 
-    if (run_process(cmd, &s->pty_fd, &s->pid, cols, rows, path, shell_flags) < 0) {
+    if (run_process(s, cmd, &s->pty_fd, &s->pid, cols, rows, path, shell_flags) < 0) {
         if (!b0)
             eb_free(&b);
         return NULL;
@@ -2638,14 +2646,15 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
 
 /* If a window is attached to buffer b, activate it,
    otherwise attach window s to buffer b.
+   *sp is not NULL.
  */
 static EditBuffer *try_show_buffer(EditState **sp, const char *bufname)
 {
     EditState *e, *s = *sp;
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     EditBuffer *b;
 
-    b = eb_find(bufname);
+    b = qe_find_buffer_name(qs, bufname);
     if (b && s->b != b) {
         e = eb_find_window(b, NULL);
         if (e) {
@@ -2704,8 +2713,8 @@ static void do_shell(EditState *e, int argval)
     }
 
     /* create new shell buffer or restart shell in current buffer */
-    b = new_shell_buffer(b, e, "*shell*", "Shell process", curpath, NULL,
-                         SF_COLOR | SF_INTERACTIVE);
+    b = qe_new_shell_buffer(e->qs, b, e, "*shell*", "Shell process",
+                            curpath, NULL, SF_COLOR | SF_INTERACTIVE);
     if (!b)
         return;
 
@@ -2731,7 +2740,7 @@ static void do_man(EditState *s, const char *arg)
     if (s->flags & WF_POPLEFT) {
         /* avoid messing with the dired pane */
         s = find_window(s, KEY_RIGHT, s);
-        s->qe_state->active_window = s;
+        s->qs->active_window = s;
     }
 
     /* Assume standard man command */
@@ -2742,8 +2751,8 @@ static void do_man(EditState *s, const char *arg)
         return;
 
     /* create new buffer */
-    b = new_shell_buffer(NULL, s, bufname, NULL, NULL, cmd,
-                         SF_COLOR | SF_INFINITE);
+    b = qe_new_shell_buffer(s->qs, NULL, s, bufname, NULL,
+                            NULL, cmd, SF_COLOR | SF_INFINITE);
     if (!b)
         return;
 
@@ -2765,7 +2774,7 @@ static void do_ssh(EditState *s, const char *arg)
     if (s->flags & WF_POPLEFT) {
         /* avoid messing with the dired pane */
         s = find_window(s, KEY_RIGHT, s);
-        s->qe_state->active_window = s;
+        s->qs->active_window = s;
     }
 
     /* Use standard ssh command */
@@ -2773,8 +2782,8 @@ static void do_ssh(EditState *s, const char *arg)
     snprintf(bufname, sizeof(bufname), "*ssh-%s*", arg);
 
     /* create new buffer */
-    b = new_shell_buffer(NULL, s, bufname, "ssh", NULL, cmd,
-                         SF_COLOR | SF_INTERACTIVE);
+    b = qe_new_shell_buffer(s->qs, NULL, s, bufname, "ssh",
+                            NULL, cmd, SF_COLOR | SF_INTERACTIVE);
     if (!b)
         return;
 
@@ -3142,7 +3151,7 @@ static void do_shell_yank(EditState *e)
          * made asynchronous via an auxiliary buffer.
          */
         int offset;
-        QEmacsState *qs = e->qe_state;
+        QEmacsState *qs = e->qs;
         EditBuffer *b = qs->yank_buffers[qs->yank_current];
 
         e->b->mark = e->offset;
@@ -3207,7 +3216,7 @@ static void do_shell_refresh(EditState *e, int flags)
     ShellState *s;
 
     if ((s = shell_get_state(e, 1)) != NULL) {
-        QEmacsState *qs = e->qe_state;
+        QEmacsState *qs = e->qs;
         EditState *e1;
 
         /* update the terminal size and notify process */
@@ -3248,7 +3257,7 @@ static void do_shell_toggle_input(EditState *e)
         if ((s->shell_flags & SF_INTERACTIVE) && e->offset >= e->b->total_size) {
             e->interactive = 1;
             if (s->grab_keys)
-                qe_grab_keys(shell_key, s);
+                qe_grab_keys(s->base.qs, shell_key, s);
 #if 0
             if (e->interactive) {
                 qe_term_update_cursor(s);
@@ -3325,30 +3334,28 @@ static char *shell_get_default_path(EditBuffer *b, int offset,
 static void do_shell_command(EditState *e, const char *cmd)
 {
     char curpath[MAX_FILENAME_SIZE];
+    QEmacsState *qs = e->qs;
     EditBuffer *b;
 
     get_default_path(e->b, e->offset, curpath, sizeof curpath);
 
-    /* if the buffer already exists, kill it */
-    b = eb_find("*shell command output*");
-    if (b) {
-        qe_kill_buffer(b);
-    }
-
     /* create new buffer */
-    b = new_shell_buffer(NULL, e, "*shell command output*", NULL, curpath, cmd,
-                         SF_COLOR | SF_INFINITE);
+    b = qe_new_shell_buffer(qs, NULL, e, "*shell command output*", NULL,
+                            curpath, cmd, SF_COLOR | SF_INFINITE |
+                            SF_REUSE_BUFFER | SF_ERASE_BUFFER);
     if (!b)
         return;
 
     /* XXX: try to split window if necessary */
     switch_to_buffer(e, b);
+    // FIXME: if command prompts for input, the buffer should use shell_mode
     edit_set_mode(e, &pager_mode);
 }
 
 static void do_compile(EditState *s, const char *cmd)
 {
     char curpath[MAX_FILENAME_SIZE];
+    QEmacsState *qs = s->qs;
     EditBuffer *b;
 
     if (s->flags & (WF_POPUP | WF_MINIBUF))
@@ -3359,21 +3366,16 @@ static void do_compile(EditState *s, const char *cmd)
     if (s->flags & WF_POPLEFT) {
         /* avoid messing with the dired pane */
         s = find_window(s, KEY_RIGHT, s);
-        s->qe_state->active_window = s;
-    }
-
-    /* if the buffer already exists, kill it */
-    b = eb_find("*compilation*");
-    if (b) {
-        qe_kill_buffer(b);
+        qs->active_window = s;
     }
 
     if (!cmd || !*cmd)
         cmd = "make";
 
     /* create new buffer */
-    b = new_shell_buffer(NULL, s, "*compilation*", "Compilation", curpath, cmd,
-                         SF_COLOR | SF_INFINITE);
+    b = qe_new_shell_buffer(qs, NULL, s, "*compilation*", "Compilation",
+                            curpath, cmd, SF_COLOR | SF_INFINITE |
+                            SF_REUSE_BUFFER | SF_ERASE_BUFFER);
     if (!b)
         return;
 
@@ -3386,7 +3388,7 @@ static void do_compile(EditState *s, const char *cmd)
 
 static void do_next_error(EditState *s, int arg, int dir)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     EditState *e;
     EditBuffer *b;
     int offset, found_offset;
@@ -3409,10 +3411,10 @@ static void do_next_error(EditState *s, int arg, int dir)
      * in buffer least recently used order
      */
 
-    if ((b = eb_find(error_buffer)) == NULL) {
-        if ((b = eb_find("*compilation*")) == NULL
-        &&  (b = eb_find("*shell*")) == NULL
-        &&  (b = eb_find("*errors*")) == NULL) {
+    if ((b = qe_find_buffer_name(qs, error_buffer)) == NULL) {
+        if ((b = qe_find_buffer_name(qs, "*compilation*")) == NULL
+        &&  (b = qe_find_buffer_name(qs, "*shell*")) == NULL
+        &&  (b = qe_find_buffer_name(qs, "*errors*")) == NULL) {
             put_status(s, "No compilation buffer");
             return;
         }
@@ -3580,8 +3582,8 @@ static int shell_grab_filename(const char32_t *buf, int n, char *dest, int size)
 static ModeDef *mode_cache[STATE_SHELL_MODE + 1];
 static int mode_cache_len = 1;
 
-static int shell_find_mode(const char *filename) {
-    ModeDef *m = qe_find_mode_filename(filename, MODEF_SYNTAX);
+static int qe_shell_find_mode(QEmacsState *qs, const char *filename) {
+    ModeDef *m = qe_find_mode_filename(qs, filename, MODEF_SYNTAX);
     int i;
 
     for (i = 0; i < mode_cache_len; i++) {
@@ -3613,7 +3615,7 @@ void shell_colorize_line(QEColorizeContext *cp,
         if (str[0] == '+' || str[0] == '-') {
             if (match_string(str, n, "+++ ") || match_string(str, n, "--- ")) {
                 shell_grab_filename(str + 4, n - 4, filename, countof(filename));
-                cp->colorize_state = shell_find_mode(filename);
+                cp->colorize_state = qe_shell_find_mode(cp->s->qs, filename);
                 cp->colorize_state |= STATE_SHELL_SKIP | STATE_SHELL_KEEP;
                 return;
             } else
@@ -3637,7 +3639,7 @@ void shell_colorize_line(QEColorizeContext *cp,
             i = 4;
             i += shell_grab_filename(str + i, n - i, filename, countof(filename));
             if (match_string(str + i, n - i, " <==")) {
-                cp->colorize_state = shell_find_mode(filename);
+                cp->colorize_state = qe_shell_find_mode(cp->s->qs, filename);
                 cp->colorize_state |= STATE_SHELL_KEEP;
                 return;
             }
@@ -3662,7 +3664,7 @@ void shell_colorize_line(QEColorizeContext *cp,
                             if ((w = match_string(str + i, n - i, commands[k])) != 0) {
                                 i += w;
                                 shell_grab_filename(str + i, n - i, filename, countof(filename));
-                                cp->colorize_state = shell_find_mode(filename);
+                                cp->colorize_state = qe_shell_find_mode(cp->s->qs, filename);
                                 cp->colorize_state |= STATE_SHELL_KEEP;
                                 start = n;
                                 return;
@@ -3685,7 +3687,7 @@ void shell_colorize_line(QEColorizeContext *cp,
                         continue;
                     }
                     i += w;
-                    mc = shell_find_mode(filename);
+                    mc = qe_shell_find_mode(cp->s->qs, filename);
                     if (!mc)
                         continue;
                     c = str[i];
@@ -3916,9 +3918,9 @@ static int shell_init(QEmacsState *qs)
     shell_mode.delete_bytes = shell_delete_bytes;
     shell_mode.get_default_path = shell_get_default_path;
 
-    qe_register_mode(&shell_mode, MODEF_NOCMD | MODEF_VIEW);
-    qe_register_commands(&shell_mode, shell_commands, countof(shell_commands));
-    qe_register_commands(NULL, shell_global_commands, countof(shell_global_commands));
+    qe_register_mode(qs, &shell_mode, MODEF_NOCMD | MODEF_VIEW);
+    qe_register_commands(qs, &shell_mode, shell_commands, countof(shell_commands));
+    qe_register_commands(qs, NULL, shell_global_commands, countof(shell_global_commands));
 
     /* populate and register pager mode and commands */
     // XXX: remove this mess: should just inherit with fallback
@@ -3928,7 +3930,7 @@ static int shell_init(QEmacsState *qs)
     pager_mode.mode_init = pager_mode_init;
     pager_mode.bindings = pager_bindings;
 
-    qe_register_mode(&pager_mode, MODEF_NOCMD | MODEF_VIEW);
+    qe_register_mode(qs, &pager_mode, MODEF_NOCMD | MODEF_VIEW);
 
     return 0;
 }

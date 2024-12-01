@@ -200,8 +200,7 @@ static ModeDef lua_mode = {
 
 static int lua_init(QEmacsState *qs)
 {
-    qe_register_mode(&lua_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &lua_mode, MODEF_SYNTAX);
     return 0;
 }
 

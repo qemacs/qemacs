@@ -189,8 +189,7 @@ static ModeDef nanorc_mode = {
 
 static int nanorc_init(QEmacsState *qs)
 {
-    qe_register_mode(&nanorc_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &nanorc_mode, MODEF_SYNTAX);
     return 0;
 }
 

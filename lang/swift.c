@@ -359,8 +359,7 @@ static ModeDef swift_mode = {
 
 static int swift_init(QEmacsState *qs)
 {
-    qe_register_mode(&swift_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &swift_mode, MODEF_SYNTAX);
     return 0;
 }
 

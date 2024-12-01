@@ -508,8 +508,7 @@ static ModeDef ruby_mode = {
 
 static int ruby_init(QEmacsState *qs)
 {
-    qe_register_mode(&ruby_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &ruby_mode, MODEF_SYNTAX);
     return 0;
 }
 

@@ -2,7 +2,7 @@
  * JIS Charset handling for QEmacs
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2002-2023 Charlie Gordon.
+ * Copyright (c) 2002-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -243,12 +243,12 @@ static struct QECharset charset_sjis = {
     .eol_char = 10,
 };
 
-int charset_jis_init(QEmacsState *qs)
+int qe_charset_jis_init(QEmacsState *qs)
 {
-    qe_register_charset(&charset_sjis);
-    qe_register_charset(&charset_euc_jp);
+    qe_register_charset(qs, &charset_sjis);
+    qe_register_charset(qs, &charset_euc_jp);
 
     return 0;
 }
 
-qe_module_init(charset_jis_init);
+qe_module_init(qe_charset_jis_init);

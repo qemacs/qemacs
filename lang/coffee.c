@@ -377,8 +377,7 @@ static ModeDef coffee_mode = {
 
 static int coffee_init(QEmacsState *qs)
 {
-    qe_register_mode(&coffee_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &coffee_mode, MODEF_SYNTAX);
     return 0;
 }
 

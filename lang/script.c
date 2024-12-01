@@ -351,13 +351,12 @@ static ModeDef tcsh_mode = {
 
 static int shell_script_init(QEmacsState *qs)
 {
-    qe_register_mode(&sh_mode, MODEF_SYNTAX);
-    qe_register_mode(&bash_mode, MODEF_SYNTAX);
-    qe_register_mode(&csh_mode, MODEF_SYNTAX);
-    qe_register_mode(&ksh_mode, MODEF_SYNTAX);
-    qe_register_mode(&zsh_mode, MODEF_SYNTAX);
-    qe_register_mode(&tcsh_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &sh_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &bash_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &csh_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &ksh_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &zsh_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &tcsh_mode, MODEF_SYNTAX);
     return 0;
 }
 

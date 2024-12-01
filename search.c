@@ -201,7 +201,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
         regexp_bytes = lre_compile(&regexp_len, error_message, sizeof(error_message),
                                    source, source_len, re_flags, NULL);
         if (regexp_bytes == NULL) {
-            //put_status(NULL, "regexp compile error: %s", error_message);
+            //put_status(b->qs->active_window, "regexp compile error: %s", error_message);
             return -1;
         }
         capture_num = lre_get_capture_count(regexp_bytes);
@@ -209,7 +209,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
         if (capture_num == 0 || capture == NULL) {
             qe_free(&regexp_bytes);
             qe_free(&capture);
-            //put_status(NULL, "cannot allocate capture array for %d entries", capture_num);
+            //put_status(b->qs->active_window, "cannot allocate capture array for %d entries", capture_num);
             return -1;
         }
         for (offset1 = offset;;) {
@@ -512,7 +512,7 @@ static void isearch_run(ISearchState *is) {
     /* display search string */
     out = buf_init(&outbuf, ubuf, sizeof(ubuf));
     if (is->found_offset < 0 && len > 0) {
-        if (is->s->qe_state->macro_key_index >= 0) {
+        if (is->s->qs->macro_key_index >= 0) {
             /* if macro is running, abort search and macro */
             isearch_exit(is->s, KEY_RET);
             put_status(s, "\007");
@@ -535,7 +535,7 @@ static void isearch_run(ISearchState *is) {
 
     /* display text */
     do_center_cursor(s, 0);
-    edit_display(s->qe_state);
+    qe_display(s->qs);
     put_status(s, "%s", out->buf);   /* XXX: why NULL? */
     elapsed_time = get_clock_ms() - start_time;
     if (elapsed_time >= 100)
@@ -620,7 +620,7 @@ static void isearch_yank_kill(EditState *s) {
     // XXX: does not work for hex search modes
     ISearchState *is = s->isearch_state;
     if (is) {
-        QEmacsState *qs = is->s->qe_state;
+        QEmacsState *qs = is->s->qs;
         isearch_grab(is, qs->yank_buffers[qs->yank_current], 0, -1);
     }
 }
@@ -645,7 +645,7 @@ static void isearch_addpos(EditState *s, int dir) {
     is->dir = dir;
     if (is->search_u32_len == 0 && is->dir == curdir) {
         /* retrieve last search string from search history list */
-        StringArray *hist = qe_get_history("search");
+        StringArray *hist = qe_get_history(s->qs, "search");
         if (hist && hist->nb_items) {
             const char *str = hist->items[hist->nb_items - 1]->str;
             if (str) {
@@ -763,13 +763,14 @@ void isearch_toggle_word_match(EditState *s) {
 
 static void isearch_end(ISearchState *is) {
     /* save current search string to the search history buffer */
-    StringArray *hist = qe_get_history("search");
+    QEmacsState *qs = is->s->qs;
+    StringArray *hist = qe_get_history(qs, "search");
     if (*is->search_str && hist) {
         remove_string(hist, is->search_str);
         add_string(hist, is->search_str, 0);
     }
     is->search_flags &= ~SEARCH_FLAG_ACTIVE;
-    edit_display(is->s->qe_state);
+    qe_display(qs);
     dpy_flush(is->s->screen);
 }
 
@@ -805,7 +806,7 @@ static void isearch_exit(EditState *s, int key) {
         /* do not keep search matches lingering */
         s->isearch_state = NULL;
         if (key != KEY_RET && key != KEY_QUIT) {
-            unget_key(key);
+            qe_unget_key(s->qs, key);
         }
         isearch_end(is);
     }
@@ -813,6 +814,7 @@ static void isearch_exit(EditState *s, int key) {
 
 static void isearch_key(void *opaque, int key) {
     ISearchState *is = opaque;
+    QEmacsState *qs = is->s->qs;
     unsigned int keys[1] = { key };
 
     if (is->quoting) {
@@ -837,7 +839,7 @@ static void isearch_key(void *opaque, int key) {
     }
     if (!(is->search_flags & SEARCH_FLAG_ACTIVE)) {
         /* This should free the ISearchState grab data if allocated */
-        qe_ungrab_keys();
+        qe_ungrab_keys(qs);
     }
 }
 
@@ -847,7 +849,7 @@ static ISearchState *set_search_state(EditState *s, int argval, int dir) {
     int flags = SEARCH_FLAG_DEFAULT | SEARCH_FLAG_ACTIVE;
 
     /* stop displaying search matches on last window */
-    e = check_window(&is->s);
+    e = qe_check_window(s->qs, &is->s);
     if (e) {
         e->isearch_state = NULL;
     }
@@ -878,6 +880,7 @@ static ISearchState *set_search_state(EditState *s, int argval, int dir) {
 /* XXX: handle busy */
 void do_isearch(EditState *s, int argval, int dir) {
     ISearchState *is;
+    QEmacsState *qs = s->qs;
 
     /* prevent search from minibuffer */
     if (s->flags & WF_MINIBUF)
@@ -885,7 +888,7 @@ void do_isearch(EditState *s, int argval, int dir) {
 
     is = set_search_state(s, argval, dir);
     if (is != NULL) {
-        qe_grab_keys(isearch_key, is);
+        qe_grab_keys(qs, isearch_key, is);
         isearch_run(is);
     }
 }
@@ -943,7 +946,7 @@ void isearch_colorize_matches(EditState *s, char32_t *buf, int len,
         return;
 
     search_flags = is->search_flags;
-    if (check_window(&is->minibuffer)) {
+    if (qe_check_window(s->qs, &is->minibuffer)) {
         /* refresh target window for search matches */
         // XXX: should perform this once per window with a NULL buf
         char contents[1024];
@@ -1025,7 +1028,7 @@ static void query_replace_help(QueryReplaceState *is) {
     if (is->help_window)
         return;
 
-    b = new_help_buffer();
+    b = new_help_buffer(s);
     if (!b)
         return;
 
@@ -1058,11 +1061,11 @@ static void query_replace_abort(QueryReplaceState *is)
 
     s->b->mark = is->start_offset;
     s->region_style = 0;
-    put_status(NULL, "Replaced %d occurrences", is->nb_reps);
+    put_status(s, "Replaced %d occurrences", is->nb_reps);
     /* Achtung: should free the grab data */
-    qe_ungrab_keys();
+    qe_ungrab_keys(s->qs);
     qe_free(&is);
-    edit_display(s->qe_state);
+    qe_display(s->qs);
     dpy_flush(s->screen);
 }
 
@@ -1118,8 +1121,8 @@ static void query_replace_run(QueryReplaceState *is)
     s->b->mark = is->found_offset;
     s->region_style = QE_STYLE_SEARCH_MATCH;
     do_center_cursor(s, 0);
-    edit_display(s->qe_state);
-    put_status(NULL, "%s", out->buf);
+    qe_display(s->qs);
+    put_status(s, "%s", out->buf);
     dpy_flush(s->screen);
 }
 
@@ -1127,13 +1130,15 @@ static void query_replace_key(void *opaque, int key)
 {
     QueryReplaceState *is = opaque;
     EditState *s = is->s;
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
 
-    if (check_window(&is->help_window)) {
+    if (qe_check_window(qs, &is->help_window)) {
         do_delete_window(is->help_window, 0);
         is->help_window = NULL;
+        // FIXME: this should be implicit as s should be the target window
+        //        of the is->help_window popup.
         qs->active_window = s;
-        edit_display(is->s->qe_state);
+        qe_display(qs);
         dpy_flush(is->s->screen);
         return;
     }
@@ -1231,7 +1236,7 @@ static void query_replace(EditState *s, const char *search_str,
     is->start_offset = is->last_offset = s->offset;
     is->found_offset = is->found_end = s->offset;
 
-    qe_grab_keys(query_replace_key, is);
+    qe_grab_keys(s->qs, query_replace_key, is);
     query_replace_run(is);
 }
 
@@ -1367,7 +1372,9 @@ void do_search_string(EditState *s, const char *search_str, int mode)
     }
     if (mode == CMD_LIST_MATCHING_LINES) {
         // XXX: should check prefix argument to clear buffer
-        b1 = eb_find_new("*occur*", BF_UTF8 | (s->b->flags & BF_STYLES));
+        b1 = qe_new_buffer(s->qs, "*occur*", BC_REUSE | BF_UTF8 | (s->b->flags & BF_STYLES));
+        if (!b1)
+            return;
         start = b1->total_size;
     }
 
@@ -1654,10 +1661,10 @@ static ModeDef isearch_mode = {
 };
 
 static int search_init(QEmacsState *qs) {
-    qe_register_mode(&isearch_mode, MODEF_NOCMD);
-    qe_register_commands(&isearch_mode, isearch_commands, countof(isearch_commands));
-    qe_register_commands(NULL, search_commands, countof(search_commands));
-    qe_register_completion(&search_completion);
+    qe_register_mode(qs, &isearch_mode, MODEF_NOCMD);
+    qe_register_commands(qs, &isearch_mode, isearch_commands, countof(isearch_commands));
+    qe_register_commands(qs, NULL, search_commands, countof(search_commands));
+    qe_register_completion(qs, &search_completion);
     return 0;
 }
 

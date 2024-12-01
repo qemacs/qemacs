@@ -764,7 +764,7 @@ static int dired_format_details(DiredState *ds, DiredItem *dip,
 static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
                                 int flags)
 {
-    QEmacsState *qs = &qe_state;  // EditBuffer should have qe_state field
+    QEmacsState *qs = b->qs;
     char buf[MAX_FILENAME_SIZE];
     DiredItem *dip, *cur_item;
     int i, col, w, width, window_width, top_line, indent;
@@ -1382,7 +1382,7 @@ static void dired_select(EditState *s, int mode)
         e = find_window(s, KEY_RIGHT, NULL);
         if (e) {
 #if 1
-            s->qe_state->active_window = e;
+            s->qs->active_window = e;
             if (mode == 1) {
                 /* XXX: should keep BF_PREVIEW flag and set pager-mode */
                 e->b->flags &= ~BF_PREVIEW;
@@ -1425,9 +1425,12 @@ static EditState *dired_view_file(EditState *s, const char *filename)
         return e;
     } else {
         /* if file failed to load, show a scratch buffer */
-        b = eb_new("*scratch*", BF_SAVELOG | BF_UTF8 | BF_PREVIEW);
-        eb_printf(b, "Cannot load file %s", filename);
-        switch_to_buffer(e, b);
+        b = qe_new_buffer(s->qs, "*scratch*", BF_SAVELOG | BF_UTF8 | BF_PREVIEW);
+        if (b) {
+            // XXX: should show error cause
+            eb_printf(b, "Cannot load file %s", filename);
+            switch_to_buffer(e, b);
+        }
         return NULL;
     }
 }
@@ -1464,7 +1467,7 @@ static void dired_parent(EditState *s, int collapse)
     if (s->b->flags & BF_PREVIEW) {
         EditState *e = find_window(s, KEY_LEFT, NULL);
         if (e && (e->flags & WF_FILELIST)) {
-            s->qe_state->active_window = e;
+            s->qs->active_window = e;
             return;
         }
     }
@@ -1616,7 +1619,7 @@ static int dired_mode_init(EditState *s, EditBuffer *b, int flags)
     if (flags & MODEF_NEWINSTANCE) {
         b->flags |= BF_DIRED;
         ds->header_lines = 2;
-        if (s->width <= s->qe_state->width / 3)
+        if (s->width <= s->qs->width / 3)
             ds->header_lines = 1;
         eb_create_style_buffer(b, BF_STYLE1);
         /* XXX: File system charset should be detected automatically */
@@ -1656,7 +1659,7 @@ static int dired_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 void do_dired_path(EditState *s, const char *filename)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     EditBuffer *b;
     EditState *e;
     DiredState *ds;
@@ -1677,7 +1680,10 @@ void do_dired_path(EditState *s, const char *filename)
             goto new_window;
         }
     }
-    b = eb_scratch("*dired*", BF_READONLY | BF_UTF8);
+    b = qe_new_buffer(qs, "*dired*", BC_REUSE | BC_CLEAR | BF_READONLY | BF_UTF8);
+    if (!b)
+        return;
+
     e = insert_window_left(b, qs->width / 5, WF_MODELINE | WF_FILELIST);
     if (!e)
         return;
@@ -1917,12 +1923,12 @@ static int dired_init(QEmacsState *qs)
     dired_mode.display_hook = dired_display_hook;
     dired_mode.get_default_path = dired_get_default_path;
 
-    //eb_register_data_type(&dired_data_type);
-    qe_register_mode(&dired_mode, /* MODEF_DATATYPE | */ MODEF_MAJOR | MODEF_VIEW);
-    qe_register_variables(dired_variables, countof(dired_variables));
-    qe_register_commands(&dired_mode, dired_commands, countof(dired_commands));
-    qe_register_commands(NULL, dired_global_commands, countof(dired_global_commands));
-    qe_register_completion(&dired_sort_completion);
+    //qe_register_data_type(qs, &dired_data_type);
+    qe_register_mode(qs, &dired_mode, /* MODEF_DATATYPE | */ MODEF_MAJOR | MODEF_VIEW);
+    qe_register_variables(qs, dired_variables, countof(dired_variables));
+    qe_register_commands(qs, &dired_mode, dired_commands, countof(dired_commands));
+    qe_register_commands(qs, NULL, dired_global_commands, countof(dired_global_commands));
+    qe_register_completion(qs, &dired_sort_completion);
 
     filelist_init(qs);
 
@@ -1967,7 +1973,7 @@ static void filelist_display_hook(EditState *s)
     char buf[MAX_FILENAME_SIZE];
     char dir[MAX_FILENAME_SIZE];
     char filename[MAX_FILENAME_SIZE];
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     EditState *e;
     int i, len, offset, target_line;
 
@@ -2018,7 +2024,7 @@ static void filelist_display_hook(EditState *s)
 
 void do_filelist(EditState *s, int argval)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     EditState *e;
 
     e = insert_window_left(s->b, qs->width / 5, WF_MODELINE | WF_FILELIST);
@@ -2069,9 +2075,9 @@ static int filelist_init(QEmacsState *qs)
     filelist_mode.mode_init = filelist_mode_init;
     filelist_mode.display_hook = filelist_display_hook;
 
-    qe_register_mode(&filelist_mode, MODEF_VIEW);
-    qe_register_commands(&filelist_mode, filelist_commands, countof(filelist_commands));
-    qe_register_commands(NULL, filelist_global_commands, countof(filelist_global_commands));
+    qe_register_mode(qs, &filelist_mode, MODEF_VIEW);
+    qe_register_commands(qs, &filelist_mode, filelist_commands, countof(filelist_commands));
+    qe_register_commands(qs, NULL, filelist_global_commands, countof(filelist_global_commands));
     return 0;
 }
 

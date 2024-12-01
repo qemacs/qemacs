@@ -143,8 +143,7 @@ static ModeDef ps_mode = {
 
 static int ps_init(QEmacsState *qs)
 {
-    qe_register_mode(&ps_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &ps_mode, MODEF_SYNTAX);
     return 0;
 }
 

@@ -38,7 +38,7 @@
 #define qe__attr_printf(a, b)
 #endif
 
-#if defined(__GNUC__) && __GNUC__ > 2
+#if (defined(__GNUC__) && __GNUC__ > 2) || (defined(__clang__) && __clang_major__ >= 12)
 #define qe__attr_nonnull(l)   __attribute__((nonnull l))
 #define qe__unused__          __attribute__((unused))
 #define likely(x)             __builtin_expect(!!(x), 1)

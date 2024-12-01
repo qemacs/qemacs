@@ -257,7 +257,7 @@ static ModeDef csv_mode = {
 
 static int csv_init(QEmacsState *qs)
 {
-    qe_register_mode(&csv_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &csv_mode, MODEF_SYNTAX);
     return 0;
 }
 

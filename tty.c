@@ -284,7 +284,7 @@ static const char *getenv1(const char *name) {
     return p ? p : "";
 }
 
-static int tty_dpy_init(QEditScreen *s,
+static int tty_dpy_init(QEditScreen *s, QEmacsState *qs,
                         qe__unused__ int w, qe__unused__ int h)
 {
     TTYState *ts;
@@ -298,6 +298,7 @@ static int tty_dpy_init(QEditScreen *s,
     }
 
     tty_screen = s;
+    s->qs = qs;
     s->STDIN = stdin;
     s->STDOUT = stdout;
     s->priv_data = ts;
@@ -486,13 +487,13 @@ static int tty_dpy_init(QEditScreen *s,
     tty_term_set_raw(s);
 
     /* Get charset from command line option */
-    s->charset = find_charset(qe_state.tty_charset);
+    s->charset = qe_find_charset(qs, qs->tty_charset);
 
     if (ts->term_code == TERM_CYGWIN)
         s->charset = &charset_8859_1;
 
     if (ts->term_code == TERM_TW100)
-        s->charset = find_charset("atarist");
+        s->charset = qe_find_charset(qs, "atarist");
 
     // XXX: default charset for non tty invocations should be UTF-8
     if (!s->charset && !isatty(fileno(s->STDOUT)))
@@ -570,7 +571,7 @@ static int tty_dpy_init(QEditScreen *s,
             s->charset = &charset_utf8;
         }
     }
-    put_status(NULL, "tty charset: %s", s->charset->name);
+    put_status(qs->active_window, "tty charset: %s", s->charset->name);
 
     atexit(tty_term_exit);
 
@@ -596,7 +597,7 @@ static int tty_dpy_init(QEditScreen *s,
 
 #if 0
     if (ts->term_flags & KBS_CONTROL_H) {
-        do_toggle_control_h(NULL, 1);
+        qe_toggle_control_h(qs, 1);
     }
 #endif
     return 0;
@@ -742,7 +743,7 @@ static int tty_dpy_is_user_input_pending(QEditScreen *s)
 
 static int tty_get_clipboard(QEditScreen *s, int ch)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qs;
     TTYState *ts = s->priv_data;
     EditBuffer *b;
     size_t size;
@@ -767,7 +768,7 @@ static int tty_get_clipboard(QEditScreen *s, int ch)
     if (!contents)
         return -1;
     if (qs->trace_buffer)
-        eb_trace_bytes(contents, size, EB_TRACE_CLIPBOARD);
+        qe_trace_bytes(qs, contents, size, EB_TRACE_CLIPBOARD);
     if (size == ts->clipboard_size && !memcmp(ts->clipboard, contents, size)) {
         qe_free(&contents);
         return 0;
@@ -776,7 +777,7 @@ static int tty_get_clipboard(QEditScreen *s, int ch)
         ts->clipboard = contents;
         ts->clipboard_size = size;
         /* copy terminal selection a new yank buffer */
-        b = new_yank_buffer(qs, NULL);
+        b = qe_new_yank_buffer(qs, NULL);
         eb_set_charset(b, &charset_utf8, EOL_UNIX);
         eb_write(b, 0, contents, size);
         return 1;
@@ -785,7 +786,7 @@ static int tty_get_clipboard(QEditScreen *s, int ch)
 
 static int tty_request_clipboard(QEditScreen *s)
 {
-    eb_trace_bytes("tty-request-clipboard", -1, EB_TRACE_COMMAND);
+    qe_trace_bytes(s->qs, "tty-request-clipboard", -1, EB_TRACE_COMMAND);
     TTY_FPUTS("\033]52;;?\007", s->STDOUT);
     fflush(s->STDOUT);
     return 1;
@@ -794,7 +795,7 @@ static int tty_request_clipboard(QEditScreen *s)
 static int tty_set_clipboard(QEditScreen *s)
 {
     // TODO: make this selectable
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qs;
     TTYState *ts = s->priv_data;
     EditBuffer *b = qs->yank_buffers[qs->yank_current];
     size_t size;
@@ -817,7 +818,7 @@ static int tty_set_clipboard(QEditScreen *s)
             qe_free(&contents);
             return -1;
         }
-        eb_trace_bytes("tty-set-clipboard", -1, EB_TRACE_COMMAND);
+        qe_trace_bytes(qs, "tty-set-clipboard", -1, EB_TRACE_COMMAND);
         qe_free(&ts->clipboard);
         ts->clipboard = contents;
         ts->clipboard_size = size;
@@ -869,7 +870,7 @@ static int const csi_lookup[] = {
 static void tty_read_handler(void *opaque)
 {
     QEditScreen *s = opaque;
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qs;
     TTYState *ts = s->priv_data;
     QEEvent ev1, *ev = qe_event_clear(&ev1);
     u8 buf[1];
@@ -879,7 +880,7 @@ static void tty_read_handler(void *opaque)
         return;
 
     if (qs->trace_buffer)
-        eb_trace_bytes(buf, 1, EB_TRACE_TTY);
+        qe_trace_bytes(qs, buf, 1, EB_TRACE_TTY);
 
     shift = 0;
     ch = buf[0];
@@ -1124,7 +1125,7 @@ static void tty_read_handler(void *opaque)
         case 'I': // FocusIn  enabled by CSI ? 1004 h
             ts->input_state = IS_NORM;
             ts->has_meta = 0;
-            eb_trace_bytes("tty-focus-in", -1, EB_TRACE_COMMAND);
+            qe_trace_bytes(qs, "tty-focus-in", -1, EB_TRACE_COMMAND);
             if (tty_clipboard > 0) {
                 /* request clipboard contents into kill buffer if changed */
                 tty_request_clipboard(s);
@@ -1133,7 +1134,7 @@ static void tty_read_handler(void *opaque)
         case 'O': // FocusOut
             ts->input_state = IS_NORM;
             ts->has_meta = 0;
-            eb_trace_bytes("tty-focus-out", -1, EB_TRACE_COMMAND);
+            qe_trace_bytes(qs, "tty-focus-out", -1, EB_TRACE_COMMAND);
             if (tty_clipboard > 0) {
                 /* push last kill to clipboard if new */
                 tty_set_clipboard(s);
@@ -1264,7 +1265,7 @@ static void tty_read_handler(void *opaque)
         if (qs->trace_buffer) {
             char buf1[32];
             snprintf(buf1, sizeof buf1, "tty-osc-%d", n1);
-            eb_trace_bytes(buf1, -1, EB_TRACE_COMMAND);
+            qe_trace_bytes(qs, buf1, -1, EB_TRACE_COMMAND);
         }
         if (n1 == 52) {
             if (tty_clipboard > 0) {
@@ -2141,12 +2142,13 @@ static QEDisplay tty_dpy = {
     tty_dpy_describe,
     tty_dpy_sound_bell,
     tty_dpy_suspend,
+    qe_dpy_error,
     NULL, /* next */
 };
 
 static int tty_init(QEmacsState *qs)
 {
-    return qe_register_display(&tty_dpy);
+    return qe_register_display(qs, &tty_dpy);
 }
 
 qe_module_init(tty_init);

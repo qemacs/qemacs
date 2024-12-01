@@ -14,12 +14,16 @@ bin
 *.dSYM
 *_g
 *_debug
+*_asan
+*_msan
+*_ubsan
 html2png
 qe
 tqe
 tqe1
 xqe
 # temp-directories
+copilot
 doc
 junk
 patches

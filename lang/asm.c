@@ -166,8 +166,7 @@ static ModeDef asm_mode = {
 
 static int asm_init(QEmacsState *qs)
 {
-    qe_register_mode(&asm_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &asm_mode, MODEF_SYNTAX);
     return 0;
 }
 

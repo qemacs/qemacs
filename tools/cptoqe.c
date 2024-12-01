@@ -2,7 +2,7 @@
  * Convert Unicode 8-bit code page files to QEmacs format
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2007-2023 Charlie Gordon.
+ * Copyright (c) 2007-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -267,7 +267,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname, int lineno)
            "\n\n",
            eol_char, min_code, max_code, name_id);
 
-    add_init("    qe_register_charset(&charset_");
+    add_init("    qe_register_charset(qs, &charset_");
     add_init(name_id);
     add_init(");\n");
 }
@@ -323,7 +323,7 @@ int main(int argc, char **argv)
            "\n" " * More Charsets and Tables for QEmacs"
            "\n" " *"
            "\n" " * Copyright (c) 2002 Fabrice Bellard."
-           "\n" " * Copyright (c) 2002-2023 Charlie Gordon."
+           "\n" " * Copyright (c) 2002-2024 Charlie Gordon."
            "\n" " *"
            "\n" " * Permission is hereby granted, free of charge, to any person obtaining a copy"
            "\n" " * of this software and associated documentation files (the \"Software\"), to deal"
@@ -347,7 +347,7 @@ int main(int argc, char **argv)
            "\n" "#include \"qe.h\""
            "\n" "");
 
-    add_init("int charset_more_init(QEmacsState *qs)\n{\n");
+    add_init("int qe_charset_more_init(QEmacsState *qs)\n{\n");
 
     for (i = 1; i < argc; i++) {
         filename = argv[i];
@@ -390,7 +390,7 @@ int main(int argc, char **argv)
     }
 
     add_init("\n    return 0;\n}\n\n"
-             "qe_module_init(charset_more_init);\n");
+             "qe_module_init(qe_charset_more_init);\n");
 
     printf("%s", module_init);
 

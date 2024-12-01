@@ -269,9 +269,8 @@ static ModeDef vale_mode = {
 
 static int jai_init(QEmacsState *qs)
 {
-    qe_register_mode(&jai_mode, MODEF_SYNTAX);
-    qe_register_mode(&vale_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &jai_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &vale_mode, MODEF_SYNTAX);
     return 0;
 }
 

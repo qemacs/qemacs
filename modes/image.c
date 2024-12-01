@@ -2,7 +2,7 @@
  * Image mode for QEmacs.
  *
  * Copyright (c) 2002-2003 Fabrice Bellard.
- * Copyright (c) 2003-2023 Charlie Gordon.
+ * Copyright (c) 2003-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -924,10 +924,10 @@ static CompletionDef pixel_format_completion = {
 
 static int image_init(QEmacsState *qs) {
     av_register_all();
-    eb_register_data_type(&image_data_type);
-    qe_register_mode(&image_mode, MODEF_DATATYPE | MODEF_VIEW);
-    qe_register_commands(&image_mode, image_commands, countof(image_commands));
-    qe_register_completion(&pixel_format_completion);
+    qe_register_data_type(qs, &image_data_type);
+    qe_register_mode(qs, &image_mode, MODEF_DATATYPE | MODEF_VIEW);
+    qe_register_commands(qs, &image_mode, image_commands, countof(image_commands));
+    qe_register_completion(qs, &pixel_format_completion);
     return 0;
 }
 

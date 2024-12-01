@@ -76,13 +76,14 @@ void css_close(CSSFile **f2)
 
 /* error display */
 
-void css_error(const char *filename, int line_num,
+void css_error(void *error_opaque, const char *filename, int line_num,
                const char *msg)
 {
     fprintf(stderr, "%s:%d: %s\n", filename, line_num, msg);
 }
 
-void put_error(qe__unused__ EditState *s, const char *fmt, ...)
+static void ppm_error(QEditScreen *s, const char *fmt, ...) qe__attr_printf(2,3);
+static void ppm_error(qe__unused__ QEditScreen *s, const char *fmt, ...)
 {
     va_list ap;
 
@@ -91,7 +92,6 @@ void put_error(qe__unused__ EditState *s, const char *fmt, ...)
     va_end(ap);
     putc('\n', stderr);
 }
-
 
 /* dummy functions */
 char32_t eb_nextc(qe__unused__ EditBuffer *b,
@@ -102,15 +102,16 @@ char32_t eb_nextc(qe__unused__ EditBuffer *b,
 
 /* display driver based on cfb driver */
 
-static int ppm_init(QEditScreen *s, int w, int h);
+static int ppm_init(QEditScreen *s, QEmacsState *qs, int w, int h);
 static void ppm_close(QEditScreen *s);
+static void ppm_flush(QEditScreen *s) {}
 
 static QEDisplay ppm_dpy = {
     "ppm", 1, 1,
     NULL,
     ppm_init,
     ppm_close,
-    NULL, /* dpy_flush */
+    ppm_flush, /* dpy_flush */
     NULL, /* dpy_is_user_input_pending */
     NULL, /* dpy_fill_rectangle */
     NULL, /* dpy_xor_rectangle */
@@ -133,6 +134,7 @@ static QEDisplay ppm_dpy = {
     NULL, /* dpy_describe */
     NULL, /* dpy_sound_bell */
     NULL, /* dpy_suspend */
+    ppm_error, /* dpy_error */
     NULL, /* next */
 };
 
@@ -157,7 +159,7 @@ static int ppm_resize(QEditScreen *s, int w, int h)
     return 0;
 }
 
-static int ppm_init(QEditScreen *s, int w, int h)
+static int ppm_init(QEditScreen *s, QEmacsState *qs, int w, int h)
 {
     CFBContext *cfb;
 
@@ -165,6 +167,7 @@ static int ppm_init(QEditScreen *s, int w, int h)
     if (!cfb)
         return -1;
 
+    s->qs = qs;
     s->priv_data = cfb;
     s->media = CSS_MEDIA_SCREEN;
 
@@ -353,7 +356,7 @@ static int draw_html(QEditScreen *scr,
     /* prepare default style sheet */
     s->style_sheet = css_new_style_sheet();
 
-    css_parse_style_sheet_str(s->style_sheet, html_style, flags);
+    css_parse_style_sheet_str(s->style_sheet, scr->qs, html_style, flags);
 
     /* default colors */
     s->selection_bgcolor = QERGB(0x00, 0x00, 0xff);
@@ -366,7 +369,7 @@ static int draw_html(QEditScreen *scr,
     if (!f)
         goto fail;
 
-    xml = xml_begin(s->style_sheet, flags, html_test_abort, NULL, filename, charset);
+    xml = xml_begin(s->style_sheet, flags, html_test_abort, NULL, scr->qs, filename, charset);
 
     for (;;) {
         len = css_read(f, buf, IO_BUF_SIZE);
@@ -439,8 +442,8 @@ int main(int argc, char **argv)
     qs = memset(&state, 0, sizeof state);
 
     charset_init(qs);
-    charset_more_init(qs);
-    charset_jis_init(qs);
+    qe_charset_more_init(qs);
+    qe_charset_jis_init(qs);
     css_init();
 
     page_width = DEFAULT_WIDTH;
@@ -464,7 +467,7 @@ int main(int argc, char **argv)
             outfilename = optarg;
             break;
         case 'f':
-            charset = find_charset(optarg);
+            charset = qe_find_charset(qs, optarg);
             if (!charset) {
                 QECharset *p;
                 fprintf(stderr, "Unknown charset '%s'\n", optarg);
@@ -487,7 +490,7 @@ int main(int argc, char **argv)
     infilename = argv[optind];
 
     /* init display driver with dummy height */
-    if (screen_init(screen, &ppm_dpy, page_width, 1) < 0) {
+    if (qe_screen_init(qs, screen, &ppm_dpy, page_width, 1) < 0) {
         fprintf(stderr, "Could not init display driver\n");
         exit(1);
     }

@@ -294,8 +294,7 @@ static ModeDef elixir_mode = {
 
 static int elixir_init(QEmacsState *qs)
 {
-    qe_register_mode(&elixir_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &elixir_mode, MODEF_SYNTAX);
     return 0;
 }
 

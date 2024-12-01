@@ -267,8 +267,7 @@ static ModeDef erlang_mode = {
 
 static int erlang_init(QEmacsState *qs)
 {
-    qe_register_mode(&erlang_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &erlang_mode, MODEF_SYNTAX);
     return 0;
 }
 

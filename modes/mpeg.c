@@ -176,7 +176,7 @@ static ModeDef mpeg_mode = {
 
 static int mpeg_init(QEmacsState *qs)
 {
-    qe_register_mode(&mpeg_mode, MODEF_MAJOR | MODEF_VIEW);
+    qe_register_mode(qs, &mpeg_mode, MODEF_MAJOR | MODEF_VIEW);
     return 0;
 }
 

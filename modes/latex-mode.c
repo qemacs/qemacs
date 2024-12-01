@@ -241,32 +241,26 @@ static void latex_cmd_run(void *opaque, char *cmd,
     struct latex_function *func = (struct latex_function *)opaque;
     char dir[MAX_FILENAME_SIZE];
     const char *path = NULL;
+    EditState *s = func->es;
+    QEmacsState *qs = s->qs;
 
     if (cmd == NULL) {
-        put_status(func->es, "Aborted");
+        put_status(s, "Aborted");
         return;
     }
 
     /* get the directory of the open file and change into it */
-    if (func->es->b) {
-        path = get_default_path(func->es->b, func->es->b->total_size,
-                                dir, sizeof dir);
-    }
+    path = get_default_path(s->b, s->b->total_size, dir, sizeof dir);
 
     if (func->output_to_buffer) {
-        /* if the buffer already exists, kill it */
-        EditBuffer *b = eb_find("*LaTeX output*");
-        if (b) {
-            /* XXX: e should not become invalid */
-            qe_kill_buffer(b);
-        }
-
-        /* create new buffer */
-        b = new_shell_buffer(NULL, NULL, "*LaTeX output*", NULL, path, cmd,
-                             SF_COLOR | SF_INFINITE);
+        EditBuffer *b;
+        /* invoke command in shell buffer */
+        b = qe_new_shell_buffer(qs, NULL, s, "*LaTeX output*", NULL,
+                                path, cmd, SF_COLOR | SF_INFINITE |
+                                SF_REUSE_BUFFER | SF_ERASE_BUFFER);
         if (b) {
             /* XXX: try to split window if necessary */
-            switch_to_buffer(func->es, b);
+            switch_to_buffer(s, b);
         }
     } else {
         int pid = fork();
@@ -356,10 +350,10 @@ static CompletionDef latex_completion = {
 
 static int latex_init(QEmacsState *qs)
 {
-    qe_register_mode(&latex_mode, MODEF_SYNTAX);
-    qe_register_mode(&texinfo_mode, MODEF_SYNTAX);
-    qe_register_commands(&latex_mode, latex_commands, countof(latex_commands));
-    qe_register_completion(&latex_completion);
+    qe_register_mode(qs, &latex_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &texinfo_mode, MODEF_SYNTAX);
+    qe_register_commands(qs, &latex_mode, latex_commands, countof(latex_commands));
+    qe_register_completion(qs, &latex_completion);
 
     return 0;
 }
