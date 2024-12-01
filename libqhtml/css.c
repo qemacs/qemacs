@@ -30,7 +30,6 @@
 #include "css.h"
 
 // XXX: need fix for this: should use read function with opaque argument
-struct EditBuffer;
 char32_t eb_nextc(struct EditBuffer *b, int offset, int *next_ptr);
 
 //#define DEBUG

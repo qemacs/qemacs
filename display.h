@@ -71,7 +71,7 @@ typedef struct QEPicture {
     int tcolor;
 } QEPicture;
 
-typedef struct QEmacsState QEmacsState;
+struct QEmacsState;
 typedef struct QEditScreen QEditScreen;
 typedef struct QEDisplay QEDisplay;
 struct EditBuffer;
@@ -81,7 +81,7 @@ struct QEDisplay {
     const char *name;
     int xfactor, yfactor;
     int (*dpy_probe)(void);
-    int (*dpy_init)(QEditScreen *s, QEmacsState *qs, int w, int h);
+    int (*dpy_init)(QEditScreen *s, struct QEmacsState *qs, int w, int h);
     void (*dpy_close)(QEditScreen *s);
     void (*dpy_flush)(QEditScreen *s);
     int (*dpy_is_user_input_pending)(QEditScreen *s);
@@ -130,7 +130,7 @@ struct QEDisplay {
 
 struct QEditScreen {
     QEDisplay dpy;
-    QEmacsState *qs;
+    struct QEmacsState *qs;
     FILE *STDIN, *STDOUT;
     int width, height;
     const struct QECharset *charset; /* the charset of the TTY, XXX: suppress that,
@@ -145,10 +145,10 @@ struct QEditScreen {
     void *priv_data;
 };
 
-int qe_register_display(QEmacsState *qs, QEDisplay *dpy);
+int qe_register_display(struct QEmacsState *qs, QEDisplay *dpy);
 QEDisplay *probe_display(void);
 
-int qe_screen_init(QEmacsState *qs, QEditScreen *s, QEDisplay *dpy, int w, int h);
+int qe_screen_init(struct QEmacsState *qs, QEditScreen *s, QEDisplay *dpy, int w, int h);
 
 static inline void dpy_close(QEditScreen *s)
 {
