@@ -171,8 +171,7 @@ static ModeDef fortran_mode = {
 
 static int fortran_init(QEmacsState *qs)
 {
-    qe_register_mode(&fortran_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &fortran_mode, MODEF_SYNTAX);
     return 0;
 }
 

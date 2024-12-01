@@ -129,8 +129,7 @@ static ModeDef basic_mode = {
 
 static int basic_init(QEmacsState *qs)
 {
-    qe_register_mode(&basic_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &basic_mode, MODEF_SYNTAX);
     return 0;
 }
 

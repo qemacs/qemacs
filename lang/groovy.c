@@ -463,8 +463,7 @@ static ModeDef groovy_mode = {
 
 static int groovy_init(QEmacsState *qs)
 {
-    qe_register_mode(&groovy_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &groovy_mode, MODEF_SYNTAX);
     return 0;
 }
 

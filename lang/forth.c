@@ -332,7 +332,7 @@ static ModeDef ff_mode = {
 
 static int ff_init(QEmacsState *qs)
 {
-    qe_register_mode(&ff_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &ff_mode, MODEF_SYNTAX);
     return 0;
 }
 

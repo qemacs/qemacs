@@ -184,8 +184,7 @@ static ModeDef tiger_mode = {
 
 static int tiger_init(QEmacsState *qs)
 {
-    qe_register_mode(&tiger_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &tiger_mode, MODEF_SYNTAX);
     return 0;
 }
 

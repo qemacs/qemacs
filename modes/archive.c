@@ -1,7 +1,7 @@
 /*
  * Mode for viewing archive files for QEmacs.
  *
- * Copyright (c) 2002-2023 Charlie Gordon.
+ * Copyright (c) 2002-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -149,8 +149,8 @@ static int archive_buffer_load(EditBuffer *b, FILE *f)
         eb_printf(b, "  Directory of %s archive %s\n",
                   atp->name, b->filename);
         qe_shell_subst(cmd, sizeof(cmd), atp->list_cmd, b->filename, NULL);
-        new_shell_buffer(b, NULL, get_basename(b->filename), NULL, NULL, cmd,
-                         atp->sf_flags | SF_INFINITE | SF_BUFED_MODE);
+        qe_new_shell_buffer(b->qs, b, NULL, get_basename(b->filename), NULL,
+                            NULL, cmd, atp->sf_flags | SF_INFINITE | SF_BUFED_MODE);
 
         /* XXX: should check for archiver error */
         /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
@@ -205,8 +205,8 @@ static int archive_init(QEmacsState *qs)
     }
     archive_types = archive_type_array;
 
-    eb_register_data_type(&archive_data_type);
-    qe_register_mode(&archive_mode, MODEF_DATATYPE | MODEF_SHELLPROC);
+    qe_register_data_type(qs, &archive_data_type);
+    qe_register_mode(qs, &archive_mode, MODEF_DATATYPE | MODEF_SHELLPROC);
 
     return 0;
 }
@@ -297,8 +297,9 @@ static int compress_buffer_load(EditBuffer *b, FILE *f)
         b->data_type_name = ctp->name;
         eb_clear(b);
         qe_shell_subst(cmd, sizeof(cmd), ctp->load_cmd, b->filename, NULL);
-        new_shell_buffer(b, NULL, get_basename(b->filename), NULL, NULL, cmd,
-                         ctp->sf_flags | SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
+        qe_new_shell_buffer(b->qs, b, NULL, get_basename(b->filename), NULL,
+                            NULL, cmd,
+                            ctp->sf_flags | SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
         /* XXX: should check for archiver error */
         /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
         b->flags |= BF_READONLY;
@@ -352,8 +353,8 @@ static int compress_init(QEmacsState *qs)
     }
     compress_types = compress_type_array;
 
-    eb_register_data_type(&compress_data_type);
-    qe_register_mode(&compress_mode, MODEF_DATATYPE | MODEF_SHELLPROC);
+    qe_register_data_type(qs, &compress_data_type);
+    qe_register_mode(qs, &compress_mode, MODEF_DATATYPE | MODEF_SHELLPROC);
 
     return 0;
 }
@@ -386,8 +387,8 @@ static int wget_buffer_load(EditBuffer *b, FILE *f)
 
     eb_clear(b);
     qe_shell_subst(cmd, sizeof(cmd), "wget -q -O - $1", b->filename, NULL);
-    new_shell_buffer(b, NULL, get_basename(b->filename), NULL, NULL, cmd,
-                     SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
+    qe_new_shell_buffer(b->qs, b, NULL, get_basename(b->filename), NULL,
+                        NULL, cmd, SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
     /* XXX: should refilter by content type */
     /* XXX: should have a way to keep http headers --save-headers */
     /* XXX: should check for wget error */
@@ -426,8 +427,8 @@ static int wget_init(QEmacsState *qs)
     wget_mode.mode_probe = wget_mode_probe;
     wget_mode.data_type = &wget_data_type;
 
-    eb_register_data_type(&wget_data_type);
-    qe_register_mode(&wget_mode, MODEF_DATATYPE | MODEF_SHELLPROC);
+    qe_register_data_type(qs, &wget_data_type);
+    qe_register_mode(qs, &wget_mode, MODEF_DATATYPE | MODEF_SHELLPROC);
 
     return 0;
 }
@@ -480,8 +481,8 @@ static int man_buffer_load(EditBuffer *b, FILE *f)
 
     eb_clear(b);
     qe_shell_subst(cmd, sizeof(cmd), "man $1", b->filename, NULL);
-    new_shell_buffer(b, NULL, get_basename(b->filename), NULL, NULL, cmd,
-                     SF_COLOR | SF_INFINITE);
+    qe_new_shell_buffer(b->qs, b, NULL, get_basename(b->filename), NULL,
+                        NULL, cmd, SF_COLOR | SF_INFINITE);
     /* XXX: should check for man error */
     /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
     b->flags |= BF_READONLY;
@@ -518,8 +519,8 @@ static int man_init(QEmacsState *qs)
     man_mode.mode_probe = man_mode_probe;
     man_mode.data_type = &man_data_type;
 
-    eb_register_data_type(&man_data_type);
-    qe_register_mode(&man_mode, MODEF_DATATYPE | MODEF_SHELLPROC);
+    qe_register_data_type(qs, &man_data_type);
+    qe_register_mode(qs, &man_mode, MODEF_DATATYPE | MODEF_SHELLPROC);
 
     return 0;
 }

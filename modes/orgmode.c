@@ -462,7 +462,7 @@ static void do_org_goto(EditState *s, const char *dest)
 
 static void do_org_mark_element(EditState *s, int subtree)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     int offset, offset1, level;
 
     offset = org_find_heading(s, s->offset, &level, 0);
@@ -477,7 +477,7 @@ static void do_org_mark_element(EditState *s, int subtree)
 
     s->offset = offset1;
     /* activate region hilite */
-    if (s->qe_state->hilite_region)
+    if (s->qs->hilite_region)
         s->region_style = QE_STYLE_REGION_HILITE;
 }
 
@@ -638,7 +638,10 @@ static void do_org_move_subtree(EditState *s, int dir)
         }
         offset2 = org_next_heading(s, offset1, level, &level2);
     }
-    b1 = eb_new("*tmp*", BF_SYSTEM | (s->b->flags & BF_STYLES));
+    // XXX: should have a way to move buffer contents
+    b1 = qe_new_buffer(s->qs, "*tmp*", BF_SYSTEM | (s->b->flags & BF_STYLES));
+    if (!b1)
+        return;
     eb_set_charset(b1, s->b->charset, s->b->eol_type);
     eb_insert_buffer_convert(b1, 0, s->b, offset, size);
     eb_delete(s->b, offset, size);
@@ -767,8 +770,8 @@ static ModeDef org_mode = {
 
 static int org_init(QEmacsState *qs)
 {
-    qe_register_mode(&org_mode, MODEF_SYNTAX);
-    qe_register_commands(&org_mode, org_commands, countof(org_commands));
+    qe_register_mode(qs, &org_mode, MODEF_SYNTAX);
+    qe_register_commands(qs, &org_mode, org_commands, countof(org_commands));
 
     return 0;
 }

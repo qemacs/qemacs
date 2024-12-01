@@ -228,8 +228,7 @@ static ModeDef ats_mode = {
 
 static int ats_init(QEmacsState *qs)
 {
-    qe_register_mode(&ats_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &ats_mode, MODEF_SYNTAX);
     return 0;
 }
 

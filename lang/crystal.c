@@ -504,7 +504,7 @@ static ModeDef crystal_mode = {
 
 static int crystal_init(QEmacsState *qs)
 {
-    qe_register_mode(&crystal_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &crystal_mode, MODEF_SYNTAX);
     return 0;
 }
 

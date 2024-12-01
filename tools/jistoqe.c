@@ -2,7 +2,7 @@
  * Convert Unicode JIS tables to QEmacs format
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2002-2023 Charlie Gordon.
+ * Copyright (c) 2002-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -147,7 +147,7 @@ int main(int argc, char **argv)
            "\n" " * JIS Tables for QEmacs"
            "\n" " *"
            "\n" " * Copyright (c) 2002 Fabrice Bellard."
-           "\n" " * Copyright (c) 2002-2023 Charlie Gordon."
+           "\n" " * Copyright (c) 2002-2024 Charlie Gordon."
            "\n" " *"
            "\n" " * Permission is hereby granted, free of charge, to any person obtaining a copy"
            "\n" " * of this software and associated documentation files (the \"Software\"), to deal"

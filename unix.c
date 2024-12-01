@@ -319,6 +319,7 @@ static void url_block(void)
 
 void url_main_loop(void (*init)(void *opaque), void *opaque)
 {
+    QEArgs *ap = opaque;
     url_block_reset();
     (*init)(opaque);
     for (;;) {
@@ -326,11 +327,11 @@ void url_main_loop(void (*init)(void *opaque), void *opaque)
             break;
         url_block();
         if (url_display_request) {
-            QEmacsState *qs = &qe_state;
+            QEmacsState *qs = ap->qs;
 
             //qs->complete_refresh = 1;
-            do_refresh(NULL);
-            edit_display(qs);
+            do_refresh(qs->first_window);
+            qe_display(qs);
             dpy_flush(qs->screen);
             url_display_request = 0;
         }

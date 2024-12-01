@@ -540,13 +540,13 @@ static ModeDef xaos_mode = {
 
 static int lisp_init(QEmacsState *qs)
 {
-    qe_register_mode(&lisp_mode, MODEF_SYNTAX);
-    qe_register_mode(&elisp_mode, MODEF_SYNTAX);
-    qe_register_mode(&scheme_mode, MODEF_SYNTAX);
-    qe_register_mode(&racket_mode, MODEF_SYNTAX);
-    qe_register_mode(&clojure_mode, MODEF_SYNTAX);
-    qe_register_mode(&sandbox_mode, MODEF_SYNTAX);
-    qe_register_mode(&xaos_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &lisp_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &elisp_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &scheme_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &racket_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &clojure_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &sandbox_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &xaos_mode, MODEF_SYNTAX);
 
     return 0;
 }

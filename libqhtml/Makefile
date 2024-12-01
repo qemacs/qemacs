@@ -1,7 +1,7 @@
 # Libqhtml tiny HTML/CSS rendering library for QEmacs
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2023 Charlie Gordon.
+# Copyright (c) 2000-2024 Charlie Gordon.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -68,13 +68,33 @@ CFLAGS+=-I$(DEPTH)
 
 HOST_CFLAGS:=$(CFLAGS)
 
+DEBUG_SUFFIX:=
 ifdef DEBUG
 DEBUG_SUFFIX:=_debug
 ECHO_CFLAGS += -DCONFIG_DEBUG
 CFLAGS += -g -O0
 LDFLAGS += -g -O0
-else
-DEBUG_SUFFIX:=
+endif
+ifdef ASAN
+DEBUG_SUFFIX:=_asan
+ECHO_CFLAGS += -DCONFIG_ASAN
+CFLAGS += -D__ASAN__
+CFLAGS += -fsanitize=address -fno-sanitize-recover=all -fno-omit-frame-pointer
+LDFLAGS += -fsanitize=address -fno-sanitize-recover=all -fno-omit-frame-pointer
+endif
+ifdef MSAN
+DEBUG_SUFFIX:=_msan
+ECHO_CFLAGS += -DCONFIG_MSAN
+CFLAGS += -D__MSAN__
+CFLAGS += -fsanitize=memory -fno-sanitize-recover=all -fno-omit-frame-pointer
+LDFLAGS += -fsanitize=memory -fno-sanitize-recover=all -fno-omit-frame-pointer
+endif
+ifdef UBSAN
+DEBUG_SUFFIX:=_ubsan
+ECHO_CFLAGS += -DCONFIG_UBSAN
+CFLAGS += -D__UBSAN__
+CFLAGS += -fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
+LDFLAGS += -fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
 endif
 
 LIB= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/libqhtml$(DEBUG_SUFFIX).a

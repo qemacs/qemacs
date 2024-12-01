@@ -254,8 +254,7 @@ static ModeDef haskell_mode = {
 
 static int haskell_init(QEmacsState *qs)
 {
-    qe_register_mode(&haskell_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &haskell_mode, MODEF_SYNTAX);
     return 0;
 }
 

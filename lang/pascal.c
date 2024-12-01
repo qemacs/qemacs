@@ -197,8 +197,7 @@ static ModeDef pascal_mode = {
 
 static int pascal_init(QEmacsState *qs)
 {
-    qe_register_mode(&pascal_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &pascal_mode, MODEF_SYNTAX);
     return 0;
 }
 

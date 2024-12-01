@@ -359,10 +359,9 @@ static ModeDef bazel_mode = {
 
 static int python_init(QEmacsState *qs)
 {
-    qe_register_mode(&python_mode, MODEF_SYNTAX);
-    qe_register_mode(&rapydscript_mode, MODEF_SYNTAX);
-    qe_register_mode(&bazel_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &python_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &rapydscript_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &bazel_mode, MODEF_SYNTAX);
     return 0;
 }
 

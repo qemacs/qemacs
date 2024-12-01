@@ -242,8 +242,7 @@ static ModeDef wolfram_mode = {
 
 static int wolfram_init(QEmacsState *qs)
 {
-    qe_register_mode(&wolfram_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &wolfram_mode, MODEF_SYNTAX);
     return 0;
 }
 

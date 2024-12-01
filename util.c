@@ -2283,13 +2283,12 @@ int buf_quote_byte(buf_t *bp, unsigned char ch) {
 char *qe_encode64(const void *src, size_t len, size_t *sizep)
 {
     const u8 *p = src;
-    size_t size = len * 4 / 3 + 3;
+    size_t size = (len + 2) / 3 * 4 + 1;
+    size_t j = 0;
     char *buf = qe_malloc_bytes(size);
-    *sizep = 0;
     if (buf != NULL) {
         static const char dict[64] =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-        size_t j = 0;
         size_t i;
         uint32_t val;
         for (i = 0; i + 2 < len; i += 3) {
@@ -2319,19 +2318,18 @@ char *qe_encode64(const void *src, size_t len, size_t *sizep)
             break;
         }
         buf[j] = '\0';
-        *sizep = j;
     }
+    *sizep = j;
     return buf;
 }
 
 void *qe_decode64(const char *src, size_t len, size_t *sizep)
 {
-    size_t size = len * 3 / 4 + 2;
+    size_t size = (len + 3) / 4 * 3 + 1;
+    size_t j = 0;
     u8 *buf = qe_malloc_bytes(size);
-    *sizep = 0;
     if (buf != NULL) {
         int shift = 0;
-        size_t j = 0;
         size_t i;
         for (i = 0; i < len; i++) {
             //static const char Base64[] =
@@ -2374,8 +2372,8 @@ void *qe_decode64(const char *src, size_t len, size_t *sizep)
             }
         }
         buf[j] = '\0';
-        *sizep = j;
     }
+    *sizep = j;
     return buf;
 }
 

@@ -199,8 +199,7 @@ static ModeDef agena_mode = {
 
 static int agena_init(QEmacsState *qs)
 {
-    qe_register_mode(&agena_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &agena_mode, MODEF_SYNTAX);
     return 0;
 }
 

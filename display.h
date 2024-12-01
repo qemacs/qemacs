@@ -71,6 +71,7 @@ typedef struct QEPicture {
     int tcolor;
 } QEPicture;
 
+typedef struct QEmacsState QEmacsState;
 typedef struct QEditScreen QEditScreen;
 typedef struct QEDisplay QEDisplay;
 struct EditBuffer;
@@ -80,7 +81,7 @@ struct QEDisplay {
     const char *name;
     int xfactor, yfactor;
     int (*dpy_probe)(void);
-    int (*dpy_init)(QEditScreen *s, int w, int h);
+    int (*dpy_init)(QEditScreen *s, QEmacsState *qs, int w, int h);
     void (*dpy_close)(QEditScreen *s);
     void (*dpy_flush)(QEditScreen *s);
     int (*dpy_is_user_input_pending)(QEditScreen *s);
@@ -123,15 +124,17 @@ struct QEDisplay {
     void (*dpy_describe)(QEditScreen *s, struct EditBuffer *b);
     void (*dpy_sound_bell)(QEditScreen *s);
     void (*dpy_suspend)(QEditScreen *s);
+    void (*dpy_error)(QEditScreen *s, const char *fmt, ...);
     QEDisplay *next;
 };
 
 struct QEditScreen {
     QEDisplay dpy;
+    QEmacsState *qs;
     FILE *STDIN, *STDOUT;
     int width, height;
     const struct QECharset *charset; /* the charset of the TTY, XXX: suppress that,
-                          use a system in fonts instead */
+                                        use a system in fonts instead */
     int unicode_version;
     int media; /* media type (see CSS_MEDIA_xxx) */
     QEBitmapFormat bitmap_format; /* supported bitmap format */
@@ -142,10 +145,10 @@ struct QEditScreen {
     void *priv_data;
 };
 
-int qe_register_display(QEDisplay *dpy);
+int qe_register_display(QEmacsState *qs, QEDisplay *dpy);
 QEDisplay *probe_display(void);
 
-int screen_init(QEditScreen *s, QEDisplay *dpy, int w, int h);
+int qe_screen_init(QEmacsState *qs, QEditScreen *s, QEDisplay *dpy, int w, int h);
 
 static inline void dpy_close(QEditScreen *s)
 {
@@ -242,6 +245,8 @@ static inline void dpy_sound_bell(QEditScreen *s)
     if (s->dpy.dpy_sound_bell)
         s->dpy.dpy_sound_bell(s);
 }
+
+#define dpy_error(ds, ...)   do { if ((ds)->dpy.dpy_error) ((ds)->dpy.dpy_error)(ds, __VA_ARGS__); } while (0)
 
 /* XXX: only needed for backward compatibility */
 static inline int glyph_width(QEditScreen *s, QEFont *font, char32_t ch) {

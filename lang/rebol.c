@@ -308,8 +308,7 @@ static ModeDef rebol_mode = {
 
 static int rebol_init(QEmacsState *qs)
 {
-    qe_register_mode(&rebol_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &rebol_mode, MODEF_SYNTAX);
     return 0;
 }
 

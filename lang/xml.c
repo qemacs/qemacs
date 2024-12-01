@@ -200,8 +200,7 @@ ModeDef xml_mode = {
 
 static int xml_init(QEmacsState *qs)
 {
-    qe_register_mode(&xml_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &xml_mode, MODEF_SYNTAX);
     return 0;
 }
 

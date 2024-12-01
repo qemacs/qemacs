@@ -1,7 +1,7 @@
 /*
  * QEmacs graphics mode for image files
  *
- * Copyright (c) 2017-2023 Charlie Gordon.
+ * Copyright (c) 2017-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -105,7 +105,7 @@ static void image_display(EditState *s) {
         }
         s->display_invalid = 0;
     }
-    if (s->qe_state->active_window == s) {
+    if (s->qs->active_window == s) {
         /* Update cursor */
         int xc = s->xleft;
         int yc = s->ytop;
@@ -161,7 +161,7 @@ static ModeDef stb_mode = {
 
 static int stb_init(QEmacsState *qs)
 {
-    qe_register_mode(&stb_mode, MODEF_VIEW);
+    qe_register_mode(qs, &stb_mode, MODEF_VIEW);
     return 0;
 }
 

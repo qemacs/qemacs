@@ -877,7 +877,7 @@ static void fractal_display(EditState *s) {
         }
         s->display_invalid = 0;
     }
-    if (s->qe_state->active_window == s) {
+    if (s->qs->active_window == s) {
         /* Update cursor */
         int xc = s->xleft;
         int yc = s->ytop;
@@ -923,7 +923,7 @@ static void fractal_display(EditState *s) {
         }
         s->display_invalid = 0;
     }
-    if (s->qe_state->active_window == s) {
+    if (s->qs->active_window == s) {
         /* Update cursor */
         int xc = s->xleft;
         int yc = s->ytop;
@@ -1045,7 +1045,7 @@ static void do_fractal_help(EditState *s)
     if (ms == NULL)
         return;
 
-    b = new_help_buffer();
+    b = new_help_buffer(s);
     if (!b)
         return;
 
@@ -1206,6 +1206,7 @@ static void fractal_mode_free(EditBuffer *b, void *state) {
 }
 
 static void do_mandelbrot_test(EditState *s, int argval) {
+    QEmacsState *qs = s->qs;
     EditBuffer *b;
 
     if (!fractal_mode.name) {
@@ -1222,16 +1223,12 @@ static void do_mandelbrot_test(EditState *s, int argval) {
 #if USE_BITMAP_API || USE_DRAW_PICTURE
         fractal_mode.display = fractal_display;
 #endif
-        qe_register_mode(&fractal_mode, MODEF_NOCMD | MODEF_VIEW);
-        qe_register_commands(&fractal_mode, fractal_commands, countof(fractal_commands));
+        qe_register_mode(qs, &fractal_mode, MODEF_NOCMD | MODEF_VIEW);
+        qe_register_commands(qs, &fractal_mode, fractal_commands, countof(fractal_commands));
     }
 
-    b = eb_find("*Mandelbrot*");
-    if (b) {
-        eb_clear(b);
-    } else {
-        b = eb_new("*Mandelbrot*", BF_UTF8 | BF_STYLE4);
-    }
+    // XXX: should handle multiple Mandelbrot sets for comparison
+    b = qe_new_buffer(qs, "*Mandelbrot*", BC_REUSE | BC_CLEAR | BF_UTF8 | BF_STYLE4);
     if (!b)
         return;
 
@@ -1256,8 +1253,8 @@ static const CmdDef fractal_global_commands[] = {
 
 static int fractal_init(QEmacsState *qs)
 {
-    qe_register_mode(&fractint_mode, MODEF_SYNTAX);
-    qe_register_commands(NULL, fractal_global_commands, countof(fractal_global_commands));
+    qe_register_mode(qs, &fractint_mode, MODEF_SYNTAX);
+    qe_register_commands(qs, NULL, fractal_global_commands, countof(fractal_global_commands));
     return 0;
 }
 

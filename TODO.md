@@ -12,11 +12,9 @@
 * drag out of window should generate **autorepeat** scrolling requests
 * prevent mouse focus to window if searching
 * prevent mouse focus to window if minibuf active
-* get clipboard contents at startup or only at yank time?
 * only get tty clipboard contents on yank
 * only set tty clipboard contents if kill buffer changed during focus time
 * add script variable for clipboard support
-* handle double/triple click to select word and line
 * add command line options for terminal features: backspace
 * add command line options for tracing
 * add command line options for color support
@@ -39,6 +37,7 @@
 * DEC SET 1036 ESC or Alt keys
 * stb: add magic number detection
 * shell integration: easily navigate to previous shell prompts with `M-S-up` and `M-S-down`.
+  use buffer properties for this
 * timestamp shell commands
 * remanent annotations on files and buffers
 * autoblame source code
@@ -54,7 +53,7 @@
   when inserting a character before an accented space, replace
 * fix markdown command bindings
 * toggle long listing and column listing in dired buffers
-* keep a count of windows in `EditBuffer`
+* keep a list of windows in `EditBuffer`
 * keep the last active window when detaching a buffer, just make it invisible.
   - easy if deleting the last window that shows the buffer
   - if changing the buffer for a window, if the new buffer has a pending window, use that

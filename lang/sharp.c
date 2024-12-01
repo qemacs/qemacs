@@ -78,8 +78,7 @@ static ModeDef sharp_mode = {
 
 static int sharp_init(QEmacsState *qs)
 {
-    qe_register_mode(&sharp_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &sharp_mode, MODEF_SYNTAX);
     return 0;
 }
 

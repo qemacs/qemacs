@@ -1,7 +1,7 @@
 # QEmacs, tiny but powerful multimode editor
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2023 Charlie Gordon.
+# Copyright (c) 2000-2024 Charlie Gordon.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -79,13 +79,37 @@ DEFINES=-DHAVE_QE_CONFIG_H
 ########################################################
 # do not modify after this
 
+DEBUG_SUFFIX:=
 ifdef DEBUG
+$(info Building with debug info)
 DEBUG_SUFFIX:=_debug
 ECHO_CFLAGS += -DCONFIG_DEBUG
 CFLAGS += -g -O0
 LDFLAGS += -g -O0
-else
-DEBUG_SUFFIX:=
+endif
+ifdef ASAN
+$(info Building with ASan)
+DEBUG_SUFFIX:=_asan
+ECHO_CFLAGS += -DCONFIG_ASAN
+CFLAGS += -D__ASAN__
+CFLAGS += -fsanitize=address -fno-sanitize-recover=all -fno-omit-frame-pointer
+LDFLAGS += -fsanitize=address -fno-sanitize-recover=all -fno-omit-frame-pointer
+endif
+ifdef MSAN
+$(info Building with MSan)
+DEBUG_SUFFIX:=_msan
+ECHO_CFLAGS += -DCONFIG_MSAN
+CFLAGS += -D__MSAN__
+CFLAGS += -fsanitize=memory -fno-sanitize-recover=all -fno-omit-frame-pointer
+LDFLAGS += -fsanitize=memory -fno-sanitize-recover=all -fno-omit-frame-pointer
+endif
+ifdef UBSAN
+$(info Building with UBSan)
+DEBUG_SUFFIX:=_ubsan
+ECHO_CFLAGS += -DCONFIG_UBSAN
+CFLAGS += -D__UBSAN__
+CFLAGS += -fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
+LDFLAGS += -fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
 endif
 
 TARGETLIBS:=
@@ -269,7 +293,7 @@ endif
 libqhtml: force
 	$(MAKE) -C libqhtml all
 
-ifdef DEBUG
+ifneq (,$(DEBUG_SUFFIX))
 $(TARGET)$(DEBUG_SUFFIX)$(EXE): $(OBJS) $(DEP_LIBS)
 	$(echo) LD $@
 	$(cmd)  $(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -290,13 +314,15 @@ endif
 ifeq (1,$(TOP))
 
 # targets that require recursion
-xqe:       force;	$(MAKE) TARGET=xqe TARGET_OBJ=qe TARGET_X11=1
-tqe:       force;	$(MAKE) TARGET=tqe TARGET_TINY=1
-debug:     force;	$(MAKE) TARGET=qe DEBUG=1
-qe_debug:  force;	$(MAKE) TARGET=qe DEBUG=1
-xqe_debug: force;	$(MAKE) TARGET=xqe TARGET_OBJ=qe TARGET_X11=1 DEBUG=1
-tqe_debug: force;	$(MAKE) TARGET=tqe TARGET_TINY=1 DEBUG=1
-tqe1:      force;	$(MAKE) TARGET=tqe TARGET_TINY=1 tqe1$(EXE)
+xqe:		force;	$(MAKE) TARGET=xqe TARGET_OBJ=qe TARGET_X11=1
+tqe:		force;	$(MAKE) TARGET=tqe TARGET_TINY=1
+tqe1:		force;	$(MAKE) TARGET=tqe TARGET_TINY=1 tqe1$(EXE)
+asan qe_asan:	force;	$(MAKE) TARGET=qe ASAN=1
+msan qe_msan:	force;	$(MAKE) TARGET=qe MSAN=1
+ubsan qe_ubsan:	force;	$(MAKE) TARGET=qe UBSAN=1
+debug qe_debug:	force;	$(MAKE) TARGET=qe DEBUG=1
+xqe_debug:	force;	$(MAKE) TARGET=xqe TARGET_OBJ=qe TARGET_X11=1 DEBUG=1
+tqe_debug:	force;	$(MAKE) TARGET=tqe TARGET_TINY=1 DEBUG=1
 
 else
 
@@ -333,20 +359,20 @@ $(OBJS_DIR)/$(TARGET)_modules.c: $(SRCS) Makefile config.mak
 	@echo '/* This file was generated automatically */' > $@
 	@echo '#include "qe.h"'                             >> $@
 	@echo '#undef qe_module_init'                       >> $@
-	@echo '#define qe_module_init(fn)  extern int module_##fn(void)' >> $@
+	@echo '#define qe_module_init(fn)  extern int qe_module_##fn(QEmacsState *qs)' >> $@
 	-@grep -h ^qe_module_init $(SRCS)                   >> $@
 	@echo '#undef qe_module_init'                       >> $@
-	@echo 'void init_all_modules(QEmacsState *qs) {'    >> $@
-	@echo '#define qe_module_init(fn)  module_##fn()'   >> $@
+	@echo 'void qe_init_all_modules(QEmacsState *qs) {' >> $@
+	@echo '#define qe_module_init(fn)  qe_module_##fn(qs)' >> $@
 	-@grep -h ^qe_module_init $(SRCS)                   >> $@
 	@echo '#undef qe_module_init'                       >> $@
 	@echo '}'                                           >> $@
 	@echo '#undef qe_module_exit'                       >> $@
-	@echo '#define qe_module_exit(fn)  extern void module_##fn(QEmacsState *qs)' >> $@
+	@echo '#define qe_module_exit(fn)  extern void qe_module_##fn(QEmacsState *qs)' >> $@
 	-@grep -h ^qe_module_exit $(SRCS)                   >> $@
 	@echo '#undef qe_module_exit'                       >> $@
-	@echo 'void exit_all_modules(QEmacsState *qs) {'    >> $@
-	@echo '#define qe_module_exit(fn)  module_##fn(qs)' >> $@
+	@echo 'void qe_exit_all_modules(QEmacsState *qs) {' >> $@
+	@echo '#define qe_module_exit(fn)  qe_module_##fn(qs)' >> $@
 	-@grep -h ^qe_module_exit $(SRCS)                   >> $@
 	@echo '#undef qe_module_exit'                       >> $@
 	@echo '}'                                           >> $@

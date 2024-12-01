@@ -226,8 +226,7 @@ static ModeDef falcon_mode = {
 
 static int falcon_init(QEmacsState *qs)
 {
-    qe_register_mode(&falcon_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &falcon_mode, MODEF_SYNTAX);
     return 0;
 }
 

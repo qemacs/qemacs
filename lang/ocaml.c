@@ -274,9 +274,8 @@ static ModeDef eff_mode = {
 
 static int ocaml_init(QEmacsState *qs)
 {
-    qe_register_mode(&ocaml_mode, MODEF_SYNTAX);
-    qe_register_mode(&eff_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &ocaml_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &eff_mode, MODEF_SYNTAX);
     return 0;
 }
 

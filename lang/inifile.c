@@ -154,8 +154,7 @@ static ModeDef ini_mode = {
 
 static int ini_init(QEmacsState *qs)
 {
-    qe_register_mode(&ini_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &ini_mode, MODEF_SYNTAX);
     return 0;
 }
 

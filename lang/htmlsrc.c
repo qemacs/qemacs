@@ -400,9 +400,8 @@ ModeDef htmlsrc_mode = {
 
 static int htmlsrc_init(QEmacsState *qs)
 {
-    qe_register_mode(&htmlsrc_mode, MODEF_SYNTAX);
-    //qe_register_commands(&htmlsrc_mode, htmlsrc_commands, countof(htmlsrc_commands));
-
+    qe_register_mode(qs, &htmlsrc_mode, MODEF_SYNTAX);
+    //qe_register_commands(qs, &htmlsrc_mode, htmlsrc_commands, countof(htmlsrc_commands));
     return 0;
 }
 

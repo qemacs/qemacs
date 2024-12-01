@@ -463,8 +463,7 @@ static ModeDef virgil_mode = {
 
 static int virgil_init(QEmacsState *qs)
 {
-    qe_register_mode(&virgil_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &virgil_mode, MODEF_SYNTAX);
     return 0;
 }
 

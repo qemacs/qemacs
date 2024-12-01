@@ -331,8 +331,7 @@ static ModeDef nim_mode = {
 
 static int nim_init(QEmacsState *qs)
 {
-    qe_register_mode(&nim_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &nim_mode, MODEF_SYNTAX);
     return 0;
 }
 

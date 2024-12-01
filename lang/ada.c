@@ -199,7 +199,7 @@ static ModeDef ada_mode = {
 };
 
 static int ada_init(QEmacsState *qs) {
-    qe_register_mode(&ada_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &ada_mode, MODEF_SYNTAX);
     return 0;
 }
 

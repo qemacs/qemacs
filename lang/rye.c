@@ -270,7 +270,7 @@ static ModeDef rye_mode = {
 };
 
 static int rye_init(QEmacsState *qs) {
-    qe_register_mode(&rye_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &rye_mode, MODEF_SYNTAX);
     return 0;
 }
 

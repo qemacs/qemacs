@@ -108,11 +108,11 @@ static int mkd_scan_chunk(const char32_t *str, int i0,
     return 0;
 }
 
-static int mkd_add_lang(const char *lang_name, char c) {
+static int mkd_add_lang(QEmacsState *qs, const char *lang_name, char c) {
     ModeDef *m;
     int lang = 0;
 
-    if (lang_name && (m = qe_find_mode(lang_name, MODEF_SYNTAX)) != NULL) {
+    if (lang_name && (m = qe_find_mode(qs, lang_name, MODEF_SYNTAX)) != NULL) {
         for (lang = 1; lang < MKD_LANG_MAX; lang++) {
             if (mkd_lang_def[lang] == NULL)
                 mkd_lang_def[lang] = m;
@@ -270,7 +270,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         lang_name[len] = '\0';
         if (len) {
             /* XXX: unrecognised info-string should select text-mode */
-            lang = mkd_add_lang(lang_name, str[j]);
+            lang = mkd_add_lang(cp->s->qs, lang_name, str[j]);
         } else
         if (lang == 0) {
             // get default lang is from mode;
@@ -636,7 +636,7 @@ static void do_mkd_goto(EditState *s, const char *dest)
 
 static void do_mkd_mark_element(EditState *s, int subtree)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     int offset, offset1, level;
 
     offset = mkd_find_heading(s, s->offset, &level, 0);
@@ -651,7 +651,7 @@ static void do_mkd_mark_element(EditState *s, int subtree)
 
     s->offset = offset1;
     /* activate region hilite */
-    if (s->qe_state->hilite_region)
+    if (s->qs->hilite_region)
         s->region_style = QE_STYLE_REGION_HILITE;
 }
 
@@ -778,7 +778,10 @@ static void do_mkd_move_subtree(EditState *s, int dir)
         }
         offset2 = mkd_next_heading(s, offset1, level, &level2);
     }
-    b1 = eb_new("*tmp*", BF_SYSTEM | (s->b->flags & BF_STYLES));
+    // XXX: should have a way to move buffer contents
+    b1 = qe_new_buffer(s->qs, "*tmp*", BF_SYSTEM | (s->b->flags & BF_STYLES));
+    if (!b1)
+        return;
     eb_set_charset(b1, s->b->charset, s->b->eol_type);
     eb_insert_buffer_convert(b1, 0, s->b, offset, size);
     eb_delete(s->b, offset, size);
@@ -915,7 +918,7 @@ static int litcoffee_mode_init(EditState *s, EditBuffer *b, int flags)
         s->indent_tabs_mode = 0;
         /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_WORD;
-        s->mode->colorize_flags = mkd_add_lang("coffee", 0);
+        s->mode->colorize_flags = mkd_add_lang(s->qs, "coffee", 0);
     }
     return 0;
 }
@@ -930,10 +933,10 @@ static ModeDef litcoffee_mode = {
 
 static int mkd_init(QEmacsState *qs)
 {
-    qe_register_mode(&mkd_mode, MODEF_SYNTAX);
-    qe_register_commands(&mkd_mode, mkd_commands, countof(mkd_commands));
-    qe_register_mode(&litcoffee_mode, MODEF_SYNTAX);
-    qe_register_commands(&litcoffee_mode, mkd_commands, countof(mkd_commands));
+    qe_register_mode(qs, &mkd_mode, MODEF_SYNTAX);
+    qe_register_commands(qs, &mkd_mode, mkd_commands, countof(mkd_commands));
+    qe_register_mode(qs, &litcoffee_mode, MODEF_SYNTAX);
+    qe_register_commands(qs, &litcoffee_mode, mkd_commands, countof(mkd_commands));
 
     return 0;
 }

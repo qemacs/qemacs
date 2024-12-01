@@ -134,8 +134,7 @@ static ModeDef emf_mode = {
 
 static int emf_init(QEmacsState *qs)
 {
-    qe_register_mode(&emf_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &emf_mode, MODEF_SYNTAX);
     return 0;
 }
 

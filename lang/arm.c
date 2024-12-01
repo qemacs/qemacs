@@ -175,7 +175,7 @@ static ModeDef arm_asm_mode = {
 
 static int arm_asm_init(QEmacsState *qs)
 {
-    qe_register_mode(&arm_asm_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &arm_asm_mode, MODEF_SYNTAX);
     return 0;
 }
 
@@ -302,7 +302,7 @@ static ModeDef arm_lst_mode = {
 
 static int arm_lst_init(QEmacsState *qs)
 {
-    qe_register_mode(&arm_lst_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &arm_lst_mode, MODEF_SYNTAX);
     return 0;
 }
 
@@ -371,7 +371,7 @@ static ModeDef intel_hex_mode = {
 
 static int intel_hex_init(QEmacsState *qs)
 {
-    qe_register_mode(&intel_hex_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &intel_hex_mode, MODEF_SYNTAX);
     return 0;
 }
 

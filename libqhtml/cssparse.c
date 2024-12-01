@@ -48,7 +48,7 @@
 #include <assert.h>
 
 static void css_error1(CSSParseState *b, const char *fmt, ...)
-         qe__attr_printf(2,3);
+    qe__attr_printf(2,3);
 
 static void css_error1(CSSParseState *b, const char *fmt, ...)
 {
@@ -56,8 +56,8 @@ static void css_error1(CSSParseState *b, const char *fmt, ...)
     va_list ap;
     va_start(ap, fmt);
     vsnprintf(buf, sizeof(buf), fmt, ap);
-    css_error(b->filename, b->line_num, buf);
     va_end(ap);
+    css_error(b->error_opaque, b->filename, b->line_num, buf);
 }
 
 /***********************************************************/
@@ -1131,9 +1131,10 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
 #endif
 }
 
-void css_parse_style_sheet_str(CSSStyleSheet *s, const char *buffer, int flags)
+void css_parse_style_sheet_str(CSSStyleSheet *s, void *error_opaque, const char *buffer, int flags)
 {
     CSSParseState b1, *b = &b1;
+    b->error_opaque = error_opaque;
     b->ptr = buffer;
     b->filename = "builtin";
     b->line_num = 1;

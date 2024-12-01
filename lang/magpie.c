@@ -208,8 +208,7 @@ static ModeDef magpie_mode = {
 
 static int magpie_init(QEmacsState *qs)
 {
-    qe_register_mode(&magpie_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &magpie_mode, MODEF_SYNTAX);
     return 0;
 }
 

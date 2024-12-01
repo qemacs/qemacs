@@ -221,7 +221,7 @@ static inline VideoState *video_get_state(EditState *e, int status)
 static void video_refresh_timer(void *opaque)
 {
     EditState *s = opaque;
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qs;
     VideoState *is;
     VideoPicture *vp;
 
@@ -243,7 +243,7 @@ static void video_refresh_timer(void *opaque)
             is->no_background = 1; /* XXX: horrible, needs complete rewrite */
 
             /* display picture */
-            edit_display(qs);
+            qe_display(qs);
             dpy_flush(qs->screen);
 
             /* update queue size and signal for next picture */
@@ -267,7 +267,7 @@ static void video_refresh_timer(void *opaque)
         is->no_background = 1; /* XXX: horrible, needs complete rewrite */
 
         /* display picture */
-        edit_display(qs);
+        qe_display(qs);
         dpy_flush(qs->screen);
     } else {
         is->video_timer = qe_add_timer(100, s, video_refresh_timer);
@@ -830,7 +830,7 @@ static int video_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
         VideoState *is = qe_get_buffer_mode_data(b, &video_mode, NULL);
-        QEmacsState *qs = s->qe_state;
+        QEmacsState *qs = s->qs;
         int err, video_playing;
         EditState *e;
 
@@ -1026,9 +1026,9 @@ static EditBufferDataType video_data_type = {
 };
 
 static int video_init(QEmacsState *qs) {
-    eb_register_data_type(&video_data_type);
-    qe_register_mode(&video_mode, MODEF_DATATYPE | MODEF_VIEW);
-    qe_register_commands(&video_mode, video_commands, countof(video_commands));
+    qe_register_data_type(qs, &video_data_type);
+    qe_register_mode(qs, &video_mode, MODEF_DATATYPE | MODEF_VIEW);
+    qe_register_commands(qs, &video_mode, video_commands, countof(video_commands));
     return 0;
 }
 

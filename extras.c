@@ -51,7 +51,7 @@ void delete_equivalent(Equivalent *ep) {
 
 static void do_define_equivalent(EditState *s, const char *str1, const char *str2)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     Equivalent **epp;
 
     /* append the definition, ignore duplicates */
@@ -65,7 +65,7 @@ static void do_define_equivalent(EditState *s, const char *str1, const char *str
 
 static void do_delete_equivalent(EditState *s, const char *str)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     Equivalent **epp;
 
     for (epp = &qs->first_equivalent; *epp; epp = &(*epp)->next) {
@@ -79,11 +79,11 @@ static void do_delete_equivalent(EditState *s, const char *str)
 
 static void do_list_equivalents(EditState *s, int argval)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     EditBuffer *b;
     Equivalent *ep;
 
-    b = new_help_buffer();
+    b = new_help_buffer(s);
     if (!b)
         return;
 
@@ -94,7 +94,7 @@ static void do_list_equivalents(EditState *s, int argval)
     show_popup(s, b, "Equivalents");
 }
 
-static void qs_free_equivalent(QEmacsState *qs) {
+static void qe_free_equivalent(QEmacsState *qs) {
     while (qs->first_equivalent) {
         Equivalent *ep = qs->first_equivalent;
         qs->first_equivalent = ep->next;
@@ -106,7 +106,7 @@ static int qe_skip_equivalent(EditState *s,
                               EditBuffer *b1, int offset1, int *offset1p,
                               EditBuffer *b2, int offset2, int *offset2p)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     Equivalent *ep;
     int end1, end2;
 
@@ -227,7 +227,7 @@ static char *utf8_char32_to_string(char *buf, char32_t c) {
 
 void do_compare_windows(EditState *s, int argval)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     EditState *s1;
     EditState *s2;
     int offset1, offset2, size1, size2;
@@ -417,7 +417,7 @@ void do_compare_files(EditState *s, const char *filename, int bflags)
     do_delete_other_windows(s, 0);
     e = qe_split_window(s, SW_STACKED, 50);
     if (e) {
-        s->qe_state->active_window = e;
+        s->qs->active_window = e;
         do_find_file(e, buf, bflags);
     }
 }
@@ -429,7 +429,7 @@ void do_compare_files(EditState *s, const char *filename, int bflags)
 
 static void do_adjust_window(EditState *s, int argval, int flags)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     EditState *e;
     int delta, x = -1, y = -1;
 
@@ -745,7 +745,7 @@ static void do_indent_rigidly(EditState *s, int start, int end, int argval)
 {
     if (argval == NO_ARG) {
         /* enter interactive mode */
-        QEmacsState *qs = s->qe_state;
+        QEmacsState *qs = s->qs;
         if (!qs->first_transient_key) {
             s->region_style = QE_STYLE_REGION_HILITE;
             put_status(s, "indent the region interactively with TAB, left, right, S-left, S-right");
@@ -767,7 +767,7 @@ static void do_indent_region(EditState *s, int start, int end, int argval)
     s->region_style = 0;
 
     if (argval < 0 || !s->mode->indent_func
-    ||  s->qe_state->last_cmd_func == (CmdFunc)do_indent_region) {
+    ||  s->qs->last_cmd_func == (CmdFunc)do_indent_region) {
         do_indent_rigidly_to_tab_stop(s, start, end, argval);
         return;
     }
@@ -1054,7 +1054,7 @@ static void do_kill_block(EditState *s, int n)
 
 void do_transpose(EditState *s, int cmd)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     int offset0, offset1, offset2, offset3;
     int start_offset, end_offset;
     int size0, size1, size2;
@@ -1158,6 +1158,7 @@ void do_transpose(EditState *s, int cmd)
     size1 = offset2 - offset1;
     size2 = offset3 - offset2;
 
+    // XXX: should have a way to move buffer contents
     if (!b->b_styles && size0 + size1 + size2 <= 1024) {
         u8 buf[1024];
         /* Use fast method and generate single undo record */
@@ -1166,8 +1167,9 @@ void do_transpose(EditState *s, int cmd)
         eb_read(b, offset0, buf + size2 + size1, size0);
         eb_write(b, offset0, buf, size0 + size1 + size2);
     } else {
-        EditBuffer *b1 = eb_new("*tmp*", BF_SYSTEM | (b->flags & BF_STYLES));
-
+        EditBuffer *b1 = qe_new_buffer(qs, "*tmp*", BF_SYSTEM | (b->flags & BF_STYLES));
+        if (!b1)
+            return;
         eb_set_charset(b1, b->charset, b->eol_type);
         /* Use eb_insert_buffer_convert to copy styles.
          * This conversion should not change sizes */
@@ -1184,19 +1186,19 @@ void do_transpose(EditState *s, int cmd)
 
 /*---------------- help ----------------*/
 
-int qe_list_bindings(const CmdDef *d, ModeDef *mode, int inherit, char *buf, int size)
+int qe_list_bindings(QEmacsState *qs, const CmdDef *d, ModeDef *mode, int inherit, char *buf, int size)
 {
     buf_t outbuf, *out;
     ModeDef *mode0 = mode;
 
     out = buf_init(&outbuf, buf, size);
     for (;;) {
-        KeyDef *kd = mode ? mode->first_key : qe_state.first_key;
+        KeyDef *kd = mode ? mode->first_key : qs->first_key;
 
         for (; kd != NULL; kd = kd->next) {
             /* do not list overridden bindings */
             if (kd->cmd == d
-            &&  qe_find_current_binding(kd->keys, kd->nb_keys, mode0, 1) == kd) {
+            &&  qe_find_current_binding(qs, kd->keys, kd->nb_keys, mode0, 1) == kd) {
                 if (out->len > 0)
                     buf_puts(out, ", ");
 
@@ -1214,13 +1216,14 @@ int qe_list_bindings(const CmdDef *d, ModeDef *mode, int inherit, char *buf, int
 void do_show_bindings(EditState *s, const char *cmd_name)
 {
     char buf[256];
+    QEmacsState *qs = s->qs;
     const CmdDef *d;
 
-    if ((d = qe_find_cmd(cmd_name)) == NULL) {
+    if ((d = qe_find_cmd(qs, cmd_name)) == NULL) {
         put_status(s, "No command %s", cmd_name);
         return;
     }
-    if (qe_list_bindings(d, s->mode, 1, buf, sizeof(buf))) {
+    if (qe_list_bindings(qs, d, s->mode, 1, buf, sizeof(buf))) {
         put_status(s, "%s is bound to %s", cmd_name, buf);
     } else {
         put_status(s, "%s is not bound to any key", cmd_name);
@@ -1232,11 +1235,11 @@ static void do_describe_function(EditState *s, const char *cmd_name) {
     const CmdDef *d;
     const char *desc;
 
-    if ((d = qe_find_cmd(cmd_name)) == NULL) {
+    if ((d = qe_find_cmd(s->qs, cmd_name)) == NULL) {
         put_status(s, "No command %s", cmd_name);
         return;
     }
-    b = new_help_buffer();
+    b = new_help_buffer(s);
     if (!b)
         return;
 
@@ -1266,7 +1269,7 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
 
 static void print_bindings(EditBuffer *b, ModeDef *mode)
 {
-    struct QEmacsState *qs = &qe_state;
+    struct QEmacsState *qs = b->qs;
     char buf[256];
     const CmdDef *d;
     int gfound, start, stop, i, j;
@@ -1275,7 +1278,7 @@ static void print_bindings(EditBuffer *b, ModeDef *mode)
     gfound = 0;
     for (i = 0; i < qs->cmd_array_count; i++) {
         for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
-            if (qe_list_bindings(d, mode, 0, buf, sizeof(buf))) {
+            if (qe_list_bindings(qs, d, mode, 0, buf, sizeof(buf))) {
                 if (!gfound) {
                     if (mode) {
                         eb_printf(b, "\n%s mode bindings:\n\n", mode->name);
@@ -1299,7 +1302,7 @@ void do_describe_bindings(EditState *s, int argval)
 {
     EditBuffer *b;
 
-    b = new_help_buffer();
+    b = new_help_buffer(s);
     if (!b)
         return;
 
@@ -1311,14 +1314,14 @@ void do_describe_bindings(EditState *s, int argval)
 
 void do_apropos(EditState *s, const char *str)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     char buf[256];
     EditBuffer *b;
     const CmdDef *d;
     VarDef *vp;
     int start, stop, i, j, extra;
 
-    b = new_help_buffer();
+    b = new_help_buffer(s);
     if (!b)
         return;
 
@@ -1381,14 +1384,17 @@ extern char **environ;
 
 static void do_about_qemacs(EditState *s)
 {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     char buf[256];
     EditBuffer *b;
     ModeDef *m;
     const CmdDef *d;
     int start, stop, i, j;
 
-    b = eb_scratch("*About QEmacs*", BF_UTF8);
+    b = qe_new_buffer(qs, "*About QEmacs*", BC_REUSE | BC_CLEAR | BF_UTF8);
+    if (!b)
+        return;
+
     eb_printf(b, "\n  %s\n\n%s\n", str_version, str_credits);
 
     /* list current bindings */
@@ -1593,7 +1599,7 @@ static void do_set_style_color(EditState *e, const char *stylestr, const char *v
             return;
         }
     }
-    e->qe_state->complete_refresh = 1;
+    e->qs->complete_refresh = 1;
 }
 
 static void do_set_region_color(EditState *s, const char *str)
@@ -1685,7 +1691,7 @@ static void do_describe_buffer(EditState *s, int argval)
     EditBuffer *b = s->b;
     EditBuffer *b1;
 
-    b1 = new_help_buffer();
+    b1 = new_help_buffer(s);
     if (!b1)
         return;
 
@@ -1864,7 +1870,7 @@ static void do_describe_window(EditState *s, int argval)
     EditBuffer *b1;
     int w;
 
-    b1 = new_help_buffer();
+    b1 = new_help_buffer(s);
     if (!b1)
         return;
 
@@ -1956,7 +1962,7 @@ static void do_describe_screen(EditState *e, int argval)
     EditBuffer *b1;
     int w;
 
-    b1 = new_help_buffer();
+    b1 = new_help_buffer(e);
     if (!b1)
         return;
 
@@ -2016,8 +2022,8 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
     int pos1, pos2;
 
     if ((++cp->ncmp & 8191) == 8191) {
-        QEmacsState *qs = &qe_state;
-        put_status(NULL, "Sorting: %d%%", (int)((cp->ncmp * 90LL) / cp->total_cmp));
+        QEmacsState *qs = cp->b->qs;
+        put_status(qs->active_window, "Sorting: %d%%", (int)((cp->ncmp * 90LL) / cp->total_cmp));
         dpy_flush(qs->screen);
     }
     if (cp->flags & SF_REVERSE) {
@@ -2199,7 +2205,9 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
     }
     qe_qsort_r(chunk_array, lines, sizeof(*chunk_array), &ctx, chunk_cmp);
 
-    b1 = eb_new("*sorted*", BF_SYSTEM | (b->flags & BF_STYLES));
+    b1 = qe_new_buffer(b->qs, "*sorted*", BF_SYSTEM | (b->flags & BF_STYLES));
+    if (!b1)
+        return -1;
     eb_set_charset(b1, b->charset, b->eol_type);
 
     for (i = 0; i < lines; i++) {
@@ -2209,9 +2217,8 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
         // XXX: style issue. Should include newline from source buffer
         eb_putc(b1, '\n');
         if ((i & 8191) == 8191 && !(flags & SF_SILENT)) {
-            QEmacsState *qs = &qe_state;
-            put_status(NULL, "Sorting: %d%%", (int)(90 + i * 10LL / lines));
-            dpy_flush(qs->screen);
+            put_status(b->qs->active_window, "Sorting: %d%%", (int)(90 + i * 10LL / lines));
+            dpy_flush(b->qs->screen);
         }
     }
     eb_delete_range(b, p1, p2);
@@ -2221,7 +2228,7 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
     qe_free(&chunk_array);
 done:
     if (!(flags & SF_SILENT))
-        put_status(NULL, "%d lines sorted", lines);
+        put_status(b->qs->active_window, "%d lines sorted", lines);
     return 0;
 }
 
@@ -2308,7 +2315,7 @@ static int tag_get_entry(EditState *s, char *dest, int size, int offset)
 }
 
 static void do_find_tag(EditState *s, const char *str) {
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs = s->qs;
     QEProperty *p;
     int offset = -1;
 
@@ -2360,7 +2367,7 @@ static void do_list_tags(EditState *s, int argval) {
     QEProperty *p;
     EditState *e1;
 
-    b = new_help_buffer();
+    b = new_help_buffer(s);
     if (!b)
         return;
 
@@ -2395,12 +2402,13 @@ static CompletionDef tag_completion = {
 static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
     char buf[256];
     char entry[264]; // silence compiler warning on snprintf calls below
+    QEmacsState *qs = cp->s->qs;
     FILE *fp;
 
     /* enumerate Unicode character names from Unicode consortium data */
-    if ((fp = open_resource_file("DerivedName-15.0.0.txt")) != NULL
-    ||  (fp = open_resource_file("DerivedName.txt")) != NULL
-    ||  (fp = open_resource_file("extracted/DerivedName.txt")) != NULL) {
+    if ((fp = qe_open_resource_file(qs, "DerivedName-15.0.0.txt")) != NULL
+    ||  (fp = qe_open_resource_file(qs, "DerivedName.txt")) != NULL
+    ||  (fp = qe_open_resource_file(qs, "extracted/DerivedName.txt")) != NULL) {
         while (fgets(buf, sizeof buf, fp)) {
             char *p1, *p2, *p3;
             if ((p1 = strchr(buf, ';')) != NULL
@@ -2419,8 +2427,8 @@ static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
         }
         fclose(fp);
     } else
-    if ((fp = open_resource_file("UnicodeData-15.0.0.txt")) != NULL
-    ||  (fp = open_resource_file("UnicodeData.txt")) != NULL) {
+    if ((fp = qe_open_resource_file(qs, "UnicodeData-15.0.0.txt")) != NULL
+    ||  (fp = qe_open_resource_file(qs, "UnicodeData.txt")) != NULL) {
         while (fgets(buf, sizeof buf, fp)) {
             char *p1, *p2;
             if ((p1 = strchr(buf, ';')) != NULL
@@ -2439,17 +2447,18 @@ static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
     }
 }
 
-static long charname_convert_entry(const char *str, const char **endp) {
+static long charname_convert_entry(EditState *s, const char *str, const char **endp) {
     char buf[256];
+    QEmacsState *qs = s->qs;
     FILE *fp;
     long code = strtol_c(str, endp, 0);
     if (**endp == '\0')
         return code;
 
     /* enumerate Unicode character names from Unicode consortium data */
-    if ((fp = open_resource_file("DerivedName-15.0.0.txt")) != NULL
-    ||  (fp = open_resource_file("DerivedName.txt")) != NULL
-    ||  (fp = open_resource_file("extracted/DerivedName.txt")) != NULL) {
+    if ((fp = qe_open_resource_file(qs, "DerivedName-15.0.0.txt")) != NULL
+    ||  (fp = qe_open_resource_file(qs, "DerivedName.txt")) != NULL
+    ||  (fp = qe_open_resource_file(qs, "extracted/DerivedName.txt")) != NULL) {
         while (fgets(buf, sizeof buf, fp)) {
             char *p1, *p2;
             if ((p1 = strchr(buf, ';')) != NULL
@@ -2465,8 +2474,8 @@ static long charname_convert_entry(const char *str, const char **endp) {
         }
         fclose(fp);
     } else
-    if ((fp = open_resource_file("UnicodeData-15.0.0.txt")) != NULL
-    ||  (fp = open_resource_file("UnicodeData.txt")) != NULL) {
+    if ((fp = qe_open_resource_file(qs, "UnicodeData-15.0.0.txt")) != NULL
+    ||  (fp = qe_open_resource_file(qs, "UnicodeData.txt")) != NULL) {
         while (fgets(buf, sizeof buf, fp)) {
             char *p1, *p2;
             if ((p1 = strchr(buf, ';')) != NULL
@@ -2695,7 +2704,7 @@ int eb_skip_paragraphs(EditBuffer *b, int offset, int n) {
 }
 
 void do_forward_paragraph(EditState *s, int n) {
-    maybe_set_mark(s);
+    do_maybe_set_mark(s);
     s->offset = eb_skip_paragraphs(s->b, s->offset, n);
 }
 
@@ -3006,7 +3015,7 @@ int eb_skip_sentences(EditBuffer *b, int offset, int n) {
 }
 
 void do_forward_sentence(EditState *s, int n) {
-    maybe_set_mark(s);
+    do_maybe_set_mark(s);
     s->offset = eb_skip_sentences(s->b, s->offset, n);
 }
 
@@ -3341,15 +3350,15 @@ static const CmdDef extra_commands[] = {
 };
 
 static int extras_init(QEmacsState *qs) {
-    qe_register_commands(NULL, extra_commands, countof(extra_commands));
-    qe_register_completion(&tag_completion);
-    qe_register_completion(&charname_completion);
+    qe_register_commands(qs, NULL, extra_commands, countof(extra_commands));
+    qe_register_completion(qs, &tag_completion);
+    qe_register_completion(qs, &charname_completion);
 
     return 0;
 }
 
 static void extras_exit(QEmacsState *qs) {
-    qs_free_equivalent(qs);
+    qe_free_equivalent(qs);
 }
 
 qe_module_init(extras_init);

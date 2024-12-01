@@ -29,8 +29,9 @@ static QEDisplay *first_dpy;
 
 /* dummy display driver for initialization time */
 
-static int dummy_dpy_init(QEditScreen *s, qe__unused__ int w, qe__unused__ int h)
+static int dummy_dpy_init(QEditScreen *s, QEmacsState *qs, qe__unused__ int w, qe__unused__ int h)
 {
+    s->qs = qs;
     s->charset = &charset_8859_1;
 
     return 0;
@@ -129,6 +130,7 @@ static QEDisplay const dummy_dpy = {
     NULL, /* dpy_describe */
     NULL, /* dpy_sound_bell */
     NULL, /* dpy_suspend */
+    NULL, /* dpy_error */
     NULL, /* next */
 };
 
@@ -237,7 +239,7 @@ void push_clip_rectangle(QEditScreen *s, CSSRect *r0, CSSRect *r)
     s->dpy.dpy_set_clip(s, x1, y1, x2 - x1, y2 - y1);
 }
 
-int qe_register_display(QEDisplay *dpy)
+int qe_register_display(QEmacsState *qs, QEDisplay *dpy)
 {
     QEDisplay **pp;
 
@@ -268,10 +270,10 @@ QEDisplay *probe_display(void)
     return dpy;
 }
 
-int screen_init(QEditScreen *s, QEDisplay *dpy, int w, int h)
+int qe_screen_init(QEmacsState *qs, QEditScreen *s, QEDisplay *dpy, int w, int h)
 {
     s->dpy = dpy ? *dpy : dummy_dpy;
-    return s->dpy.dpy_init(s, w, h);
+    return s->dpy.dpy_init(s, qs, w, h);
 }
 
 /* simple font cache */
@@ -313,7 +315,7 @@ QEFont *select_font(QEditScreen *s, int style, int size)
     }
     /* not found : open new font */
     if (min_index < 0) {
-        put_error(NULL, "Font cache full");
+        dpy_error(s, "Font cache full");
         goto fail;
     }
     if (font_cache[min_index]) {
@@ -324,7 +326,7 @@ QEFont *select_font(QEditScreen *s, int style, int size)
         if (style & QE_FONT_FAMILY_FALLBACK_MASK)
             return NULL;
 
-        put_error(NULL, "open_font: cannot open style=%X size=%d",
+        dpy_error(s, "open_font: cannot open style=%X size=%d",
                   style, size);
         goto fail;
     }

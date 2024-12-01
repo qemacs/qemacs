@@ -268,8 +268,7 @@ static ModeDef vim_mode = {
 
 static int vim_init(QEmacsState *qs)
 {
-    qe_register_mode(&vim_mode, MODEF_SYNTAX);
-
+    qe_register_mode(qs, &vim_mode, MODEF_SYNTAX);
     return 0;
 }
 
