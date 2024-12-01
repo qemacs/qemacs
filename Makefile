@@ -79,6 +79,11 @@ DEFINES=-DHAVE_QE_CONFIG_H
 ########################################################
 # do not modify after this
 
+ifeq ($(CC),clang)
+SANITIZE_CFLAGS := -fno-sanitize-recover=all -fno-omit-frame-pointer
+else
+SANITIZE_CFLAGS := -fno-omit-frame-pointer
+endif
 DEBUG_SUFFIX:=
 ifdef DEBUG
 $(info Building with debug info)
@@ -92,24 +97,24 @@ $(info Building with ASan)
 DEBUG_SUFFIX:=_asan
 ECHO_CFLAGS += -DCONFIG_ASAN
 CFLAGS += -D__ASAN__
-CFLAGS += -fsanitize=address -fno-sanitize-recover=all -fno-omit-frame-pointer
-LDFLAGS += -fsanitize=address -fno-sanitize-recover=all -fno-omit-frame-pointer
+CFLAGS += -fsanitize=address $(SANITIZE_CFLAGS)
+LDFLAGS += -fsanitize=address $(SANITIZE_CFLAGS)
 endif
 ifdef MSAN
 $(info Building with MSan)
 DEBUG_SUFFIX:=_msan
 ECHO_CFLAGS += -DCONFIG_MSAN
 CFLAGS += -D__MSAN__
-CFLAGS += -fsanitize=memory -fno-sanitize-recover=all -fno-omit-frame-pointer
-LDFLAGS += -fsanitize=memory -fno-sanitize-recover=all -fno-omit-frame-pointer
+CFLAGS += -fsanitize=memory $(SANITIZE_CFLAGS)
+LDFLAGS += -fsanitize=memory $(SANITIZE_CFLAGS)
 endif
 ifdef UBSAN
 $(info Building with UBSan)
 DEBUG_SUFFIX:=_ubsan
 ECHO_CFLAGS += -DCONFIG_UBSAN
 CFLAGS += -D__UBSAN__
-CFLAGS += -fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
-LDFLAGS += -fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
+CFLAGS += -fsanitize=undefined $(SANITIZE_CFLAGS)
+LDFLAGS += -fsanitize=undefined $(SANITIZE_CFLAGS)
 endif
 
 TARGETLIBS:=

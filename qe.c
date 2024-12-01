@@ -6776,12 +6776,13 @@ static void qe_key_process(QEmacsState *qs, int key)
             }
             exec_command(s, d, argval, key);
             if (multi_cursor_active && qe_check_window(qs, &s)) {
+                int i;
                 if (s != qs->active_window) {
                     /* end multi-cursor session upto window change */
                     s->multi_cursor_active = 0;
                 }
                 s->multi_cursor[0].offset = s->offset;
-                for (int i = 1; s->multi_cursor_active && i < s->multi_cursor_len; i++) {
+                for (i = 1; s->multi_cursor_active && i < s->multi_cursor_len; i++) {
                     swap_int(&s->b->mark, &s->multi_cursor[i].mark);
                     swap_int(&s->offset, &s->multi_cursor[i].offset);
                     s->multi_cursor_cur = i;
