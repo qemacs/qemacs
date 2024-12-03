@@ -23,7 +23,6 @@
  * THE SOFTWARE.
  */
 
-#include "util.h"
 #include "charset.h"
 
 /* XXX: Should move this to QEmacsState, and find a way for html2png */

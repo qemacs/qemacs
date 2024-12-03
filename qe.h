@@ -1625,9 +1625,6 @@ void do_mark_region(EditState *s, int mark, int offset);
 void do_changecase_word(EditState *s, int up);
 void do_changecase_region(EditState *s, int up);
 void do_delete_word(EditState *s, int dir);
-int cursor_func(DisplayState *ds,
-                int offset1, int offset2, int line_num,
-                int x, int y, int w, int h, int hex_mode);
 // should take argval
 void do_scroll_left_right(EditState *s, int n);
 void do_scroll_up_down(EditState *s, int dir);

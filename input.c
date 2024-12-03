@@ -111,7 +111,7 @@ void do_set_input_method(EditState *s, const char *name)
         s->input_method = m;
         s->selected_input_method = m;
     } else {
-        put_status(s, "'%s' not found", name);
+        put_error(s, "'%s' not found", name);
     }
 }
 

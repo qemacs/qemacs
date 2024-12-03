@@ -244,7 +244,6 @@ static void video_refresh_timer(void *opaque)
 
             /* display picture */
             qe_display(qs);
-            dpy_flush(qs->screen);
 
             /* update queue size and signal for next picture */
             if (++is->pictq_rindex == VIDEO_PICTURE_QUEUE_SIZE)
@@ -268,7 +267,6 @@ static void video_refresh_timer(void *opaque)
 
         /* display picture */
         qe_display(qs);
-        dpy_flush(qs->screen);
     } else {
         is->video_timer = qe_add_timer(100, s, video_refresh_timer);
     }
@@ -965,8 +963,8 @@ static void av_cycle_stream(EditState *s, int codec_type)
         start_index = is->audio_stream;
 
     if (start_index < 0) {
-        put_status(s, "No %s stream to cycle",
-                   (codec_type == CODEC_TYPE_VIDEO) ? "video" : "audio");
+        put_error(s, "No %s stream to cycle",
+                  (codec_type == CODEC_TYPE_VIDEO) ? "video" : "audio");
         return;
     }
 
@@ -975,8 +973,8 @@ static void av_cycle_stream(EditState *s, int codec_type)
         if (++stream_index >= ic->nb_streams)
             stream_index = 0;
         if (stream_index == start_index) {
-            put_status(s, "Only one %s stream",
-                       (codec_type == CODEC_TYPE_VIDEO) ? "video" : "audio");
+            put_error(s, "Only one %s stream",
+                      (codec_type == CODEC_TYPE_VIDEO) ? "video" : "audio");
             return;
         }
         st = ic->streams[stream_index];

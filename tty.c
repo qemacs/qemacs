@@ -185,6 +185,7 @@ typedef struct TTYState {
     char32_t comb_cache[COMB_CACHE_SIZE];
     char *clipboard;
     size_t clipboard_size;
+    int got_focus;
 } TTYState;
 
 static QEditScreen *tty_screen;   /* for tty_term_exit and tty_term_resize */
@@ -227,7 +228,7 @@ static void tty_term_set_raw(QEditScreen *s) {
         /* enable mouse reporting using SGR */
         TTY_FPRINTF(s->STDOUT, "\033[?%d;1006h", tty_mouse == 1 ? 1002 : 1003);
     }
-    if (tty_clipboard > 0) {
+    if (tty_mouse > 0 || tty_clipboard > 0) {
         /* enable focus reporting */
         TTY_FPRINTF(s->STDOUT, "\033[?1004h");
     }
@@ -265,7 +266,7 @@ static void tty_term_set_cooked(QEditScreen *s) {
         /* disable mouse reporting using SGR */
         TTY_FPRINTF(s->STDOUT, "\033[?%d;1006l", tty_mouse == 1 ? 1002 : 1003);
     }
-    if (tty_clipboard > 0) {
+    if (tty_mouse > 0 || tty_clipboard > 0) {
         /* disable focus reporting */
         TTY_FPRINTF(s->STDOUT, "\033[?1004l");
     }
@@ -571,7 +572,7 @@ static int tty_dpy_init(QEditScreen *s, QEmacsState *qs,
             s->charset = &charset_utf8;
         }
     }
-    put_status(qs->active_window, "tty charset: %s", s->charset->name);
+    put_status(qs->active_window, "TTY charset: %s", s->charset->name);
 
     atexit(tty_term_exit);
 
@@ -1078,6 +1079,19 @@ static void tty_read_handler(void *opaque)
             /* Mouse events */
             ts->input_state = IS_NORM;
             ts->has_meta = 0;
+            if (ts->got_focus) {
+                /* Ignore mouse events until either:
+                   - down event is received after 100ms threshold
+                   - up event is received (and ignored)
+                 */
+                if (ch == 'M' && get_clock_ms() - ts->got_focus > 100) {
+                    ts->got_focus = 0;
+                } else {
+                    if (ch == 'm')
+                        ts->got_focus = 0;
+                    break;
+                }
+            }
             if (ch == 'M')
                 ev->button_event.type = QE_BUTTON_PRESS_EVENT;
             else
@@ -1125,6 +1139,7 @@ static void tty_read_handler(void *opaque)
         case 'I': // FocusIn  enabled by CSI ? 1004 h
             ts->input_state = IS_NORM;
             ts->has_meta = 0;
+            ts->got_focus = get_clock_ms();
             qe_trace_bytes(qs, "tty-focus-in", -1, EB_TRACE_COMMAND);
             if (tty_clipboard > 0) {
                 /* request clipboard contents into kill buffer if changed */

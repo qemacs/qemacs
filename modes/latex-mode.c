@@ -245,7 +245,7 @@ static void latex_cmd_run(void *opaque, char *cmd,
     QEmacsState *qs = s->qs;
 
     if (cmd == NULL) {
-        put_status(s, "Aborted");
+        put_error(s, "Aborted");
         return;
     }
 
@@ -313,7 +313,7 @@ static void do_latex(EditState *e, const char *cmd)
             latex_cmd_run(func, buf, NULL);
         }
     } else {
-        put_status(e, "%s: No match", buf);
+        put_error(e, "%s: No match", buf);
     }
 }
 

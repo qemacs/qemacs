@@ -1413,7 +1413,7 @@ static int do_eval_buffer_region(EditState *s, int start, int stop, int argval) 
     /* extract region as UTF-8 with a size limit */
     length = eb_get_region_content_size(s->b, start, stop);
     if (length > MAX_SCRIPT_LENGTH || !(buf = qe_malloc_array(char, length + 1))) {
-        put_error(s, "buffer region too large");
+        put_error(s, "Buffer region too large");
         return -1;
     }
     length = eb_get_region_contents(s->b, start, stop, buf, length + 1, 0);
@@ -1454,7 +1454,7 @@ int parse_config_file(EditState *s, const char *filename) {
     ds.allocated_buf = file_load(filename, MAX_SCRIPT_LENGTH + 1, NULL);
     if (!ds.allocated_buf) {
         if (errno == ERANGE || errno == ENOMEM) {
-            put_error(s, "file too large");
+            put_error(s, "File too large");
         }
         return -1;
     }

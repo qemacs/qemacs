@@ -124,7 +124,7 @@ struct QEDisplay {
     void (*dpy_describe)(QEditScreen *s, struct EditBuffer *b);
     void (*dpy_sound_bell)(QEditScreen *s);
     void (*dpy_suspend)(QEditScreen *s);
-    void (*dpy_error)(QEditScreen *s, const char *fmt, ...);
+    void (*dpy_error)(QEditScreen *s, const char *fmt, ...) qe__attr_printf(2,3);
     QEDisplay *next;
 };
 

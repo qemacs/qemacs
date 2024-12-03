@@ -399,7 +399,7 @@ void do_show_variable(EditState *s, const char *name)
     char buf[MAX_FILENAME_SIZE];
 
     if (qe_get_variable(s, name, buf, sizeof(buf), NULL, 1) == VAR_UNKNOWN)
-        put_status(s, "No variable %s", name);
+        put_error(s, "No variable %s", name);
     else
         put_status(s, "%s -> %s", name, buf);
 }
@@ -408,13 +408,13 @@ void do_set_variable(EditState *s, const char *name, const char *value)
 {
     switch (qe_set_variable(s, name, value, 0)) {
     case VAR_UNKNOWN:
-        put_status(s, "Variable %s is invalid", name);
+        put_error(s, "Variable %s is invalid", name);
         break;
     case VAR_READONLY:
-        put_status(s, "Variable %s is read-only", name);
+        put_error(s, "Variable %s is read-only", name);
         break;
     case VAR_INVALID:
-        put_status(s, "Invalid value for variable %s: %s", name, value);
+        put_error(s, "Invalid value for variable %s: %s", name, value);
         break;
     default:
         do_show_variable(s, name);
@@ -427,7 +427,7 @@ static void do_describe_variable(EditState *s, const char *name) {
     VarDef *vp;
 
     if ((vp = qe_find_variable(s->qs, name)) == NULL) {
-        put_status(s, "No variable %s", name);
+        put_error(s, "No variable %s", name);
         return;
     }
     b = new_help_buffer(s);
