@@ -452,9 +452,9 @@ void do_set_key(EditState *s, const char *keystr,
     KeyDef **lp = local ? &s->mode->first_key : &qs->first_key;
     int res = qe_register_bindings(qs, lp, cmd_name, keystr);
     if (res == -2)
-        put_status(s, "Invalid keys: %s", keystr);
+        put_error(s, "Invalid keys: %s", keystr);
     if (res == -1)
-        put_status(s, "Invalid command: %s", cmd_name);
+        put_error(s, "Invalid command: %s", cmd_name);
 }
 
 void do_unset_key(EditState *s, const char *keystr, int local) {
@@ -590,9 +590,9 @@ void do_set_emulation(EditState *s, const char *name) {
         qs->emulation_flags = 2;
     } else
     if (strequal(name, "vi") || strequal(name, "vim")) {
-        put_status(s, "Emulation '%s' not available yet", name);
+        put_error(s, "Emulation '%s' not available yet", name);
     } else {
-        put_status(s, "Unknown emulation '%s'", name);
+        put_error(s, "Unknown emulation '%s'", name);
     }
 }
 
@@ -681,7 +681,7 @@ void do_set_trace_options(EditState *s, const char *options) {
             }
         }
         if (!found) {
-            put_status(s, "Unsupported flag: %s", p);
+            put_error(s, "Unsupported flag: %s", p);
             return;
         }
     }
@@ -695,10 +695,10 @@ void do_cd(EditState *s, const char *path)
     canonicalize_absolute_path(s, buf, sizeof(buf), path);
 
     if (chdir(buf)) {
-        put_status(s, "Cannot change directory to '%s'", buf);
+        put_error(s, "Cannot change directory to '%s'", buf);
     } else {
         if (!getcwd(buf, sizeof(buf)))
-            put_status(s, "Cannot get current directory");
+            put_error(s, "Cannot get current directory");
         else
             put_status(s, "Current directory: %s", buf);
     }
@@ -1149,7 +1149,7 @@ void do_backspace(EditState *s, int argval)
 
 /* return the cursor position relative to the screen. Note that xc is
    given in pixel coordinates */
-typedef struct {
+typedef struct CursorContext {
     int linec;
     int yc;
     int xc;
@@ -1160,9 +1160,9 @@ typedef struct {
     int cursor_height;
 } CursorContext;
 
-int cursor_func(DisplayState *ds,
-                int offset1, int offset2, int line_num,
-                int x, int y, int w, int h, qe__unused__ int hex_mode)
+static int cursor_func(DisplayState *ds,
+                       int offset1, int offset2, int line_num,
+                       int x, int y, int w, int h, qe__unused__ int hex_mode)
 {
     CursorContext *m = ds->cursor_opaque;
 
@@ -1204,7 +1204,7 @@ static void get_cursor_pos(EditState *s, CursorContext *m)
     display_close(ds);
 }
 
-typedef struct {
+typedef struct MoveContext {
     int yd;
     int xd;
     int xdmin;
@@ -2037,7 +2037,6 @@ static void quote_key(void *opaque, int key)
         }
         s->overwrite = save_overwrite;
         qe_display(qs);
-        dpy_flush(&global_screen);
     }
 }
 
@@ -2300,7 +2299,7 @@ static void do_unknown_key(EditState *s) {
     buf_init(out, buf, sizeof buf);
     for (i = 0; i < qs->input_len; i++)
         buf_quote_byte(out, qs->input_buf[i]);
-    put_status(s, "Unknown key: %s", buf);
+    put_error(s, "Unknown key: %s", buf);
 }
 
 void do_keyboard_quit(EditState *s)
@@ -2324,7 +2323,7 @@ void do_keyboard_quit(EditState *s)
     /* well, currently nothing needs to be aborted in global context */
     /* CG: Should remove sidepanes, helppanes... */
     put_status(s, "|");
-    put_status(s, "\007Quit");
+    put_error(s, "Quit");
 }
 
 /* block functions */
@@ -2557,7 +2556,7 @@ void do_yank_pop(EditState *s)
     QEmacsState *qs = s->qs;
 
     if (qs->last_cmd_func != (CmdFunc)do_yank) {
-        put_status(s, "Previous command was not a yank");
+        put_error(s, "Previous command was not a yank");
         return;
     }
 
@@ -2624,9 +2623,9 @@ static int reload_buffer(EditState *s, EditBuffer *b)
     if (ret < 0) {
       fail:
         if (!f1) {
-            put_status(s, "Could not load '%s'", b->filename);
+            put_error(s, "Could not load '%s'", b->filename);
         } else {
-            put_status(s, "Error while reloading '%s'", b->filename);
+            put_error(s, "Error while reloading '%s'", b->filename);
         }
         return -1;
     } else {
@@ -2665,7 +2664,7 @@ void *qe_get_buffer_mode_data(EditBuffer *b, ModeDef *m, EditState *e)
         }
     }
     if (e)
-        put_status(e, "Not a %s buffer", m->name);
+        put_error(e, "Not a %s buffer", m->name);
 
     return NULL;
 }
@@ -2695,7 +2694,7 @@ void *qe_get_window_mode_data(EditState *e, ModeDef *m, int status)
             return md;
     }
     if (status)
-        put_status(e, "Not a %s buffer", m->name);
+        put_error(e, "Not a %s buffer", m->name);
 
     return NULL;
 }
@@ -2854,7 +2853,7 @@ int edit_set_mode(EditState *s, ModeDef *m)
                 reload_buffer(s, b);
         }
         if (errstr) {
-            put_status(s, "Cannot set mode %s: %s", m->name, errstr);
+            put_error(s, "Cannot set mode %s: %s", m->name, errstr);
             m = &text_mode;
             rc = -1;
         }
@@ -2888,7 +2887,7 @@ void do_set_mode(EditState *s, const char *name)
     if (m)
         edit_set_mode(s, m);
     else
-        put_status(s, "No mode %s", name);
+        put_error(s, "No mode %s", name);
 }
 
 QECharset *read_charset(EditState *s, const char *charset_str,
@@ -2917,7 +2916,7 @@ QECharset *read_charset(EditState *s, const char *charset_str,
 
     charset = qe_find_charset(s->qs, charset_str);
     if (!charset) {
-        put_status(s, "Unknown charset '%s'", charset_str);
+        put_error(s, "Unknown charset '%s'", charset_str);
         return NULL;
     }
     *eol_typep = eol_type;
@@ -3197,7 +3196,7 @@ void do_goto(EditState *s, const char *str, int unit)
         return;
     }
 error:
-    put_status(s, "Invalid position: %s", str);
+    put_error(s, "Invalid position: %s", str);
 }
 
 void do_goto_line(EditState *s, int line, int column)
@@ -3697,13 +3696,13 @@ void do_set_style(EditState *e, const char *stylestr,
 
     stp = find_style(stylestr);
     if (!stp) {
-        put_status(e, "Unknown style '%s'", stylestr);
+        put_error(e, "Unknown style '%s'", stylestr);
         return;
     }
 
     prop_index = find_style_property(propstr);
     if (prop_index < 0) {
-        put_status(e, "Unknown property '%s'", propstr);
+        put_error(e, "Unknown property '%s'", propstr);
         return;
     }
 
@@ -3717,7 +3716,7 @@ void do_set_style(EditState *e, const char *stylestr,
             goto bad_color;
         break;
     bad_color:
-        put_status(e, "Unknown color '%s'", value);
+        put_error(e, "Unknown color '%s'", value);
         return;
     case CSS_PROP_FONT_FAMILY:
         v = css_get_font_family(value);
@@ -3768,7 +3767,7 @@ void do_set_style(EditState *e, const char *stylestr,
 void do_define_color(EditState *e, const char *name, const char *value)
 {
     if (css_define_color(name, value))
-        put_status(e, "Invalid color '%s'", value);
+        put_error(e, "Invalid color '%s'", value);
 }
 #endif
 
@@ -3792,7 +3791,7 @@ void do_toggle_full_screen(EditState *s)
         screen->dpy.dpy_full_screen(screen, qs->is_full_screen);
         do_refresh(s);
     } else {
-        put_status(s, "full screen unsupported on this device");
+        put_error(s, "Full screen unsupported on this device");
     }
 }
 
@@ -3807,7 +3806,7 @@ void do_set_window_style(EditState *s, const char *stylestr)
     int style_index = find_style_index(stylestr);
 
     if (style_index < 0) {
-        put_status(s, "Unknown style '%s'", stylestr);
+        put_error(s, "Unknown style '%s'", stylestr);
         return;
     }
     s->default_style = style_index;
@@ -3821,7 +3820,7 @@ void do_set_system_font(EditState *s, const char *qe_font_name,
 
     font_type = css_get_enum(qe_font_name, "fixed,serif,sans");
     if (font_type < 0) {
-        put_status(s, "Invalid qemacs font");
+        put_error(s, "Invalid qemacs font");
         return;
     }
     pstrcpy(qs->system_fonts[font_type], sizeof(qs->system_fonts[0]),
@@ -5607,7 +5606,7 @@ void exec_command(EditState *s, const CmdDef *d, int argval, int key)
     if (*argdesc == '*') {
         argdesc++;
         if (s->b->flags & BF_READONLY) {
-            put_status(s, "Buffer is read only");
+            put_error(s, "Buffer is read only");
             return;
         }
     }
@@ -5813,7 +5812,7 @@ static void arg_edit_cb(void *opaque, char *str, CompletionDef *completion)
             val = strtol_c(str, &p, 0);
         }
         if (*p != '\0') {
-            put_status(es->s, "Invalid number: %s", str);
+            put_error(es->s, "Invalid number: %s", str);
             goto fail;
         }
         es->args[index].n = val;
@@ -5833,7 +5832,7 @@ static void arg_edit_cb(void *opaque, char *str, CompletionDef *completion)
 int check_read_only(EditState *s)
 {
     if (s->b->flags & BF_READONLY) {
-        put_status(s, "Buffer is read-only");
+        put_error(s, "Buffer is read-only");
         return 1;
     } else {
         return 0;
@@ -5849,7 +5848,7 @@ void do_execute_command(EditState *s, const char *cmd, int argval)
     if (d) {
         exec_command(s, d, argval, 0);
     } else {
-        put_status(s, "No command %s", cmd);
+        put_error(s, "No command %s", cmd);
     }
 }
 
@@ -5947,6 +5946,7 @@ void qe_display(QEmacsState *qs)
         put_status(s, "|qe_display: %dms", elapsed_time);
 
     qs->complete_refresh = 0;
+    dpy_flush(qs->screen);
 }
 
 /*---------------- Keyboard macros ----------------*/
@@ -6113,7 +6113,7 @@ static void do_read_kbd_macro(EditState *s, int mark, int offset) {
 
 static void show_macro_counter(EditState *s) {
     QEmacsState *qs = s->qs;
-    put_status(s, "new macro counter: %d", qs->macro_counter);
+    put_status(s, "New macro counter: %d", qs->macro_counter);
 }
 
 static void do_macro_add_counter(EditState *s, int arg) {
@@ -6194,7 +6194,7 @@ static void do_macro_insert_counter(EditState *s, int arg) {
     if (!fmt || !*fmt)
         fmt = "%d";
     if (check_format_string(fmt, "%d%d%d%d", 1024) < 0) {
-        put_status(s, "Invalid macro format: %s", fmt);
+        put_error(s, "Invalid macro format: %s", fmt);
         return;
     }
     s->b->offset = s->offset;
@@ -6228,7 +6228,7 @@ void do_end_kbd_macro(EditState *s)
         return;
 
     if (!qs->defining_macro) {
-        put_status(s, "Not defining kbd macro");
+        put_error(s, "Not defining kbd macro");
         return;
     }
     qs->defining_macro = 0;
@@ -6252,7 +6252,7 @@ void do_call_last_kbd_macro(EditState *s, int argval)
     if (qs->defining_macro) {
         // XXX: should allow recursive definition
         qs->defining_macro = 0;
-        put_status(s, "Cannot execute macro while defining one");
+        put_error(s, "Cannot execute macro while defining one");
         return;
     }
 
@@ -6492,7 +6492,7 @@ static void do_activate_multi_cursor(EditState *s) {
         s->multi_cursor_cur = 0;
         s->multi_cursor_active = 1;
     } else {
-        put_status(s, "No multi-cursor defined");
+        put_error(s, "No multi-cursor defined");
     }
 }
 
@@ -6665,8 +6665,7 @@ static void qe_key_process(QEmacsState *qs, int key)
         if (s == NULL)
             return;
     }
-    put_status(s, " ");     /* Erase pending keystrokes and message */
-    dpy_flush(&global_screen);
+    put_status(s, "&");     /* Erase pending keystrokes and message */
 
     /* Special case for escape: we transform it as meta so
        that unix users are happy ! */
@@ -6714,12 +6713,11 @@ static void qe_key_process(QEmacsState *qs, int key)
         buf_put_keys(out, c->keys, c->nb_keys);
         if (qs->trace_buffer)
             qe_trace_bytes(qs, buf1, -1, EB_TRACE_COMMAND);
-        put_status(s, "%s%s", buf1, c->describe_key ? "" : "\007");
+        put_status(s, "&%s%s", buf1, c->describe_key ? "" : "\007");
         c->describe_key = 0;
         qe_key_init(c);
         if (qs->trace_buffer)
             qe_display(qs);
-        dpy_flush(&global_screen);
         return;
     } else
     if (c->nb_keys == kd->nb_keys) {
@@ -6808,7 +6806,6 @@ static void qe_key_process(QEmacsState *qs, int key)
         qe_key_init(c);
         // XXX: should delay until after macro execution
         qe_display(qs);
-        dpy_flush(&global_screen);
         /* CG: should move ungot key handling to generic event dispatch */
         if (qs->ungot_key != -1) {
             key = qs->ungot_key;
@@ -6828,10 +6825,9 @@ static void qe_key_process(QEmacsState *qs, int key)
         buf_put_key(out, key);
         buf_put_byte(out, '-');
     }
-    put_status(s, "~%s", c->buf);
+    put_status(s, "&~%s", c->buf);
     if (qs->trace_buffer)
         qe_display(qs);
-    dpy_flush(&global_screen);
 }
 
 /* Print a UTF-8 encoded buffer as unicode */
@@ -6939,6 +6935,8 @@ void put_status(EditState *s, const char *fmt, ...)
     int force = 0;
     int beep = 0;
     int error = 0;
+    int flush = 0;
+    QEmacsState *qs;
 
     va_start(ap, fmt);
     vsnprintf(buf, sizeof(buf), fmt, ap);
@@ -6959,14 +6957,23 @@ void put_status(EditState *s, const char *fmt, ...)
         } else
         if (*p == '!') {
             force = 1;
+        } else
+        if (*p == '&') {
+            flush = 1;
         } else {
             break;
         }
     }
 
-    if (s && s->qs->screen->dpy.dpy_probe) {
+    if (!s) {
+        if (qe_skip_spaces(&p))
+            fprintf(stderr, "qe: %s\n", p);
+        return;
+    }
+
+    qs = s->qs;
+    if (qs->screen->dpy.dpy_probe) {
         /* Display message on screen if initialized */
-        QEmacsState *qs = s->qs;
         int width = qs->screen->width;
         int height = qs->status_height;
         int x = 0, y = qs->screen->height - height;
@@ -6993,19 +7000,18 @@ void put_status(EditState *s, const char *fmt, ...)
                 pstrcpy(qs->status_shadow, sizeof(qs->status_shadow), p);
             }
         }
-        if (!silent && qe_skip_spaces(&p)) {
-            if (error)
-                qe_format_message(qs, "*errors*", p);
-            qe_format_message(qs, "*messages*", p);
-        }
-        if (beep) {
-            qe_stop_macro(qs);
-            dpy_sound_bell(s->screen);
-        }
-    } else {
-        if (qe_skip_spaces(&p))
-            fprintf(stderr, "qe: %s\n", p);
     }
+    if (!silent && qe_skip_spaces(&p)) {
+        if (error)
+            qe_format_message(qs, "*errors*", p);
+        qe_format_message(qs, "*messages*", p);
+    }
+    if (beep) {
+        qe_stop_macro(qs);
+        dpy_sound_bell(s->screen);
+    }
+    if (flush)
+        dpy_flush(s->screen);
 }
 
 #if 0
@@ -7958,7 +7964,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
 
     /* Force status update and call the callback */
     if (do_abort) {
-        put_status(target, "\007!Canceled.");
+        put_error(target, "Canceled.");
         (*cb)(opaque, NULL, NULL);
     } else {
         put_status(target, "!");
@@ -8345,7 +8351,7 @@ void do_find_window(EditState *s, int key)
     QEmacsState *qs = s->qs;
 
     if (!qs->first_transient_key) {
-        put_status(s, "window navigation, repeat with <up>, <down>, <left>, <right>");
+        put_status(s, "Window navigation, repeat with <up>, <down>, <left>, <right>");
         qe_register_transient_binding(qs, "find-window-down", "down");
         qe_register_transient_binding(qs, "find-window-left", "left");
         qe_register_transient_binding(qs, "find-window-right", "right");
@@ -8433,7 +8439,7 @@ void do_buffer_navigation(EditState *s, int argval, int dir)
     if (buffer_count <= 1)
         return;
     if (!qs->first_transient_key) {
-        put_status(s, "buffer navigatiion, repeat with <left> and <right>");
+        put_status(s, "Buffer navigation, repeat with <left> and <right>");
         qe_register_transient_binding(qs, "next-buffer", "right, C-right");
         qe_register_transient_binding(qs, "previous-buffer", "left, C-left");
     }
@@ -8475,7 +8481,7 @@ void do_kill_buffer(EditState *s, const char *bufname, int force)
 
     b = qe_find_buffer_name(qs, bufname);
     if (!b) {
-        put_status(s, "No buffer %s", bufname);
+        put_error(s, "No buffer %s", bufname);
     } else {
         /* if modified and associated to a filename, then ask */
         if (!force && b->modified && b->filename[0] != '\0') {
@@ -8869,7 +8875,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
 
     if ((lflags & LF_LOAD_RESOURCE) && !strchr(filename1, '/')) {
         if (qe_find_resource_file(qs, filename, sizeof(filename), filename1)) {
-            put_status(s, "Cannot find resource file '%s'", filename1);
+            put_error(s, "Cannot find resource file '%s'", filename1);
             return -1;
         }
     } else {
@@ -9027,8 +9033,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
  fail:
     eb_free(&b);
 
-    put_status(s, "Could not open '%s': %s",
-               filename, strerror(errno));
+    put_error(s, "Could not open '%s': %s", filename, strerror(errno));
     return -1;
 }
 
@@ -9070,13 +9075,12 @@ static void load_completion_cb(void *opaque, int err)
         s->b->st_mode = S_IFDIR;
     } else
     if (err < 0) {
-        put_status(s, "Could not read file");
+        put_error(s, "Could not read file");
     }
     if (!s->b->probed) {
         qe_set_next_mode(s, 0, 0);
     }
     qe_display(s->qs);
-    dpy_flush(&global_screen);
 }
 #endif
 
@@ -9112,7 +9116,7 @@ void do_insert_file(EditState *s, const char *filename)
 
     f = fopen(filename, "r");
     if (!f) {
-        put_status(s, "Could not open file '%s'", filename);
+        put_error(s, "Could not open file '%s'", filename);
         return;
     }
     /* CG: file charset will not be converted to buffer charset */
@@ -9127,7 +9131,7 @@ void do_insert_file(EditState *s, const char *filename)
     s->offset += s->b->total_size - lastsize;
 
     if (size < 0) {
-        put_status(s, "Error reading '%s'", filename);
+        put_error(s, "Error reading '%s'", filename);
         return;
     }
 }
@@ -9156,7 +9160,7 @@ void do_set_visited_file_name(EditState *s, const char *filename,
         // XXX: should search for another buffer with the same file
         if (renamefile && *renamefile == 'y' && *s->b->filename) {
             if (rename(s->b->filename, path))
-                put_status(s, "Cannot rename file to %s", path);
+                put_error(s, "Cannot rename file to %s", path);
         }
     }
     eb_set_filename(s->b, path);
@@ -9167,7 +9171,7 @@ static void put_save_message(EditState *s, const char *filename, int nb)
     if (nb >= 0) {
         put_status(s, "Wrote %d bytes to %s", nb, filename);
     } else {
-        put_status(s, "Could not write %s", filename);
+        put_error(s, "Could not write %s", filename);
     }
 }
 
@@ -9220,7 +9224,7 @@ static void quit_confirm_cb(void *opaque, char *reply, CompletionDef *completion
 
 static void do_suspend_qemacs(EditState *s, int argval)
 {
-    QEditScreen *sp = &global_screen;
+    QEditScreen *sp = s->screen;
     if (sp->dpy.dpy_suspend)
         sp->dpy.dpy_suspend(sp);
 }
@@ -9263,8 +9267,7 @@ static void quit_examine_buffers(QuitState *is)
             case QS_ASK:
                 /* XXX: display cursor */
                 put_status(qs->active_window,
-                           "Save file %s? (y, n, !, ., q) ", b->filename);
-                dpy_flush(&global_screen);
+                           "&Save file %s? (y, n, !, ., q) ", b->filename);
                 /* will wait for a key */
                 return;
             case QS_NOSAVE:
@@ -9286,7 +9289,6 @@ static void quit_examine_buffers(QuitState *is)
                         NULL, "Modified buffers exist; exit anyway? (yes or no) ",
                         NULL, NULL, quit_confirm_cb, NULL);
         qe_display(qs);
-        dpy_flush(&global_screen);
     } else {
 #ifdef CONFIG_SESSION
         if (use_session_file)
@@ -9331,8 +9333,8 @@ static void quit_key(void *opaque, int ch)
     case KEY_CTRL('g'):
         /* abort */
         qe_ungrab_keys(is->qs);
-        put_status(is->qs->active_window, "\007Quit");
-        dpy_flush(&global_screen);
+        // FIXME: should use put_error()
+        put_error(is->qs->active_window, "&Quit");
         return;
     default:
         /* get another key */
@@ -9824,7 +9826,7 @@ void do_create_window(EditState *s, const char *filename, const char *layout)
 
     b1 = qe_find_buffer_file(qs, filename);
     if (!b1) {
-        put_status(s, "create_window: no such file loaded: %s", filename);
+        put_error(s, "No such file loaded: %s", filename);
         return;
     }
 
@@ -9966,7 +9968,7 @@ void do_describe_key_briefly(EditState *s, const char *keystr, int argval) {
 
     nb_keys = strtokeys(p, keys, MAX_KEYS, &p);
     if (!nb_keys || *p) {
-        put_status(s, "%s is not a valid key sequence", keystr);
+        put_error(s, "%s is not a valid key sequence", keystr);
         return;
     }
     kd = qe_find_current_binding(qs, keys, nb_keys, s->mode, 0);
@@ -10275,7 +10277,7 @@ static int check_mouse_event(EditState *e, QEEvent *ev) {
                 return 0;
             if (!e->mode->mouse_goto) {
             no_handler:
-                put_status(e, "no mouse handler for mode %s", e->mode->name);
+                put_error(e, "No mouse handler for mode %s", e->mode->name);
                 return 0;
             }
             qe_save_selection(qs, FALSE);
@@ -10292,7 +10294,6 @@ static int check_mouse_event(EditState *e, QEEvent *ev) {
             return 0;
         }
         qe_display(qs);
-        dpy_flush(qs->screen);
         return 1;
     }
     /* test for popup window caption and borders */
@@ -10399,7 +10400,6 @@ static void handle_mouse_motion(EditState *e, QEEvent *ev) {
             /* if inside the buffer, then update cursor position */
             call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop, ev);
             qe_display(qs);
-            dpy_flush(qs->screen);
         }
         break;
     case MOTION_CAPTION:
@@ -10442,7 +10442,6 @@ static void handle_mouse_motion(EditState *e, QEEvent *ev) {
                 //do_refresh(qs->first_window);
                 qs->complete_refresh = 1;
                 qe_display(qs);
-                dpy_flush(qs->screen);
             }
         }
         break;
@@ -10453,7 +10452,6 @@ static void handle_mouse_motion(EditState *e, QEEvent *ev) {
             window_resize(e, e->x2 - e->x1, qs->motion_y - e->y1);
             do_refresh(qs->first_window);
             qe_display(qs);
-            dpy_flush(qs->screen);
         }
         break;
     case MOTION_RSEPARATOR:
@@ -10463,7 +10461,6 @@ static void handle_mouse_motion(EditState *e, QEEvent *ev) {
             window_resize(e, qs->motion_x - e->x1, e->y2 - e->y1);
             do_refresh(qs->first_window);
             qe_display(qs);
-            dpy_flush(qs->screen);
         }
         break;
     }
@@ -10536,7 +10533,6 @@ void qe_handle_event(QEmacsState *qs, QEEvent *ev)
     case QE_UPDATE_EVENT:
     redraw:
         qe_display(qs);
-        dpy_flush(qs->screen);
         break;
 #ifndef CONFIG_TINY
     case QE_BUTTON_PRESS_EVENT:
@@ -10863,7 +10859,7 @@ static int qe_parse_command_line(QEmacsState *qs, int argc, char **argv)
                 if (bstr_equal(opt1, shortname) || bstr_equal(opt2, name)) {
                     if (p->need_arg && optarg_ == NULL) {
                         if (optind_ >= argc) {
-                            qe_put_error(qs, "cmdline argument %.*s expected for --%.*s",
+                            qe_put_error(qs, "Argument %.*s expected for --%.*s",
                                          argname.len, argname.s, name.len, name.s);
                             goto next_cmd;
                         }
@@ -10894,7 +10890,7 @@ static int qe_parse_command_line(QEmacsState *qs, int argc, char **argv)
                 p++;
             }
         }
-        qe_put_error(qs, "unknown cmdline option '%s'", arg);
+        qe_put_error(qs, "Unknown command line option '%s'", arg);
     next_cmd: ;
     }
 
@@ -11731,6 +11727,7 @@ static void qe_init(void *opaque)
     qs->input_buf = qs->input_buf_def;
     qs->input_size = countof(qs->input_buf_def);
     qs->double_click_threshold = DEFAULT_DOUBLE_CLICK_THRESHOLD;
+    qs->screen = &global_screen;
 
     // FIXME: Achtung Minen! qs->active_window is NULL until
     //        the first window is created for the "*scratch*" buffer
@@ -11782,9 +11779,6 @@ static void qe_init(void *opaque)
     qe_load_all_modules(qs);
 #endif
 
-    /* init of the editor state */
-    qs->screen = &global_screen;
-
     /* create first buffer */
     b = qe_new_buffer(qs, "*scratch*", BF_SAVELOG | BF_UTF8);
     if (!b) {
@@ -11799,7 +11793,7 @@ static void qe_init(void *opaque)
      * null display driver to have a consistent state
      * else many commands such as put_status would crash.
      */
-    qe_screen_init(qs, &global_screen, NULL, screen_width, screen_height);
+    qe_screen_init(qs, qs->screen, NULL, screen_width, screen_height);
 
     /* handle options */
     _optind = qe_parse_command_line(qs, argc, argv);
@@ -11819,7 +11813,7 @@ static void qe_init(void *opaque)
             fprintf(stderr, "No suitable display found, exiting\n");
             exit(1);
         }
-        if (qe_screen_init(qs, &global_screen, dpy, screen_width, screen_height) < 0) {
+        if (qe_screen_init(qs, qs->screen, dpy, screen_width, screen_height) < 0) {
             /* Just disable the display and try another */
             //fprintf(stderr, "Could not initialize display '%s', exiting\n",
             //        dpy->name);
@@ -11902,7 +11896,6 @@ static void qe_init(void *opaque)
     }
 #endif
     qe_display(qs);
-    dpy_flush(&global_screen);
     qs->ec.function = NULL;
 }
 
@@ -11931,7 +11924,8 @@ int main(int argc, char **argv)
 #endif
 
     /* restore TTY so console is clean for error messages */
-    dpy_close(&global_screen);
+    free_font_cache(qs->screen);
+    dpy_close(qs->screen);
 
 #ifndef CONFIG_TINY
     /* exit all external modules in link order */
@@ -11987,7 +11981,6 @@ int main(int argc, char **argv)
             }
         }
         css_free_colors();
-        free_font_cache(&global_screen);  // before dpy_close()?
         qe_free(&qs->buffer_cache);
         qs->buffer_cache_size = qs->buffer_cache_len = 0;
         qe_clear_macro(qs);

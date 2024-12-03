@@ -204,8 +204,8 @@ static int run_process(ShellState *s,
 
     pty_fd = get_pty(tty_name, sizeof(tty_name));
     if (pty_fd < 0) {
-        put_status(s->b->qs->active_window, "run_process: cannot get tty: %s",
-                   strerror(errno));
+        put_error(s->b->qs->active_window, "run_process: cannot get tty: %s",
+                  strerror(errno));
         return -1;
     }
     fcntl(pty_fd, F_SETFL, O_NONBLOCK);
@@ -219,7 +219,7 @@ static int run_process(ShellState *s,
 
     pid = fork();
     if (pid < 0) {
-        put_status(s->b->qs->active_window, "run_process: cannot fork");
+        put_error(s->b->qs->active_window, "run_process: cannot fork");
         return -1;
     }
     if (pid == 0) {
@@ -2439,7 +2439,6 @@ static void shell_read_cb(void *opaque)
 
     /* now we do some refresh (should just invalidate?) */
     qe_display(qs);
-    dpy_flush(qs->screen);
 }
 
 static void shell_mode_free(EditBuffer *b, void *state)
@@ -2558,7 +2557,6 @@ static void shell_pid_cb(void *opaque, int status)
         qe_free_mode_data(&s->base);
     }
     qe_display(qs);
-    dpy_flush(qs->screen);
 }
 
 EditBuffer *qe_new_shell_buffer(QEmacsState *qs, EditBuffer *b0, EditState *e,
@@ -3158,7 +3156,7 @@ static void do_shell_yank(EditState *e)
 
         if (b) {
             if (b->total_size > 1024) {
-                put_status(e, "too much data to yank at shell prompt");
+                put_error(e, "Too much data to yank at shell prompt");
                 return;
             }
             for (offset = 0; offset < b->total_size;) {
@@ -3241,7 +3239,7 @@ static void do_shell_refresh(EditState *e, int flags)
     if (flags & SR_REFRESH)
         do_refresh_complete(e);
     if (s && !(flags & SR_SILENT)) {
-        put_status(e, "terminal size set to %d by %d", s->cols, s->rows);
+        put_status(e, "Terminal size set to %d by %d", s->cols, s->rows);
     }
 }
 
@@ -3415,7 +3413,7 @@ static void do_next_error(EditState *s, int arg, int dir)
         if ((b = qe_find_buffer_name(qs, "*compilation*")) == NULL
         &&  (b = qe_find_buffer_name(qs, "*shell*")) == NULL
         &&  (b = qe_find_buffer_name(qs, "*errors*")) == NULL) {
-            put_status(s, "No compilation buffer");
+            put_error(s, "No compilation buffer");
             return;
         }
         set_error_offset(b, -1);
@@ -3429,12 +3427,12 @@ static void do_next_error(EditState *s, int arg, int dir)
         if (dir > 0) {
             offset = eb_next_line(b, offset);
             if (offset >= b->total_size) {
-                put_status(s, "No more errors");
+                put_error(s, "No more errors");
                 return;
             }
         } else {
             if (offset <= 0) {
-                put_status(s, "No previous error");
+                put_error(s, "No previous error");
                 return;
             }
             offset = eb_prev_line(b, offset);

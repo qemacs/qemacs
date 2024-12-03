@@ -201,7 +201,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
         regexp_bytes = lre_compile(&regexp_len, error_message, sizeof(error_message),
                                    source, source_len, re_flags, NULL);
         if (regexp_bytes == NULL) {
-            //put_status(b->qs->active_window, "regexp compile error: %s", error_message);
+            //put_error(b->qs->active_window, "Regexp compile error: %s", error_message);
             return -1;
         }
         capture_num = lre_get_capture_count(regexp_bytes);
@@ -209,7 +209,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
         if (capture_num == 0 || capture == NULL) {
             qe_free(&regexp_bytes);
             qe_free(&capture);
-            //put_status(b->qs->active_window, "cannot allocate capture array for %d entries", capture_num);
+            //put_error(b->qs->active_window, "Cannot allocate capture array for %d entries", capture_num);
             return -1;
         }
         for (offset1 = offset;;) {
@@ -535,13 +535,11 @@ static void isearch_run(ISearchState *is) {
 
     /* display text */
     do_center_cursor(s, 0);
-    qe_display(s->qs);
     put_status(s, "%s", out->buf);   /* XXX: why NULL? */
+    qe_display(s->qs);
     elapsed_time = get_clock_ms() - start_time;
     if (elapsed_time >= 100)
-        put_status(s, "|isearch_run: %dms", elapsed_time);
-
-    dpy_flush(s->screen);
+        put_status(s, "&|isearch_run: %dms", elapsed_time);
 }
 
 static int isearch_grab(ISearchState *is, EditBuffer *b, int from, int to) {
@@ -771,7 +769,6 @@ static void isearch_end(ISearchState *is) {
     }
     is->search_flags &= ~SEARCH_FLAG_ACTIVE;
     qe_display(qs);
-    dpy_flush(is->s->screen);
 }
 
 static void isearch_cancel(EditState *s) {
@@ -791,7 +788,7 @@ static void isearch_abort(EditState *s) {
      * when search is successful aborts and moves point to starting point.
      * and signal quit (to abort macros?)
      */
-    put_status(s, "Quit");
+    put_error(s, "Quit");
     isearch_cancel(s);
 }
 
@@ -1066,7 +1063,6 @@ static void query_replace_abort(QueryReplaceState *is)
     qe_ungrab_keys(s->qs);
     qe_free(&is);
     qe_display(s->qs);
-    dpy_flush(s->screen);
 }
 
 static void query_replace_replace(QueryReplaceState *is)
@@ -1122,8 +1118,7 @@ static void query_replace_run(QueryReplaceState *is)
     s->region_style = QE_STYLE_SEARCH_MATCH;
     do_center_cursor(s, 0);
     qe_display(s->qs);
-    put_status(s, "%s", out->buf);
-    dpy_flush(s->screen);
+    put_status(s, "&%s", out->buf);
 }
 
 static void query_replace_key(void *opaque, int key)
@@ -1139,7 +1134,6 @@ static void query_replace_key(void *opaque, int key)
         //        of the is->help_window popup.
         qs->active_window = s;
         qe_display(qs);
-        dpy_flush(is->s->screen);
         return;
     }
 
@@ -1435,25 +1429,25 @@ void do_search_string(EditState *s, const char *search_str, int mode)
         put_status(s, "%d matches", count);
         break;
     case CMD_DELETE_MATCHING_LINES:
-        put_status(s, "deleted %d lines", count);
+        put_status(s, "Deleted %d lines", count);
         break;
     case CMD_DELETE_NON_MATCHING_LINES:
         eb_delete_range(s->b, offset, s->b->total_size);
-        put_status(s, "kept %d lines", count);
+        put_status(s, "Kept %d lines", count);
         break;
     case CMD_SEARCH_BACKWARD:
     case CMD_SEARCH_FORWARD:
-        put_status(s, "Search failed: \"%s\"", search_str);
+        put_error(s, "Search failed: \"%s\"", search_str);
         break;
     case CMD_COPY_MATCHING_LINES:
-        put_status(s, "copied %d lines", count);
+        put_status(s, "Copied %d lines", count);
         break;
     case CMD_KILL_MATCHING_LINES:
-        put_status(s, "killed %d lines", count);
+        put_status(s, "Killed %d lines", count);
         break;
     case CMD_LIST_MATCHING_LINES:
         if (!count) {
-            put_status(s, "no matches");
+            put_status(s, "No matches");
         } else {
             b1->offset = start;
             eb_printf(b1, "// %d lines in buffer %s:\n", count, s->b->name);

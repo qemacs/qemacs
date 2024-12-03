@@ -494,7 +494,7 @@ static int mkd_find_heading(EditState *s, int offset, int *level, int silent)
         offset = eb_prev_line(s->b, offset);
     }
     if (!silent)
-        put_status(s, "Before first heading");
+        put_error(s, "Before first heading");
 
     return -1;
 }
@@ -568,7 +568,7 @@ static void do_outline_up_heading(EditState *s)
         return;
 
     if (level <= 1) {
-        put_status(s, "Already at top level of the outline");
+        put_error(s, "Already at top level of the outline");
         return;
     }
 
@@ -585,7 +585,7 @@ static void do_mkd_backward_same_level(EditState *s)
 
     offset = mkd_prev_heading(s, offset, level, &level1);
     if (level1 != level) {
-        put_status(s, "No previous same-level heading");
+        put_error(s, "No previous same-level heading");
         return;
     }
     s->offset = offset;
@@ -601,7 +601,7 @@ static void do_mkd_forward_same_level(EditState *s)
 
     offset = mkd_next_heading(s, offset, level, &level1);
     if (level1 != level) {
-        put_status(s, "No following same-level heading");
+        put_error(s, "No following same-level heading");
         return;
     }
     s->offset = offset;
@@ -625,7 +625,7 @@ static void do_mkd_goto(EditState *s, const char *dest)
         for (; nb > 0; nb--) {
             offset = mkd_next_heading(s, offset, level, &level1);
             if (level != level1) {
-                put_status(s, "Heading not found");
+                put_error(s, "Heading not found");
                 return;
             }
         }
@@ -712,7 +712,7 @@ static void do_mkd_promote(EditState *s, int dir)
         if (level > 1)
             eb_delete_char32(s->b, offset);
         else
-            put_status(s, "Cannot promote to level 0");
+            put_error(s, "Cannot promote to level 0");
     }
 }
 
@@ -735,7 +735,7 @@ static void do_mkd_promote_subtree(EditState *s, int dir)
             if (level > 1) {
                 eb_delete_char32(s->b, offset);
             } else {
-                put_status(s, "Cannot promote to level 0");
+                put_error(s, "Cannot promote to level 0");
                 return;
             }
         }
@@ -754,7 +754,7 @@ static void do_mkd_move_subtree(EditState *s, int dir)
         return;
 
     if (!mkd_is_header_line(s, s->offset)) {
-        put_status(s, "Not on header line");
+        put_error(s, "Not on header line");
         return;
     }
 
@@ -768,12 +768,12 @@ static void do_mkd_move_subtree(EditState *s, int dir)
     if (dir < 0) {
         offset2 = mkd_prev_heading(s, offset, level, &level2);
         if (level2 < level) {
-            put_status(s, "Cannot move substree");
+            put_error(s, "Cannot move substree");
             return;
         }
     } else {
         if (offset1 == s->b->total_size || level1 < level) {
-            put_status(s, "Cannot move substree");
+            put_error(s, "Cannot move substree");
             return;
         }
         offset2 = mkd_next_heading(s, offset1, level, &level2);

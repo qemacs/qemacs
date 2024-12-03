@@ -1438,7 +1438,7 @@ static EditState *dired_view_file(EditState *s, const char *filename)
 static void dired_execute(EditState *s)
 {
     /* Actually delete, copy, or move the marked items */
-    put_status(s, "Not yet implemented");
+    put_error(s, "Not yet implemented");
 }
 
 static void dired_parent(EditState *s, int collapse)
@@ -1527,7 +1527,7 @@ static void dired_toggle_dot_files(EditState *s, int val)
         dired_show_dot_files = val;
         if (ds)
             dired_update_buffer(ds, s->b, s, DIRED_UPDATE_FILTER);
-        put_status(s, "dot files are %s", val ? "visible" : "hidden");
+        put_status(s, "Dot files are %s", val ? "visible" : "hidden");
     }
 }
 
@@ -2017,7 +2017,7 @@ static void filelist_display_hook(EditState *s)
             }
             put_status(e, "Previewing %s", filename);
         } else {
-            put_status(s, "No access to %s", filename);
+            put_error(s, "No access to %s", filename);
         }
     }
 }

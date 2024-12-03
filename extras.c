@@ -388,11 +388,11 @@ void do_compare_files(EditState *s, const char *filename, int bflags)
         snprintf(buf, sizeof(buf), "../%s", filename);
     } else
     if (pathlen == 1) {
-        put_status(s, "Reference file is in root directory: %s", filename);
+        put_error(s, "Reference file is in root directory: %s", filename);
         return;
     } else
     if (pathlen >= MAX_FILENAME_SIZE) {
-        put_status(s, "Filename too long: %s", filename);
+        put_error(s, "Filename too long: %s", filename);
         return;
     } else {
         pstrcpy(buf, sizeof(buf), filename);
@@ -403,13 +403,11 @@ void do_compare_files(EditState *s, const char *filename, int bflags)
 
     // XXX: should check for regular file
     if (access(filename, R_OK)) {
-        put_status(s, "Cannot access file %s: %s",
-                   filename, strerror(errno));
+        put_error(s, "Cannot access file %s: %s", filename, strerror(errno));
         return;
     }
     if (access(buf, R_OK)) {
-        put_status(s, "Cannot access file %s: %s",
-                   buf, strerror(errno));
+        put_error(s, "Cannot access file %s: %s", buf, strerror(errno));
         return;
     }
 
@@ -443,7 +441,7 @@ static void do_adjust_window(EditState *s, int argval, int flags)
         argval = -argval;
 
     if (!qs->first_transient_key) {
-        put_status(s, "adjusting window, repeat with ^, }, {, v");
+        put_status(s, "Adjusting window, repeat with ^, }, {, v");
         qe_register_transient_binding(qs, "enlarge-window", "^, up");
         qe_register_transient_binding(qs, "shrink-window", "v, down");
         qe_register_transient_binding(qs, "enlarge-window-horizontally", "}, right");
@@ -748,7 +746,7 @@ static void do_indent_rigidly(EditState *s, int start, int end, int argval)
         QEmacsState *qs = s->qs;
         if (!qs->first_transient_key) {
             s->region_style = QE_STYLE_REGION_HILITE;
-            put_status(s, "indent the region interactively with TAB, left, right, S-left, S-right");
+            put_status(s, "Indent the region interactively with TAB, left, right, S-left, S-right");
             qe_register_transient_binding(qs, "indent-rigidly-left", "left");
             qe_register_transient_binding(qs, "indent-rigidly-right", "right");
             qe_register_transient_binding(qs, "indent-rigidly-left-to-tab-stop", "S-left, S-TAB");
@@ -924,8 +922,8 @@ static void forward_block(EditState *s, int dir)
                     --level;
                     if (level < MAX_LEVEL && balance[level] != c) {
                         /* XXX: should set mark and offset */
-                        put_status(s, "Unmatched delimiter %c <> %c",
-                                   c, balance[level]);
+                        put_error(s, "Unmatched delimiter %c <> %c",
+                                  c, balance[level]);
                         goto done;
                     }
                     if (level == 0) {
@@ -1008,8 +1006,8 @@ static void forward_block(EditState *s, int dir)
                     --level;
                     if (level < MAX_LEVEL && balance[level] != c) {
                         /* XXX: should set mark and offset */
-                        put_status(s, "Unmatched delimiter %c <> %c",
-                                   c, balance[level]);
+                        put_error(s, "Unmatched delimiter %c <> %c",
+                                  c, balance[level]);
                         goto done;
                     }
                     if (level == 0) {
@@ -1025,7 +1023,7 @@ static void forward_block(EditState *s, int dir)
     }
     if (level != 0) {
         /* XXX: should set mark and offset */
-        put_status(s, "Unmatched delimiter");
+        put_error(s, "Unmatched delimiter");
     } else {
         s->offset = offset;
     }
@@ -1220,7 +1218,7 @@ void do_show_bindings(EditState *s, const char *cmd_name)
     const CmdDef *d;
 
     if ((d = qe_find_cmd(qs, cmd_name)) == NULL) {
-        put_status(s, "No command %s", cmd_name);
+        put_error(s, "No command %s", cmd_name);
         return;
     }
     if (qe_list_bindings(qs, d, s->mode, 1, buf, sizeof(buf))) {
@@ -1236,7 +1234,7 @@ static void do_describe_function(EditState *s, const char *cmd_name) {
     const char *desc;
 
     if ((d = qe_find_cmd(s->qs, cmd_name)) == NULL) {
-        put_status(s, "No command %s", cmd_name);
+        put_error(s, "No command %s", cmd_name);
         return;
     }
     b = new_help_buffer(s);
@@ -1374,7 +1372,7 @@ void do_apropos(EditState *s, const char *str)
         show_popup(s, b, buf);
     } else {
         eb_free(&b);
-        put_status(s, "No apropos matches for `%s'", str);
+        put_error(s, "No apropos matches for `%s'", str);
     }
 }
 
@@ -1573,7 +1571,7 @@ static void do_set_style_color(EditState *e, const char *stylestr, const char *v
 
     stp = find_style(stylestr);
     if (!stp) {
-        put_status(e, "Unknown style '%s'", stylestr);
+        put_error(e, "Unknown style '%s'", stylestr);
         return;
     }
 
@@ -1582,7 +1580,7 @@ static void do_set_style_color(EditState *e, const char *stylestr, const char *v
     if (p > value) {
         pstrncpy(buf, sizeof buf, value, p - value);
         if (css_get_color(&stp->fg_color, buf)) {
-            put_status(e, "Unknown fgcolor '%s'", buf);
+            put_error(e, "Unknown fgcolor '%s'", buf);
             return;
         }
     }
@@ -1595,7 +1593,7 @@ static void do_set_style_color(EditState *e, const char *stylestr, const char *v
     qe_skip_spaces(&p);
     if (*p) {
         if (css_get_color(&stp->bg_color, p)) {
-            put_status(e, "Unknown bgcolor '%s'", p);
+            put_error(e, "Unknown bgcolor '%s'", p);
             return;
         }
     }
@@ -1611,7 +1609,7 @@ static void do_set_region_color(EditState *s, const char *str)
     s->region_style = 0;
 
     if (qe_term_get_style(str, &style)) {
-        put_status(s, "Invalid color '%s'", str);
+        put_error(s, "Invalid color '%s'", str);
         return;
     }
 
@@ -1656,7 +1654,7 @@ static void do_set_region_style(EditState *s, const char *str)
 
     st = find_style(str);
     if (!st) {
-        put_status(s, "Invalid style '%s'", str);
+        put_error(s, "Invalid style '%s'", str);
         return;
     }
     style = st - qe_styles;
@@ -2023,8 +2021,7 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
 
     if ((++cp->ncmp & 8191) == 8191) {
         QEmacsState *qs = cp->b->qs;
-        put_status(qs->active_window, "Sorting: %d%%", (int)((cp->ncmp * 90LL) / cp->total_cmp));
-        dpy_flush(qs->screen);
+        put_status(qs->active_window, "&Sorting: %d%%", (int)((cp->ncmp * 90LL) / cp->total_cmp));
     }
     if (cp->flags & SF_REVERSE) {
         p1 = vp2;
@@ -2217,8 +2214,7 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
         // XXX: style issue. Should include newline from source buffer
         eb_putc(b1, '\n');
         if ((i & 8191) == 8191 && !(flags & SF_SILENT)) {
-            put_status(b->qs->active_window, "Sorting: %d%%", (int)(90 + i * 10LL / lines));
-            dpy_flush(b->qs->screen);
+            put_status(b->qs->active_window, "&Sorting: %d%%", (int)(90 + i * 10LL / lines));
         }
     }
     eb_delete_range(b, p1, p2);
@@ -2235,7 +2231,7 @@ done:
 static void do_sort_span(EditState *s, int p1, int p2, int argval, int flags) {
     s->region_style = 0;
     if (eb_sort_span(s->b, &p1, &p2, s->offset, flags | argval) < 0) {
-        put_status(s, "Out of memory");
+        put_error(s, "Out of memory");
         return;
     }
     s->b->mark = p1;
@@ -2339,7 +2335,7 @@ static void do_find_tag(EditState *s, const char *str) {
         s->offset = offset;
         return;
     }
-    put_status(s, "Tag not found: %s", str);
+    put_error(s, "Tag not found: %s", str);
 }
 
 static void do_goto_tag(EditState *s) {
@@ -2348,11 +2344,11 @@ static void do_goto_tag(EditState *s) {
 
     len = qe_get_word(s, buf, sizeof buf, s->offset, NULL);
     if (len >= sizeof(buf)) {
-        put_status(s, "Tag too large");
+        put_error(s, "Tag too large");
         return;
     } else
     if (len == 0) {
-        put_status(s, "No tag");
+        put_error(s, "No tag");
         return;
     } else {
         do_find_tag(s, buf);
@@ -2443,7 +2439,7 @@ static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
         }
         fclose(fp);
     } else {
-        put_status(cp->s, "cannot find DerivedName.txt or UnicodeData.txt in QEPATH");
+        put_error(cp->s, "Cannot find DerivedName.txt or UnicodeData.txt in QEPATH");
     }
 }
 

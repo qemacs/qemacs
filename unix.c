@@ -332,7 +332,6 @@ void url_main_loop(void (*init)(void *opaque), void *opaque)
             //qs->complete_refresh = 1;
             do_refresh(qs->first_window);
             qe_display(qs);
-            dpy_flush(qs->screen);
             url_display_request = 0;
         }
     }

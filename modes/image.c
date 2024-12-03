@@ -231,7 +231,7 @@ static void image_set_size(EditState *s, int w, int h)
     ib = is->ibs->ib;
 
     if (w < 1 || h < 1) {
-        put_status(s, "Invalid image size");
+        put_error(s, "Invalid image size");
         return;
     }
 
@@ -737,8 +737,8 @@ static void image_rotate(EditState *e)
     if (ret < 0) {
         /* remove temporary image */
         image_free(ib1);
-        put_status(e, "Format '%s' not supported yet in rotate",
-                   avcodec_get_pix_fmt_name(pix_fmt));
+        put_error(e, "Format '%s' not supported yet in rotate",
+                  avcodec_get_pix_fmt_name(pix_fmt));
         return;
     }
     ib1->alpha_info = ib->alpha_info;
@@ -779,7 +779,7 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
         if (strequal(name, pix_fmt_str))
             goto found;
     }
-    put_status(e, "Unknown pixel format");
+    put_error(e, "Unknown pixel format");
     return;
  found:
     new_pix_fmt = i;
@@ -791,9 +791,9 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
     if (ret < 0) {
         /* remove temporary image */
         image_free(ib1);
-        put_status(e, "Conversion from '%s' to '%s' not supported yet",
-                   avcodec_get_pix_fmt_name(ib->pix_fmt),
-                   avcodec_get_pix_fmt_name(new_pix_fmt));
+        put_error(e, "Conversion from '%s' to '%s' not supported yet",
+                  avcodec_get_pix_fmt_name(ib->pix_fmt),
+                  avcodec_get_pix_fmt_name(new_pix_fmt));
         return;
     } else {
         char buf[128];

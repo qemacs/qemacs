@@ -133,7 +133,7 @@ static void image_display_hook(EditState *s) {
             ms->pic.data[0] = ms->stb_image;
             ms->pic.linesize[0] = ms->stb_x * 4;
         } else {
-            put_status(s, "stbi_load error");
+            put_error(s, "stbi_load error");
         }
     }
     edit_invalidate(s, 1);

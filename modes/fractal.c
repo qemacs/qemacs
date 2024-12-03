@@ -659,7 +659,7 @@ static void fractal_set_parameters(EditState *s, FractalState *ms, const char *p
         } else
         if (strstart(p, "colors=", &p)) {
             if (!fractal_set_colors(ms, p, &p)) {
-                put_status(s, "invalid colors: %s", p);
+                put_error(s, "Invalid colors: %s", p);
                 p += strcspn(p, ", ");
             }
         } else
@@ -687,7 +687,7 @@ static void fractal_set_parameters(EditState *s, FractalState *ms, const char *p
         if (strstart(p, "y=", &p)) {
             ms->y = strtold_c(p, &p);
         } else {
-            put_status(s, "invalid parameter: %s", p);
+            put_error(s, "Invalid parameter: %s", p);
             break;
         }
     }

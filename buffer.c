@@ -1226,7 +1226,7 @@ void do_undo(EditState *s)
     LogBuffer lb;
 
     if (!b->log_buffer) {
-        put_status(s, "No undo information");
+        put_error(s, "No undo information");
         return;
     }
 
@@ -1246,14 +1246,14 @@ void do_undo(EditState *s)
         log_index = b->log_current - 1;
     }
     if (log_index == 0) {
-        put_status(s, "No further undo information");
+        put_error(s, "No further undo information");
         return;
     } else {
         put_status(s, "Undo!");
     }
     if (!qs->first_transient_key
     &&  (qs->last_key == 'u' || qs->last_key == 'u')) {
-        put_status(s, "repeat with 'u', 'r'");
+        put_status(s, "Repeat with 'u', 'r'");
         qe_register_transient_binding(qs, "undo", "u");
         qe_register_transient_binding(qs, "redo", "r");
     }
@@ -1311,7 +1311,7 @@ void do_redo(EditState *s)
     LogBuffer lb;
 
     if (!b->log_buffer) {
-        put_status(s, "No undo information");
+        put_error(s, "No undo information");
         return;
     }
 
@@ -1325,7 +1325,7 @@ void do_redo(EditState *s)
     }
 
     if (!b->log_current || !b->log_new_index) {
-        put_status(s, "Nothing to redo");
+        put_error(s, "Nothing to redo");
         return;
     }
     put_status(s, "Redo!");
@@ -2019,7 +2019,7 @@ int eb_raw_buffer_load1(EditBuffer *b, FILE *f, int offset)
     unsigned char buf[IOBUF_SIZE];
     int len, size, inserted;
 
-    //put_status(b->qs->active_window, "loading %s", filename);
+    //put_status(b->qs->active_window, "Loading %s", filename);
     size = inserted = 0;
     for (;;) {
         len = fread(buf, 1, IOBUF_SIZE, f);
@@ -2058,7 +2058,7 @@ int eb_mmap_buffer(EditBuffer *b, const char *filename)
     if (fd < 0)
         return -1;
     file_size = lseek(fd, 0, SEEK_END);
-    //put_status(b->qs->active_window, "mapping %s", filename);
+    //put_status(b->qs->active_window, "Mapping %s", filename);
     file_ptr = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd, 0);
     if ((void*)file_ptr == MAP_FAILED) {
         close(fd);
@@ -2130,7 +2130,7 @@ static int raw_buffer_save(EditBuffer *b, int start, int end,
     if (fd < 0)
         return -1;
 
-    //put_status(b->qs->active_window, "writing %s", filename);
+    //put_status(b->qs->active_window, "Writing %s", filename);
     if (end < start) {
         int tmp = start;
         start = end;

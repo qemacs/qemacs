@@ -1304,7 +1304,7 @@ static void do_c_list_conditionals(EditState *s)
         show_popup(s, b, "Preprocessor conditionals");
     } else {
         eb_free(&b);
-        put_status(s, "Not in a #if conditional");
+        put_error(s, "Not in a #if conditional");
     }
     cp_destroy(cp);
 }
