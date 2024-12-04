@@ -10985,7 +10985,7 @@ static CmdLineOptionDef cmd_options[] = {
     CMD_LINE_INT("mk", "modify-other-keys", "VAL", &tty_mk,
                  "set the modifyOtherKeys tty configuration (0,1,2)"),
     CMD_LINE_INT("", "clipboard", "VAL", &tty_clipboard,
-                 "set the tty clipboard support level (0,1)"),
+                 "set the tty clipboard support method (0,1,2)"),
     CMD_LINE_INT("m", "mouse", "VAL", &tty_mouse,
                  "set the mouse emulation mode (0,1,2)"),
     CMD_LINE_LINK()
