@@ -36,7 +36,7 @@ static unsigned short subst1_count;
 static unsigned short ligature2_count;
 
 static int uni_get_be16(FILE *f, unsigned short *pv) {
-    /* read a big-endiann unsigned 16-bit value from `f` into `*pv` */
+    /* read a big-endian unsigned 16-bit value from `f` into `*pv` */
     /* return -1 if end of file */
     int c1, c2;
     if ((c1 = fgetc(f)) != EOF && (c2 = fgetc(f)) != EOF) {
@@ -97,18 +97,20 @@ void unload_ligatures(void) {
     ligature2_count = 0;
 }
 
-static char32_t find_ligature(char32_t l1, char32_t l2) {
-    int a, b, m;
-    char32_t v1, v2;
-
-    a = 0;
-    b = ligature2_count;
+/* ligature2 table is sorted by increasing v1 and v2.
+ * a return value of `0` indicates a placeholder for a
+ * complex ligature handled in `ligature_long`.
+ */
+static int find_ligature(char32_t l1, char32_t l2) {
+    const unsigned short *p = ligature2;
+    size_t a = 0;
+    size_t b = ligature2_count;
     while (a < b) {
-        m = (a + b) >> 1;
-        v1 = ligature2[3 * m];
-        v2 = ligature2[3 * m + 1];
+        size_t m = (a + b) >> 1;
+        char32_t v1 = p[3 * m];
+        char32_t v2 = p[3 * m + 1];
         if (v1 == l1 && v2 == l2)
-            return ligature2[3 * m + 2];
+            return p[3 * m + 2];
         else
         if (v1 > l1 || (v1 == l1 && v2 > l2)) {
             b = m;
@@ -116,13 +118,13 @@ static char32_t find_ligature(char32_t l1, char32_t l2) {
             a = m + 1;
         }
     }
-    return 0xffffffff;
+    return -1;
 }
 
 int combine_accent(char32_t *buf, char32_t c, char32_t accent) {
-    char32_t lig = find_ligature(c, accent);
-    if (lig != 0xffffffff) {
-        *buf = lig;
+    int lig = find_ligature(c, accent);
+    if (lig > 0) {
+        *buf = (char32_t)lig;
         return 1;
     } else {
         return 0;
@@ -131,10 +133,10 @@ int combine_accent(char32_t *buf, char32_t c, char32_t accent) {
 
 /* No need for efficiency */
 int expand_ligature(char32_t *buf, char32_t c) {
-    unsigned short *a, *b;
+    const unsigned short *a, *b;
 
-    if (c > 0x7f) {
-        for (a = ligature2, b = a + 3 * ligature2_count; a < b; a++) {
+    if (c > 0x7f && c <= 0xffff) {
+        for (a = ligature2, b = a + 3 * ligature2_count; a < b; a += 3) {
             if (a[2] == c) {
                 buf[0] = a[0];
                 buf[1] = a[1];
@@ -145,7 +147,7 @@ int expand_ligature(char32_t *buf, char32_t c) {
     return 0;
 }
 
-char32_t qe_unaccent(char32_t c) {
+char32_t qe_wcunaccent(char32_t c) {
     char32_t buf[2];
     if (expand_ligature(buf, c) && qe_isaccent(buf[1]))
         return buf[0];
@@ -156,10 +158,10 @@ char32_t qe_unaccent(char32_t c) {
 /* simplistic case change for non ASCII glyphs: only support accents */
 char32_t qe_wctoupper(char32_t c) {
     char32_t buf[2];
-    if (expand_ligature(buf, c) && qe_isaccent(buf[1])){
-        char32_t c2 = find_ligature(qe_wtoupper(buf[0]), buf[1]);
-        if (c2 != 0xffffffff)
-            return c2;
+    if (expand_ligature(buf, c) && qe_isaccent(buf[1])) {
+        int c2 = find_ligature(qe_wtoupper(buf[0]), buf[1]);
+        if (c2 > 0)
+            return (char32_t)c2;
     }
     return c;
 }
@@ -167,9 +169,9 @@ char32_t qe_wctoupper(char32_t c) {
 char32_t qe_wctolower(char32_t c) {
     char32_t buf[2];
     if (expand_ligature(buf, c) && qe_isaccent(buf[1])) {
-        char32_t c2 = find_ligature(qe_wtolower(buf[0]), buf[1]);
-        if (c2 != 0xffffffff)
-            return c2;
+        int c2 = find_ligature(qe_wtolower(buf[0]), buf[1]);
+        if (c2 > 0)
+            return (char32_t)c2;
     }
     return c;
 }
@@ -180,8 +182,8 @@ static int unicode_ligature(char32_t *buf_out,
                             unsigned int *pos_L_to_V,
                             int len)
 {
-    int len1, len2, i, j;
-    char32_t l, l1, l2;
+    int len1, len2, i, j, l;
+    char32_t l1, l2;
     char32_t *q;
     const unsigned short *lig;
     /* CG: C99 variable-length arrays may be too large */
@@ -207,13 +209,13 @@ static int unicode_ligature(char32_t *buf_out,
         if (l1 <= 0x7f && l2 <= 0x7f)
             goto nolig;
         l = find_ligature(l1, l2);
-        if (l == 0xffffffff)
+        if (l < 0)
             goto nolig;
         if (l > 0) {
             /* ligature of length 2 found */
             pos_L_to_V[i] = q - buf_out;
             pos_L_to_V[i+1] = q - buf_out;
-            *q++ = l;
+            *q++ = (char32_t)l;
             i += 2;
         } else {
             /* generic case: use ligature_long[] table */

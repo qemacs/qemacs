@@ -2713,7 +2713,7 @@ void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk,
 #include "wcwidth.c"
 
 #ifdef CONFIG_TINY
-char32_t qe_unaccent(char32_t c) { return c; }
+char32_t qe_wcunaccent(char32_t c) { return c; }
 char32_t qe_wctolower(char32_t c) { return qe_tolower(c); }
 char32_t qe_wctoupper(char32_t c) { return qe_toupper(c); }
 #endif
