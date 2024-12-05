@@ -818,6 +818,7 @@ int is_shift_key(int key);
 
 #include "wcwidth.h"
 
+extern char32_t qe_wcunaccent(char32_t c);
 extern char32_t qe_wctoupper(char32_t c);
 extern char32_t qe_wctolower(char32_t c);
 
@@ -834,7 +835,9 @@ char32_t utf8_decode_prev(const char **pp, const char *start);
 int utf8_to_char32(char32_t *dest, int dest_length, const char *str);
 int char32_to_utf8(char *dest, int dest_length, const char32_t *src, int src_length);
 
-char32_t qe_unaccent(char32_t c);
+static inline char32_t qe_unaccent(char32_t c) {
+    return c >= 0x80 ? qe_wcunaccent(c) : c;
+}
 
 static inline int qe_isaccent(char32_t c) {
     return c >= 0x300 && qe_wcwidth(c) == 0;
@@ -857,13 +860,11 @@ static inline char32_t qe_iswupper(char32_t c) {
 }
 
 static inline char32_t qe_wtolower(char32_t c) {
-    return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' :
-            c >= 0x80 ? qe_wctolower(c) : c);
+    return c >= 0x80 ? qe_wctolower(c) : qe_tolower(c);
 }
 
 static inline char32_t qe_wtoupper(char32_t c) {
-    return (qe_inrange(c, 'a', 'z') ? c + 'A' - 'a' :
-            c >= 0x80 ? qe_wctoupper(c) : c);
+    return c >= 0x80 ? qe_wctoupper(c) : qe_toupper(c);
 }
 
 /*---- Completion types used for enumerations ----*/

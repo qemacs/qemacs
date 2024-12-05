@@ -97,24 +97,24 @@ $(info Building with ASan)
 DEBUG_SUFFIX:=_asan
 ECHO_CFLAGS += -DCONFIG_ASAN
 CFLAGS += -D__ASAN__
-CFLAGS += -fsanitize=address $(SANITIZE_CFLAGS)
-LDFLAGS += -fsanitize=address $(SANITIZE_CFLAGS)
+CFLAGS += -fsanitize=address $(SANITIZE_CFLAGS) -g
+LDFLAGS += -fsanitize=address $(SANITIZE_CFLAGS) -g
 endif
 ifdef MSAN
 $(info Building with MSan)
 DEBUG_SUFFIX:=_msan
 ECHO_CFLAGS += -DCONFIG_MSAN
 CFLAGS += -D__MSAN__
-CFLAGS += -fsanitize=memory $(SANITIZE_CFLAGS)
-LDFLAGS += -fsanitize=memory $(SANITIZE_CFLAGS)
+CFLAGS += -fsanitize=memory $(SANITIZE_CFLAGS) -g
+LDFLAGS += -fsanitize=memory $(SANITIZE_CFLAGS) -g
 endif
 ifdef UBSAN
 $(info Building with UBSan)
 DEBUG_SUFFIX:=_ubsan
 ECHO_CFLAGS += -DCONFIG_UBSAN
 CFLAGS += -D__UBSAN__
-CFLAGS += -fsanitize=undefined $(SANITIZE_CFLAGS)
-LDFLAGS += -fsanitize=undefined $(SANITIZE_CFLAGS)
+CFLAGS += -fsanitize=undefined $(SANITIZE_CFLAGS) -g
+LDFLAGS += -fsanitize=undefined $(SANITIZE_CFLAGS) -g
 endif
 
 TARGETLIBS:=

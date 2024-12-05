@@ -1850,7 +1850,7 @@ void do_combine_accent(EditState *s, int accent_arg) {
      ||  (combine_accent(g, c, accent)))
     &&  (len = eb_encode_char32(s->b, buf, g[0])) > 0) {
         /* if accent can be removed from previous ligature
-           or if previous character can be combined with accent into a
+           or if previous character can be combined with accent as a
            ligature, encode the single character and replace the
            previous character.
            XXX: should bypass eb_encode_char32 to detect encoding failure
