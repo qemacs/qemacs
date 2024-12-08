@@ -125,7 +125,7 @@ typedef struct QEArgs {
 } QEArgs;
 
 /* main loop for Unix programs using liburlio */
-void url_main_loop(void (*init)(void *opaque), void *opaque);
+int url_main_loop(int (*init)(void *opaque), void *opaque);
 
 int get_clock_ms(void);
 int get_clock_usec(void);
@@ -493,7 +493,7 @@ void qe_trace_bytes(QEmacsState *qs, const void *buf, int size, int state);
 void qe_data_init(QEmacsState *qs);
 
 EditBuffer *qe_find_buffer_name(QEmacsState *qs, const char *name);
-EditBuffer *qe_find_buffer_file(QEmacsState *qs, const char *filename);
+EditBuffer *qe_find_buffer_filename(QEmacsState *qs, const char *filename);
 EditBuffer *qe_new_buffer(QEmacsState *qs, const char *name, int flags);
 void eb_clear(EditBuffer *b);
 void eb_free(EditBuffer **ep);
@@ -1493,8 +1493,8 @@ void compute_client_area(EditState *s);
 
 /* window handling */
 void edit_close(EditState **sp);
-EditState *edit_new(EditBuffer *b,
-                    int x1, int y1, int width, int height, int flags);
+EditState *qe_new_window(EditBuffer *b,
+                         int x1, int y1, int width, int height, int flags);
 EditBuffer *qe_check_buffer(QEmacsState *qs, EditBuffer **sp);
 EditState *qe_check_window(QEmacsState *qs, EditState **sp);
 void qe_kill_buffer(QEmacsState *qs, EditBuffer *b);
@@ -1639,8 +1639,7 @@ void do_mark_whole_buffer(EditState *s);
 void do_yank(EditState *s);
 void do_yank_pop(EditState *s);
 void do_exchange_point_and_mark(EditState *s);
-QECharset *read_charset(EditState *s, const char *charset_str,
-                        EOLType *eol_typep);
+QECharset *qe_parse_charset(EditState *s, const char *charset_str, EOLType *eol_typep);
 void do_show_coding_system(EditState *s);
 void do_set_auto_coding(EditState *s, int verbose);
 void do_set_buffer_file_coding_system(EditState *s, const char *charset_str);

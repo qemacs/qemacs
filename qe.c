@@ -2361,15 +2361,13 @@ EditBuffer *qe_new_yank_buffer(QEmacsState *qs, EditBuffer *base)
         qs->yank_buffers[cur] = NULL;
     }
     snprintf(bufname, sizeof(bufname), "*kill-%d*", cur + 1);
+    b = qe_new_buffer(qs, bufname, BF_SYSTEM);
+    if (!b)
+        return NULL;
     if (base) {
-        b = qe_new_buffer(qs, bufname, BF_SYSTEM | (base->flags & BF_STYLES));
-        if (!b)
-            return NULL;
         eb_set_charset(b, base->charset, base->eol_type);
-    } else {
-        b = qe_new_buffer(qs, bufname, BF_SYSTEM);
-        if (!b)
-            return NULL;
+        if (base->flags & BF_STYLES)
+            eb_create_style_buffer(b, base->flags);
     }
     qs->yank_buffers[cur] = b;
     return b;
@@ -2890,31 +2888,30 @@ void do_set_mode(EditState *s, const char *name)
         put_error(s, "No mode %s", name);
 }
 
-QECharset *read_charset(EditState *s, const char *charset_str,
-                        EOLType *eol_typep)
+QECharset *qe_parse_charset(EditState *s, const char *charset_str, EOLType *eol_typep)
 {
     char buf[64];
     const char *p;
     QECharset *charset;
     EOLType eol_type = *eol_typep;
 
-    p = NULL;
+    pstrcpy(buf, sizeof(buf), charset_str);
 
-    if (strend(charset_str, "-mac", &p))
+    p = NULL;
+    if (strend(buf, "-mac", &p))
         eol_type = EOL_MAC;
     else
-    if (strend(charset_str, "-dos", &p))
+    if (strend(buf, "-dos", &p))
         eol_type = EOL_DOS;
     else
-    if (strend(charset_str, "-unix", &p))
+    if (strend(buf, "-unix", &p))
         eol_type = EOL_UNIX;
 
     if (p) {
-        pstrncpy(buf, sizeof(buf), charset_str, p - charset_str);
-        charset_str = buf;
+        /* strip suffix */
+        buf[p - buf] = '\0';
     }
-
-    charset = qe_find_charset(s->qs, charset_str);
+    charset = qe_find_charset(s->qs, buf);
     if (!charset) {
         put_error(s, "Unknown charset '%s'", charset_str);
         return NULL;
@@ -2955,7 +2952,7 @@ void do_set_buffer_file_coding_system(EditState *s, const char *charset_str)
     EOLType eol_type;
 
     eol_type = s->b->eol_type;
-    charset = read_charset(s, charset_str, &eol_type);
+    charset = qe_parse_charset(s, charset_str, &eol_type);
     if (!charset)
         return;
     eb_set_charset(s->b, charset, eol_type);
@@ -2975,7 +2972,7 @@ void do_convert_buffer_file_coding_system(EditState *s,
     char buf[MAX_CHAR_BYTES];
 
     eol_type = s->b->eol_type;
-    charset = read_charset(s, charset_str, &eol_type);
+    charset = qe_parse_charset(s, charset_str, &eol_type);
     if (!charset)
         return;
 
@@ -6863,7 +6860,7 @@ static void qe_format_message(QEmacsState *qs, const char *bufname,
                               const char *message)
 {
     char header[128];
-    EditBuffer *eb;
+    EditBuffer *eb = NULL;
     buf_t outbuf, *out;
 
     out = buf_init(&outbuf, header, sizeof(header));
@@ -6874,7 +6871,8 @@ static void qe_format_message(QEmacsState *qs, const char *bufname,
     if (qs->ec.function)
         buf_printf(out, "%s: ", qs->ec.function);
 
-    eb = qe_new_buffer(qs, bufname, BC_REUSE | BF_UTF8);
+    if (bufname)
+        eb = qe_new_buffer(qs, bufname, BC_REUSE | BF_UTF8);
     if (eb) {
         eb_printf(eb, "%s%s\n", header, message);
     } else {
@@ -7200,16 +7198,17 @@ void compute_client_area(EditState *s)
  * active if none are active. The coordinates include the window
  * borders.
  */
-EditState *edit_new(EditBuffer *b,
-                    int x1, int y1, int width, int height, int flags)
+EditState *qe_new_window(EditBuffer *b,
+                         int x1, int y1, int width, int height, int flags)
 {
     QEmacsState *qs = b->qs;
     EditState *s, *e;
 
     s = qe_mallocz(EditState);
-    if (!s)
+    if (!s) {
+        qe_put_error(qs, "Out of memory for window on '%s'", b->name);
         return NULL;
-
+    }
     s->qs = qs;
     s->screen = qs->screen;
     s->x1 = x1;
@@ -7686,7 +7685,9 @@ void do_minibuffer_complete(EditState *s, int type, int key, int argval) {
                 h1 = qs->screen->height - qs->status_height;
                 w = (w1 * 3) / 4;
                 h = (h1 * 3) / 4;
-                e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
+                e = qe_new_window(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
+                if (!e)
+                    return;
                 snprintf(buf, sizeof buf, "Select a %s:", mb->completion->name);
                 e->caption = qe_strdup(buf);
                 e->target_window = s;
@@ -7999,8 +8000,10 @@ void minibuffer_edit(EditState *e, const char *input, const char *prompt,
         return;
     b->default_mode = &minibuffer_mode;
 
-    s = edit_new(b, 0, qs->screen->height - qs->status_height,
-                 qs->screen->width, qs->status_height, WF_MINIBUF);
+    s = qe_new_window(b, 0, qs->screen->height - qs->status_height,
+                      qs->screen->width, qs->status_height, WF_MINIBUF);
+    if (!s)
+        return;
     s->target_window = e;
     s->prompt = qe_strdup(prompt);
     s->bidir = 0;
@@ -8257,7 +8260,7 @@ EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
 
     b->default_mode = &popup_mode;
     b->flags |= BF_READONLY;
-    e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
+    e = qe_new_window(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
     if (e != NULL) {
         if (caption)
             e->caption = qe_strdup(caption);
@@ -8308,11 +8311,14 @@ EditState *insert_window_left(EditBuffer *b, int width, int flags)
         }
     }
 
-    e_new = edit_new(b, 0, 0, width, qs->height - qs->status_height,
-                     flags | WF_POPLEFT | WF_RSEPARATOR);
-    /* XXX: WRAP_AUTO is a better choice? */
-    e_new->wrap = WRAP_TRUNCATE;
-    do_refresh(e_new);
+    e_new = qe_new_window(b, 0, 0, width, qs->height - qs->status_height,
+                          flags | WF_POPLEFT | WF_RSEPARATOR);
+    if (e_new) {
+        /* XXX: WRAP_AUTO is a better choice? */
+        e_new->wrap = WRAP_TRUNCATE;
+        // FIXME: should be useless
+        do_refresh(e_new);
+    }
     return e_new;
 }
 
@@ -8527,17 +8533,11 @@ void qe_kill_buffer(QEmacsState *qs, EditBuffer *b)
                      * but if this fails, all odds are off.
                      */
                     b1 = qe_new_buffer(qs, "*scratch*", BF_SAVELOG | BF_UTF8);
+                    if (!b1)
+                        return;
                 }
             }
             switch_to_buffer(e, b1);
-        }
-    }
-
-    if (b->flags & BF_SYSTEM) {
-        int i;
-        for (i = 0; i < NB_YANK_BUFFERS; i++) {
-            if (qs->yank_buffers[i] == b)
-                qs->yank_buffers[i] = NULL;
         }
     }
 
@@ -8545,6 +8545,7 @@ void qe_kill_buffer(QEmacsState *qs, EditBuffer *b)
     eb_free(&b);
 
     // XXX: should just return an update flag?
+    // FIXME: useless as switching a window to another buffer should have refreshed it already
     do_refresh(qs->first_window);
 }
 
@@ -8918,7 +8919,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
     }
 #endif
     /* If file already loaded in existing buffer, switch to that */
-    b = qe_find_buffer_file(qs, filename);
+    b = qe_find_buffer_filename(qs, filename);
     if (b != NULL) {
         switch_to_buffer(s, b);
         return 0;
@@ -8933,9 +8934,9 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
 
     /* Create new buffer with unique name from filename */
     b = qe_new_buffer(qs, get_basename(filename), BF_SAVELOG | bflags);
-    if (!b) {
+    if (!b)
         return -1;
-    }
+
     eb_set_filename(b, filename);
 
     /* XXX: should actually initialize SAVED_DATA area in new buffer */
@@ -9741,16 +9742,16 @@ EditState *qe_split_window(EditState *s, int side_by_side, int prop)
     h = s->y2 - s->y1;
     if (side_by_side) {
         w1 = (w * min_int(prop, 100) + 50) / 100;
-        e = edit_new(s->b, s->x1 + w1, s->y1,
-                     w - w1, h, WF_MODELINE | (s->flags & WF_RSEPARATOR));
+        e = qe_new_window(s->b, s->x1 + w1, s->y1,
+                          w - w1, h, WF_MODELINE | (s->flags & WF_RSEPARATOR));
         if (!e)
             return NULL;
         s->x2 = s->x1 + w1;
         s->flags |= WF_RSEPARATOR;
     } else {
         h1 = (h * min_int(prop, 100) + 50) / 100;
-        e = edit_new(s->b, s->x1, s->y1 + h1,
-                     w, h - h1, WF_MODELINE | (s->flags & WF_RSEPARATOR));
+        e = qe_new_window(s->b, s->x1, s->y1 + h1,
+                          w, h - h1, WF_MODELINE | (s->flags & WF_RSEPARATOR));
         if (!e)
             return NULL;
         s->y2 = s->y1 + h1;
@@ -9824,7 +9825,7 @@ void do_create_window(EditState *s, const char *filename, const char *layout)
     const char *p = layout;
     EditBuffer *b1;
 
-    b1 = qe_find_buffer_file(qs, filename);
+    b1 = qe_find_buffer_filename(qs, filename);
     if (!b1) {
         put_error(s, "No such file loaded: %s", filename);
         return;
@@ -9859,7 +9860,7 @@ void do_create_window(EditState *s, const char *filename, const char *layout)
     flags = args[4];
     wrap = (enum WrapType)args[5];
 
-    s = edit_new(b1, x1, y1, x2 - x1, y2 - y1, flags);
+    s = qe_new_window(b1, x1, y1, x2 - x1, y2 - y1, flags);
     if (s == NULL)
         return;
     if (m)
@@ -11692,7 +11693,7 @@ static CompletionDef charset_completion = {
 };
 
 /* init function */
-static void qe_init(void *opaque)
+static int qe_init(void *opaque)
 {
     QEArgs *args = opaque;
     QEmacsState *qs = args->qs;
@@ -11781,13 +11782,13 @@ static void qe_init(void *opaque)
 
     /* create first buffer */
     b = qe_new_buffer(qs, "*scratch*", BF_SAVELOG | BF_UTF8);
-    if (!b) {
-        // XXX: should exit or return fatal error code
-        return;
-    }
+    if (!b)
+        return 1;
 
     /* will be positionned by do_refresh() */
-    s = edit_new(b, 0, 0, 0, 0, WF_MODELINE);
+    s = qe_new_window(b, 0, 0, 0, 0, WF_MODELINE);
+    if (!s)
+        return 2;
 
     /* at this stage, no screen is defined. Initialize a
      * null display driver to have a consistent state
@@ -11897,6 +11898,7 @@ static void qe_init(void *opaque)
 #endif
     qe_display(qs);
     qs->ec.function = NULL;
+    return 0;
 }
 
 #ifdef CONFIG_WIN32
@@ -11907,12 +11909,13 @@ int main(int argc, char **argv)
 {
     QEmacsState *qs = &qe_state;
     QEArgs args;
+    int status;
 
     args.qs = qs;
     args.argc = argc;
     args.argv = argv;
 
-    url_main_loop(qe_init, &args);
+    status = url_main_loop(qe_init, &args);
 
 #ifdef CONFIG_ALL_KMAPS
     /* unmap/free input methods file */
@@ -11987,5 +11990,5 @@ int main(int argc, char **argv)
         qe_free(&qs->macro_format);
     }
 #endif
-    return 0;
+    return status;
 }

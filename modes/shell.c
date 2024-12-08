@@ -2572,8 +2572,10 @@ EditBuffer *qe_new_shell_buffer(QEmacsState *qs, EditBuffer *b0, EditState *e,
     if (!b0 && (shell_flags & SF_REUSE_BUFFER)) {
         b0 = qe_find_buffer_name(qs, bufname);
         if (b0) {
-            if (shell_flags & SF_ERASE_BUFFER)
+            if (shell_flags & SF_ERASE_BUFFER) {
+                /* XXX: this also clears the undo records */
                 eb_clear(b0);
+            }
         }
     }
 

@@ -317,11 +317,12 @@ static void url_block(void)
 #endif
 }
 
-void url_main_loop(void (*init)(void *opaque), void *opaque)
+int url_main_loop(int (*init)(void *opaque), void *opaque)
 {
     QEArgs *ap = opaque;
     url_block_reset();
-    (*init)(opaque);
+    if ((*init)(opaque))
+        return 1;
     for (;;) {
         if (url_exit_request)
             break;
@@ -335,6 +336,7 @@ void url_main_loop(void (*init)(void *opaque), void *opaque)
             url_display_request = 0;
         }
     }
+    return 0;
 }
 
 /* exit from url loop */

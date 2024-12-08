@@ -94,7 +94,7 @@ static void do_list_equivalents(EditState *s, int argval)
     show_popup(s, b, "Equivalents");
 }
 
-static void qe_free_equivalent(QEmacsState *qs) {
+static void qe_free_equivalents(QEmacsState *qs) {
     while (qs->first_equivalent) {
         Equivalent *ep = qs->first_equivalent;
         qs->first_equivalent = ep->next;
@@ -3354,7 +3354,7 @@ static int extras_init(QEmacsState *qs) {
 }
 
 static void extras_exit(QEmacsState *qs) {
-    qe_free_equivalent(qs);
+    qe_free_equivalents(qs);
 }
 
 qe_module_init(extras_init);

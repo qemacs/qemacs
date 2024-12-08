@@ -72,6 +72,7 @@ static int css_get_length(int *length_ptr, int *unit_ptr, const char *p)
     char buf[32];
     double f;
 
+    // FIXME: use strtod directly
     p1 = p;
     if (*p == '+' || *p == '-')
         p++;
