@@ -657,6 +657,7 @@ EditBuffer *qe_find_buffer_name(QEmacsState *qs, const char *name)
 /* flush the log */
 void eb_free_log_buffer(EditBuffer *b)
 {
+    // FIXME: what if log buffer is shown in a window?
     eb_free(&b->log_buffer);
     b->log_new_index = 0;
     b->log_current = 0;
@@ -711,8 +712,10 @@ EditBuffer *qe_new_buffer(QEmacsState *qs, const char *name, int flags)
     flags &= ~(BC_REUSE | BC_CLEAR);
 
     b = qe_mallocz(EditBuffer);
-    if (!b)
+    if (!b) {
+        qe_put_error(qs, "Out of memory for buffer '%s'", name);
         return NULL;
+    }
 
     b->qs = qs;
     b->flags = flags & ~BF_STYLES;
@@ -733,6 +736,7 @@ EditBuffer *qe_new_buffer(QEmacsState *qs, const char *name, int flags)
     //      `eb_set_buffer_name` will insert it into the cache.
     //      This is somewhat sloppy.
     if (eb_set_buffer_name(b, name)) {
+        qe_put_error(qs, "Cannot set buffer name '%s'", name);
         qe_free(&b);
         return NULL;
     }
@@ -818,6 +822,10 @@ void eb_free(EditBuffer **bp)
 
         eb_delete_properties(b, 0, INT_MAX);
         eb_cache_remove(b);
+        /* eb_clear frees b->log_buffer.
+         * it should also call eb_free_style_buffer(b)
+         * and eb_delete_properties(b, 0, INT_MAX);
+         */
         eb_clear(b);
 
         /* suppress from buffer list */
@@ -838,6 +846,14 @@ void eb_free(EditBuffer **bp)
         if (b == qs->trace_buffer)
             qs->trace_buffer = NULL;
 
+        if (b->flags & BF_SYSTEM) {
+            int i;
+            for (i = 0; i < NB_YANK_BUFFERS; i++) {
+                if (qs->yank_buffers[i] == b)
+                    qs->yank_buffers[i] = NULL;
+            }
+        }
+
         eb_free_style_buffer(b);
 
         qe_free(&b->saved_data);
@@ -845,7 +861,7 @@ void eb_free(EditBuffer **bp)
     }
 }
 
-EditBuffer *qe_find_buffer_file(QEmacsState *qs, const char *filename)
+EditBuffer *qe_find_buffer_filename(QEmacsState *qs, const char *filename)
 {
     EditBuffer *b;
 
@@ -1041,6 +1057,7 @@ int eb_create_style_buffer(EditBuffer *b, int flags)
 
 void eb_free_style_buffer(EditBuffer *b)
 {
+    // FIXME: what if style buffer is shown in a window?
     eb_free(&b->b_styles);
     b->style_shift = b->style_bytes = 0;
     eb_free_callback(b, eb_style_callback, NULL);
