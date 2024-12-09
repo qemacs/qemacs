@@ -5940,7 +5940,7 @@ void qe_display(QEmacsState *qs)
 
     elapsed_time = get_clock_ms() - start_time;
     if (elapsed_time >= 100)
-        put_status(s, "|qe_display: %dms", elapsed_time);
+        put_status(qs->active_window, "|qe_display: %dms", elapsed_time);
 
     qs->complete_refresh = 0;
     dpy_flush(qs->screen);
