@@ -792,9 +792,9 @@ static inline const char *dbuf_str(DynBuf *s) {
        @note: a null terminator is set at the end of the buffer and an empty
        string is returned if the buffer has not been allocated.
      */
-    if (s->size == 0)
+    if (s->size == 0 || dbuf_putc(s, '\0'))
         return "";
-    s->buf[s->size] = '\0';
+    s->size--;
     return cs8(s->buf);
 }
 
