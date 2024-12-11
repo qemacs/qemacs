@@ -88,7 +88,8 @@ enum {
     CLANG_V8,
     CLANG_PPL,
     CLANG_JAKT,
-    CLANG_FLAVOR = 0x3F,
+    CLANG_C3,
+    CLANG_FLAVOR = 0x7F,
 };
 
 int get_c_identifier(char *buf, int buf_size, const char32_t *p, int flavor);
