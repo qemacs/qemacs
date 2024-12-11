@@ -2062,6 +2062,7 @@ ModeDef js_mode = {
     .fallback = &c_mode,
 };
 
+#ifndef CONFIG_TINY
 /*---------------- V8 Torque programming language ----------------*/
 
 static const char v8_keywords[] = {
@@ -2137,7 +2138,6 @@ ModeDef css_mode = {
     .fallback = &c_mode,
 };
 
-#ifndef CONFIG_TINY
 /*---------------- Typescript programming language ----------------*/
 
 static const char ts_keywords[] = {
@@ -2452,6 +2452,7 @@ ModeDef php_mode = {
     .fallback = &c_mode,
 };
 
+#ifndef CONFIG_TINY
 /*---------------- Go programming language ----------------*/
 
 static const char go_keywords[] = {
@@ -2486,7 +2487,6 @@ static ModeDef go_mode = {
     .fallback = &c_mode,
 };
 
-#ifndef CONFIG_TINY
 /*---------------- Scala programming language ----------------*/
 
 static const char scala_keywords[] = {
@@ -4307,6 +4307,322 @@ static ModeDef jakt_mode = {
     .auto_indent = 1,
 };
 
+/*---------------- Christoffer Lerno's C3 programming language (c3-lang.org) ----------------*/
+
+static const char c3_keywords[] = {
+    "asm|assert|bitstruct|break|case|catch|const|continue|def|"
+    "default|defer|distinct|do|else|enum|extern|false|fault|"
+    "for|foreach|foreach_r|fn|tlocal|if|inline|import|macro|"
+    "module|nextcase|null|return|static|struct|switch|true|try|"
+    "union|var|while|"
+    /* directives */
+    "$alignof|$assert|$case|$checks|$default|$defined|"
+    "$echo|$else|$endfor|$endforeach|$endif|$endswitch|"
+    "$for|$foreach|$if|$include|$nameof|$offsetof|"
+    "$qnameof|$sizeof|$stringify|$switch|$vacount|$vaconst|"
+    "$varef|$vaarg|$vaexpr|$vasplat|"
+};
+
+static const char c3_types[] = {
+    "void|bool|ichar|char|"
+    // Integer types
+    "short|ushort|int|uint|long|ulong|int128|uint128|iptr|uptr|isz|usz|"
+    // Floating point types
+    "float16|float|double|float128|"
+    // Other types
+    "any|anyfault|typeid|"
+    // C compatibility types
+    "CChar|CShort|CUShort|CInt|CUInt|CLong|CULong|CLongLong|CULongLong|CFloat|CDouble|CLongDouble|"
+    // CT types
+    "$typefrom|$tyypeof|$vatype|"
+    /* could use CLANG_CAP_TYPE but would not match TT */
+    "[A-Z][A-Za-z0-9]+"
+};
+
+enum {
+    C3_STYLE_DEFAULT    = 0,
+    C3_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    C3_STYLE_COMMENT    = QE_STYLE_COMMENT,
+    C3_STYLE_STRING     = QE_STYLE_STRING,
+    C3_STYLE_STRING_Q   = QE_STYLE_STRING_Q,
+    C3_STYLE_STRING_BQ  = QE_STYLE_STRING,
+    C3_STYLE_NUMBER     = QE_STYLE_NUMBER,
+    C3_STYLE_KEYWORD    = QE_STYLE_KEYWORD,
+    C3_STYLE_TYPE       = QE_STYLE_TYPE,
+    C3_STYLE_FUNCTION   = QE_STYLE_FUNCTION,
+    C3_STYLE_VARIABLE   = QE_STYLE_VARIABLE,
+};
+
+/* c-mode colorization states */
+enum {
+    IN_C3_COMMENT    = 0x03,  /* one of the comment styles */
+    IN_C3_COMMENT1   = 0x01,  /* single line comment with \ at EOL */
+    IN_C3_COMMENT2   = 0x02,  /* multiline C3 comment */
+    IN_C3_STRING_BQ  = 0x04,  /* back-quoted string */
+    IN_C3_CONTRACT1  = 0x40,  /* in the beginning of a contracts specification */
+    IN_C3_CONTRACT2  = 0x80,  /* in the contracts part of a contracts specification */
+    IN_C3_CONTRACTS  = 0xC0,  /* in a contracts specification */
+    IN_C3_COMMENT_SHIFT = 8,  /* shift for block comment nesting level */
+    IN_C3_COMMENT_LEVEL = 0x700, /* mask for block comment nesting level */
+};
+
+// FIXME: clean this, keep only C3 features
+static void c3_colorize_line(QEColorizeContext *cp,
+                             const char32_t *str, int n,
+                             QETermStyle *sbuf, ModeDef *syn)
+{
+    int i = 0, start, i1, i2, indent;
+    int style, level, tag;
+    char32_t c, delim;
+    char kbuf[64];
+    int state = cp->colorize_state;
+    //int type_decl;  /* unused */
+
+    indent = 0;
+    //indent = cp_skip_blanks(str, 0, n);
+    tag = !indent && cp->s->mode == syn;
+    start = i;
+    //type_decl = 0;
+    c = 0;
+    style = 0;
+
+    if (i >= n)
+        goto the_end;
+
+    if (state) {
+        /* if already in a state, go directly in the code parsing it */
+        if (state & IN_C3_COMMENT2)
+            goto parse_comment2;
+        if (state & IN_C3_STRING_BQ)
+            goto parse_string_bq;
+        if (state & IN_C3_CONTRACT1)
+            goto parse_contracts;
+    }
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+
+        switch (c) {
+        case '*':
+            if ((state & IN_C3_CONTRACTS) && str[i] == '>') {
+                i += 2;
+                state &= ~IN_C3_CONTRACTS;
+                style = C3_STYLE_PREPROCESS;
+                break;
+            }
+            if (start == indent && cp->partial_file)
+                goto parse_comment2;
+            goto normal;
+        case '/':
+            if (str[i] == '*') {
+                /* C style multi-line comment */
+                i++;
+            parse_comment2:
+                state |= IN_C3_COMMENT2;
+                style = C3_STYLE_COMMENT;
+                level = (state & IN_C3_COMMENT_LEVEL) >> IN_C3_COMMENT_SHIFT;
+                while (i < n) {
+                    if (str[i] == '/' && str[i + 1] == '*') {
+                        i += 2;
+                        level++;
+                    } else
+                    if (str[i] == '*' && str[i + 1] == '/') {
+                        i += 2;
+                        if (level == 0) {
+                            state &= ~IN_C3_COMMENT2;
+                            break;
+                        }
+                        level--;
+                    } else {
+                        i++;
+                    }
+                }
+                state = (state & ~IN_C3_COMMENT_LEVEL) |
+                        (min_int(level, 7) << IN_C3_COMMENT_SHIFT);
+                break;
+            } else
+            if (str[i] == '/') {
+                /* line comment */
+                style = C3_STYLE_COMMENT;
+                i = n;
+                break;
+            }
+            continue;
+        case '#':       /* preprocessor */
+            if (start == 0 && str[i] == '!') {
+                /* recognize a shebang comment line */
+                style = C3_STYLE_PREPROCESS;
+                i = n;
+                break;
+            }
+            continue;
+        case '@':       /* annotations or constraints */
+            i += get_js_identifier(kbuf, countof(kbuf), c, str, i, n);
+            style = C3_STYLE_PREPROCESS;
+            break;
+        case '`':
+        parse_string_bq:
+            state |= IN_C3_STRING_BQ;
+            style = C3_STYLE_STRING_BQ;
+            while (i < n) {
+                c = str[i++];
+                if (c == '`' && str[i] != '`') {
+                    state &= ~IN_C3_STRING_BQ;
+                    break;
+                }
+            }
+            break;
+
+        case '\'':      /* character constant */
+            style = C3_STYLE_STRING_Q;
+            delim = '\'';
+            goto string;
+
+        case '\"':      /* string literal */
+            style = C3_STYLE_STRING;
+            delim = '\"';
+        string:
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\') {
+                    if (i >= n)
+                        break;
+                    i++;
+                } else
+                if (c == delim) {
+                    break;
+                }
+            }
+            break;
+        case '=':
+            /* exit type declaration */
+            /* does not handle this: int i = 1, j = 2; */
+            //type_decl = 0;
+            tag = 0;
+            continue;
+        case '<':
+            if (!(state & IN_C3_CONTRACTS) && str[i] == '*') {
+                state |= IN_C3_CONTRACT1;
+                i++;
+                SET_STYLE(sbuf, start, i, C3_STYLE_PREPROCESS);
+                start = i;
+            parse_contracts:
+                /* C3 contracts initial part */
+                while (i < n && qe_isspace(str[i]))
+                    i++;
+                style = C3_STYLE_COMMENT;
+                if (str[i] == '@' && qe_islower(str[i + 1])) {
+                    state |= IN_C3_CONTRACT2;
+                    break;
+                }
+                while (i < n && (str[i] != '*' || str[i + 1] != '>'))
+                    i++;
+                break;
+            }
+            continue;
+        case '(':
+        case '{':
+            tag = 0;
+            break;
+        default:
+        normal:
+            if (qe_isdigit(c)) {
+                /* XXX: should parse actual number syntax */
+                /* decimal, binary, octal and hexadecimal literals:
+                 * 1 0b1 0o1 0x1, case insensitive. 01 is a syntax error */
+                /* ignore '_' between digits */
+                /* XXX: should parse decimal and hex floating point syntaxes */
+                while (qe_isalnum_(str[i]) || (str[i] == '.' && str[i + 1] != '.')) {
+                    i++;
+                }
+                style = C3_STYLE_NUMBER;
+                break;
+            }
+            if (is_js_identifier_start(c)) {
+                i += get_js_identifier(kbuf, countof(kbuf), c, str, i, n);
+                if (cp->state_only)
+                    continue;
+
+                /* keywords used as object property tags are regular identifiers.
+                 * `default` is always considered a keyword as the context cannot be
+                 * determined precisely by this simplistic lexical parser */
+                if (strfind(syn->keywords, kbuf)
+                &&  (str[i] != ':' || strequal(kbuf, "default") || strequal(kbuf, "$default"))
+                &&  (start == 0 || str[start - 1] != '.')) {
+                    if (*kbuf == '$')
+                        style = C3_STYLE_PREPROCESS;
+                    else
+                        style = C3_STYLE_KEYWORD;
+                    break;
+                }
+
+                i1 = cp_skip_blanks(str, i, n);
+
+                if (str[i1] == '(') {
+                    /* function call or definition */
+                    style = C3_STYLE_FUNCTION;
+                    if (tag) {
+                        /* tag function definition */
+                        eb_add_tag(cp->b, cp->offset + start, kbuf);
+                        tag = 0;
+                    }
+                    break;
+                } else
+                if (tag && qe_findchar("(,;=", str[i1])) {
+                    /* tag variable definition */
+                    eb_add_tag(cp->b, cp->offset + start, kbuf);
+                }
+
+                if ((start == 0 || str[start - 1] != '.')
+                &&  !qe_findchar(".(:", str[i])
+                &&  strfind(syn->types, kbuf)) {
+                    /* if not cast, assume type declaration */
+                    //type_decl = 1;
+                    style = C3_STYLE_TYPE;
+                    break;
+                }
+                if (qe_isupper((unsigned char)kbuf[0])) {
+                    for (i2 = 1; kbuf[i2]; i2++) {
+                        if (qe_islower((unsigned char)kbuf[i2]))
+                            break;
+                    }
+                    /* if capitalized but not all caps assume type name */
+                    if (kbuf[i2]) {
+                        style = C3_STYLE_TYPE;
+                        break;
+                    }
+                }
+                continue;
+            }
+            continue;
+        }
+        if (style) {
+            if (!cp->state_only) {
+                SET_STYLE(sbuf, start, i, style);
+            }
+            style = 0;
+        }
+    }
+ the_end:
+    if (style == C3_STYLE_COMMENT || (state & IN_C3_STRING_BQ)) {
+        /* set style on eol char */
+        SET_STYLE1(sbuf, n, style);
+    }
+    cp->colorize_state = state;
+}
+
+static ModeDef c3_mode = {
+    .name = "C3",
+    .extensions = "c3|c3i|c3t",
+    .colorize_func = c3_colorize_line,
+    .colorize_flags = CLANG_C3 | CLANG_NEST_COMMENTS,
+    .keywords = c3_keywords,
+    .types = c3_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
 /*---------------- Common initialization code ----------------*/
 
 static int c_init(QEmacsState *qs)
@@ -4315,19 +4631,19 @@ static int c_init(QEmacsState *qs)
     qe_register_commands(qs, &c_mode, c_commands, countof(c_commands));
     qe_register_mode(qs, &cpp_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &js_mode, MODEF_SYNTAX);
-    qe_register_mode(qs, &v8_mode, MODEF_SYNTAX);
-    qe_register_mode(qs, &bee_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &java_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &php_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &go_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &yacc_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &lex_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &csharp_mode, MODEF_SYNTAX);
 #ifndef CONFIG_TINY
+    qe_register_mode(qs, &v8_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &bee_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &idl_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &carbon_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &c2_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &objc_mode, MODEF_SYNTAX);
-    qe_register_mode(qs, &csharp_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &awk_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &css_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &less_mode, MODEF_SYNTAX);
@@ -4373,6 +4689,7 @@ static int c_init(QEmacsState *qs)
     qe_register_mode(qs, &salmon_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &ppl_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &jakt_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &c3_mode, MODEF_SYNTAX);
 #endif
     return 0;
 }
