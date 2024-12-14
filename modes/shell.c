@@ -3544,20 +3544,24 @@ static int match_string(const char32_t *buf, int n, const char *str) {
     return (str[i] == '\0') ? i : 0;
 }
 
-static int shell_grab_filename(const char32_t *buf, int n, char *dest, int size) {
+static int shell_grab_filename(const char32_t *buf, int n,
+                               char *dest, int size, int filter)
+{
     int i, j, len = 0;
     for (i = 0; i < n; i++) {
         char32_t c = buf[i];
-        if (c == '(')
-            break;
-        if (c == ':' && i > 1)
-            break;
-        if (c == '-' && i > 1) {
-            /* match -[0-9]+- for grep -[ABC] output */
-            for (j = i + 1; qe_isdigit(buf[j]); j++)
-                continue;
-            if (j > i + 1 && buf[j] == '-')
+        if (filter) {
+            if (c == '(')
                 break;
+            if (c == ':' && i > 1)
+                break;
+            if (c == '-' && i > 1) {
+                /* match -[0-9]+- for grep -[ABC] output */
+                for (j = i + 1; qe_isdigit(buf[j]); j++)
+                    continue;
+                if (j > i + 1 && buf[j] == '-')
+                    break;
+            }
         }
         if (qe_isspace(c)) {
             if (len)
@@ -3614,12 +3618,11 @@ void shell_colorize_line(QEColorizeContext *cp,
         /* Detect patches and colorize according to filename */
         if (str[0] == '+' || str[0] == '-') {
             if (match_string(str, n, "+++ ") || match_string(str, n, "--- ")) {
-                shell_grab_filename(str + 4, n - 4, filename, countof(filename));
+                shell_grab_filename(str + 4, n - 4, filename, countof(filename), FALSE);
                 cp->colorize_state = qe_shell_find_mode(cp->s->qs, filename);
                 cp->colorize_state |= STATE_SHELL_SKIP | STATE_SHELL_KEEP;
                 return;
-            } else
-            if (match_string(str, n, "+") || match_string(str, n, "-")) {
+            } else {
                 start = 1;
             }
         } else
@@ -3629,6 +3632,9 @@ void shell_colorize_line(QEColorizeContext *cp,
             else
                 return;
         } else
+        if (match_string(str, n, "diff ") || match_string(str, n, "Only in ")) {
+            return;
+        } else
         if (match_string(str, n, "@@")) {
             /* patch diff location lines */
             cp->colorize_state &= STATE_SHELL_MASK;  /* reset potential comment state */
@@ -3637,7 +3643,7 @@ void shell_colorize_line(QEColorizeContext *cp,
         if (match_string(str, n, "==> ")) {
             /* head and tail file marker */
             i = 4;
-            i += shell_grab_filename(str + i, n - i, filename, countof(filename));
+            i += shell_grab_filename(str + i, n - i, filename, countof(filename), FALSE);
             if (match_string(str + i, n - i, " <==")) {
                 cp->colorize_state = qe_shell_find_mode(cp->s->qs, filename);
                 cp->colorize_state |= STATE_SHELL_KEEP;
@@ -3663,7 +3669,7 @@ void shell_colorize_line(QEColorizeContext *cp,
                         for (k = 0; commands[k]; k++) {
                             if ((w = match_string(str + i, n - i, commands[k])) != 0) {
                                 i += w;
-                                shell_grab_filename(str + i, n - i, filename, countof(filename));
+                                shell_grab_filename(str + i, n - i, filename, countof(filename), FALSE);
                                 cp->colorize_state = qe_shell_find_mode(cp->s->qs, filename);
                                 cp->colorize_state |= STATE_SHELL_KEEP;
                                 start = n;
@@ -3673,7 +3679,7 @@ void shell_colorize_line(QEColorizeContext *cp,
                     }
                 } else {
                     int mc;
-                    w = shell_grab_filename(str + i, n - i, filename, countof(filename));
+                    w = shell_grab_filename(str + i, n - i, filename, countof(filename), TRUE);
                     if (i == 0) {
                         char *p = strchr(filename, '@');
                         if (p != NULL && p > filename && p[-1] != ' ') {
