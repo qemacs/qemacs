@@ -716,6 +716,20 @@ void qe_strtolower(char *buf, int size, const char *str) {
     }
 }
 
+int qe_haslower(const char *str) {
+    /*@API utils
+       Check if a C string contains has ASCII lowercase letters.
+       @argument `str` a valid pointer to a C string
+       @return a boolean value, non zero if and only if the string contains
+       ASCII lowercase letters.
+     */
+    while (*str) {
+        if (qe_islower((unsigned char)*str++))
+            return 1;
+    }
+    return 0;
+}
+
 int memfind(const char *list, const char *s, int len) {
     /*@API utils.string
        Find a string fragment in a list of words separated by `|`.

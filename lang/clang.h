@@ -92,7 +92,8 @@ enum {
     CLANG_FLAVOR = 0x7F,
 };
 
-int get_c_identifier(char *buf, int buf_size, const char32_t *p, int flavor);
+int get_c_identifier(char *dest, int size, char32_t c,
+                     const char32_t *str, int i, int n, int flavor);
 void c_indent_line(EditState *s, int offset0);
 
 #endif /* CLANG_H */
