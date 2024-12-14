@@ -340,6 +340,10 @@ static void c_colorize_line(QEColorizeContext *cp,
                     if (!qe_isblank(prev))
                         break;
                 }
+                /* ignore end of comment in grep output */
+                if (start > indent && str[start - 1] == '*' && cp->partial_file)
+                    break;
+
                 if (!qe_findchar("])", prev)
                 &&  (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
                 ||   sbuf[i1] == C_STYLE_KEYWORD
@@ -1778,8 +1782,7 @@ static void js_colorize_line(QEColorizeContext *cp,
     int state = cp->colorize_state;
     //int type_decl;  /* unused */
 
-    indent = 0;
-    //indent = cp_skip_blanks(str, 0, n);
+    indent = cp_skip_blanks(str, 0, n);
     tag = !qe_isblank(str[0]) && (cp->s->mode == syn || cp->s->mode == &htmlsrc_mode);
 
     start = i;
@@ -1866,6 +1869,10 @@ static void js_colorize_line(QEColorizeContext *cp,
                     if (!qe_isblank(prev))
                         break;
                 }
+                /* ignore end of comment in grep output */
+                if (start > indent && str[start - 1] == '*' && cp->partial_file)
+                    break;
+
                 if (!qe_findchar("])", prev)
                 &&  (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
                 ||   sbuf[i1] == C_STYLE_KEYWORD
@@ -4427,8 +4434,7 @@ static void c3_colorize_line(QEColorizeContext *cp,
     int state = cp->colorize_state;
     //int type_decl;  /* unused */
 
-    indent = 0;
-    //indent = cp_skip_blanks(str, 0, n);
+    indent = cp_skip_blanks(str, 0, n);
     tag = !indent && cp->s->mode == syn;
     start = i;
     //type_decl = 0;

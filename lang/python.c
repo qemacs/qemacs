@@ -57,6 +57,7 @@ enum {
     PYTHON_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
     PYTHON_STYLE_FUNCTION = QE_STYLE_FUNCTION,
     PYTHON_STYLE_REGEX    = QE_STYLE_STRING,
+    PYTHON_STYLE_ANNOTATION = QE_STYLE_PREPROCESS,
 };
 
 enum {  // Python flavors
@@ -101,6 +102,11 @@ static void python_colorize_line(QEColorizeContext *cp,
         case '#':
             i = n;
             style = PYTHON_STYLE_COMMENT;
+            break;
+
+        case '@':
+            i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
+            style = PYTHON_STYLE_ANNOTATION;
             break;
 
         case '\'':
