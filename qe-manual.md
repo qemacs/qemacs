@@ -1965,23 +1965,28 @@ Convert a character to its numerical value as a hexadecimal digit
 
 Return the numerical value, or `-1` if the character is not a hex digit
 
-### `int get_c_identifier(char *buf, int buf_size, const char32_t *p, int flavor);`
+### `int get_c_identifier(char *dest, int size, char32_t c, const char32_t *str, int i0, int n, int flavor);`
 
-Grab a C ASCII identifier from a char32_t buffer for a given flavor.
+Grab an identifier from a `char32_t` buffer for a given C flavor,
+accept non-ASCII identifiers and encode in UTF-8.
 
-* argument `buf` a pointer to the destination array
+* argument `dest` a pointer to the destination array
 
-* argument `buf_size` the length of the destination array in bytes
+* argument `size` the length of the destination array in bytes
 
-* argument `p` a valid pointer to an array of codepoints
+* argument `c` the initial code point or `0` if none
+
+* argument `str` a valid pointer to an array of codepoints
+
+* argument `i` the index to the next codepoint
+
+* argument `n` the length of the codepoint array
 
 * argument `flavor` the language variant for identifier syntax
 
 Return the number of codepoints used in the source array.
 
 Note: `dest` can be a null pointer if `size` is `0`.
-
-Note: non-ASCII codepoints are accepted for CLANG_RUST but are not UTF-8 encoded
 
 ### `int32_t get_i8(const uint8_t *tab);`
 
@@ -2023,10 +2028,10 @@ Return the value read from memory
 
 Note: the value must be stored in memory in the native byte order
 
-### `int get_js_identifier(char *dest, int size, char32_t c, const char32_t *str, int i, int n);`
+### `int get_js_identifier(char *dest, int size, char32_t c, const char32_t *str, int i0, int n);`
 
-Grab an identifier from a char32_t buffer, accept non-ASCII identifiers
-and encode in UTF-8.
+Grab an identifier from a `char32_t` buffer,
+accept non-ASCII identifiers and encode in UTF-8.
 
 * argument `dest` a pointer to the destination array
 
@@ -2036,7 +2041,7 @@ and encode in UTF-8.
 
 * argument `str` a valid pointer to an array of codepoints
 
-* argument `i` the index to the next codepoint
+* argument `i0` the index to the next codepoint
 
 * argument `n` the length of the codepoint array
 

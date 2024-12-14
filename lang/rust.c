@@ -221,9 +221,7 @@ static void rust_colorize_line(QEColorizeContext *cp,
                 /* identifiers match:
                  * "[a-zA-Z_\x80-\xff][a-zA-Z_0-9\x80-\xff]*"
                  */
-                klen = get_c_identifier(kbuf, countof(kbuf),
-                                        str + start, CLANG_RUST);
-                i = start + klen;
+                i += get_c_identifier(kbuf, countof(kbuf), c, str, i, n, CLANG_RUST);
 
                 if (str[i] == '!'
                 &&  (str[i + 1] == '(' || strequal(kbuf, "macro_rules"))) {

@@ -27,16 +27,30 @@
 #include "clang.h"
 
 /* C mode options */
+#define CLANG_C_TYPES     0x00080   /* add C types to syn->types list */
+#define CLANG_C_KEYWORDS  0x00100   /* add C keywords to syn->keywords list */
 #define CLANG_LEX         0x00200
 #define CLANG_YACC        0x00400
-#define CLANG_REGEX       0x00800
-#define CLANG_WLITERALS   0x01000
-#define CLANG_PREPROC     0x02000
-#define CLANG_CAP_TYPE    0x04000  /* Mixed case initial cap is type */
-#define CLANG_STR3        0x08000  /* Support """strings""" */
-#define CLANG_LINECONT    0x10000  /* support \<newline> as line continuation */
+#define CLANG_REGEX       0x00800   /* recognize / delimited regular expressions */
+#define CLANG_WLITERALS   0x01000   /* recognize L, u, U, u8 string prefix */
+#define CLANG_PREPROC     0x02000   /* colorize preprocessing directives */
+#define CLANG_CAP_TYPE    0x04000   /* Mixed case initial cap is type */
+#define CLANG_STR3        0x08000   /* Support """strings""" */
+#define CLANG_LINECONT    0x10000   /* support \<newline> as line continuation */
 #define CLANG_NEST_COMMENTS  0x20000  /* block comments are nested */
-#define CLANG_CC          0x13100  /* all C language features */
+#define CLANG_T_TYPES     0x40000   /* _t suffix indicates type identifier */
+
+/* FIXME: need flags for
+   '@' in identifiers(start / next),
+   '$' in identifiers(start / next),
+   '-' in identifiers next
+   '#' as comment char
+   UnicodeIDStart and UnicodeIDContinue in identifiers
+ */
+
+/* all C language features */
+#define CLANG_CC          (CLANG_LINECONT | CLANG_WLITERALS | CLANG_PREPROC | \
+                           CLANG_C_KEYWORDS | CLANG_C_TYPES | CLANG_T_TYPES)
 
 static const char c_keywords[] = {
     "auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
@@ -70,69 +84,84 @@ static const char c_extensions[] = {
     "h.in|c.in|"        /* preprocessed C input (should use more generic approach) */
 };
 
-int get_c_identifier(char *buf, int buf_size, const char32_t *p, int flavor) {
+static int is_c_identifier_start(char32_t c, int flavor) {
+    // should accept unicode escape sequence, UnicodeIDStart
+    return (qe_isalpha_(c)
+        ||  c == '$'
+        ||  (c == '@' && flavor != CLANG_PIKE)
+        ||  (flavor == CLANG_RUST && c >= 128));
+}
+
+static int is_c_identifier_part(char32_t c, int flavor) {
+    // should accept unicode escape sequence, UnicodeIDContinue, ZWJ or ZWNJ
+    return (qe_isalnum_(c)
+        ||  (c == '-' && flavor == CLANG_CSS)
+        ||  (flavor == CLANG_RUST && c >= 128));
+}
+
+// FIXME: should merge into ustr_get_identifier()
+int get_c_identifier(char *dest, int size, char32_t c,
+                     const char32_t *str, int i0, int n, int flavor)
+{
     /*@API utils
-       Grab a C ASCII identifier from a char32_t buffer for a given flavor.
-       @argument `buf` a pointer to the destination array
-       @argument `buf_size` the length of the destination array in bytes
-       @argument `p` a valid pointer to an array of codepoints
+       Grab an identifier from a `char32_t` buffer for a given C flavor,
+       accept non-ASCII identifiers and encode in UTF-8.
+       @argument `dest` a pointer to the destination array
+       @argument `size` the length of the destination array in bytes
+       @argument `c` the initial code point or `0` if none
+       @argument `str` a valid pointer to an array of codepoints
+       @argument `i` the index to the next codepoint
+       @argument `n` the length of the codepoint array
        @argument `flavor` the language variant for identifier syntax
        @return the number of codepoints used in the source array.
        @note `dest` can be a null pointer if `size` is `0`.
-       @note non-ASCII codepoints are accepted for CLANG_RUST but are not UTF-8 encoded
      */
-    char32_t c;
-    int i, j;
+    int pos = 0, i = i0;
 
-    i = j = 0;
-    c = p[i];
-    if (qe_isalpha_(c)
-    ||  c == '$'
-    ||  (c == '@' && flavor != CLANG_PIKE)
-    ||  (flavor == CLANG_RUST && c >= 128)) {
-        for (;;) {
-            if (j < buf_size - 1) {
-                /* XXX: UTF-8 bug */
-                buf[j++] = (c < 0xFF) ? c : 0xFF;
-            }
-            i++;
-            c = p[i];
-            if (c == '-' && flavor == CLANG_CSS)
-                continue;
-            if (qe_isalnum_(c))
-                continue;
-            if (flavor == CLANG_RUST && c >= 128)
-                continue;
-            if (c == ':' && p[i + 1] == ':'
-            &&  flavor == CLANG_CPP
-            &&  qe_isalpha_(p[i + 2])) {
-                if (j < buf_size - 2) {
-                    buf[j++] = c;
-                    buf[j++] = c;
-                }
-                i += 2;
-                c = p[i];
-                continue;
-            }
-            break;
+    if (c == 0) {
+        if (!(i < n && is_c_identifier_start(c = str[i++], flavor))) {
+            if (size > 0)
+                *dest = '\0';
+            return 0;
         }
     }
-    buf[j] = '\0';
-    return i;
-}
-
-static int qe_haslower(const char *str) {
-    /*@API utils
-       Check if a C string contains has ASCII lowercase letters.
-       @argument `str` a valid pointer to a C string
-       @return a boolean value, non zero if and only if the string contains
-       ASCII lowercase letters.
-     */
-    while (*str) {
-        if (qe_islower((unsigned char)*str++))
-            return 1;
+    for (;; i++) {
+        if (c < 128) {
+            if (pos + 1 < size) {
+                dest[pos++] = c;
+            }
+        } else {
+            char buf[6];
+            int len = utf8_encode(buf, c);
+            if (pos + len < size) {
+                memcpy(dest + pos, buf, len);
+                pos += len;
+            } else {
+                size = pos + 1;
+            }
+        }
+        if (i >= n)
+            break;
+        c = str[i];
+        if (!is_c_identifier_part(c, flavor)) {
+            /* include ugly c++ :: separator in identifier */
+            if (c == ':' && str[i + 1] == ':'
+            &&  (flavor == CLANG_CPP || flavor == CLANG_C3)
+            &&  is_c_identifier_start(str[i + 2], flavor)) {
+                if (pos + 1 < size)
+                    dest[pos++] = ':';
+                if (pos + 1 < size)
+                    dest[pos++] = ':';
+                i += 2;
+                c = str[i];
+            } else {
+                break;
+            }
+        }
     }
-    return 0;
+    if (pos < size)
+        dest[pos] = '\0';
+    return i - i0;
 }
 
 enum {
@@ -176,7 +205,7 @@ static void c_colorize_line(QEColorizeContext *cp,
 {
     int i = 0, start, i1, i2, indent, level;
     int style, style0, style1, type_decl, tag;
-    char32_t c, prev, delim;
+    char32_t c, delim;
     char kbuf[64];
     int mode_flags = syn->colorize_flags;
     int flavor = (mode_flags & CLANG_FLAVOR);
@@ -219,8 +248,8 @@ static void c_colorize_line(QEColorizeContext *cp,
 
     while (i < n) {
         start = i;
+    reswitch:
         c = str[i++];
-
         switch (c) {
         case '*':
             /* lone star at the beginning of a line in a shell buffer
@@ -232,7 +261,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 i--;
                 goto parse_comment2;
             }
-            goto normal;
+            break;
         case '/':
             if (str[i] == '*') {
                 /* C style multi-line comment */
@@ -303,52 +332,53 @@ static void c_colorize_line(QEColorizeContext *cp,
                 SET_STYLE(sbuf, start, i, C_STYLE_COMMENT);
                 continue;
             }
-            /* XXX: should use more context to tell regex from divide */
-            prev = ' ';
-            for (i1 = start; i1 > indent; ) {
-                prev = str[--i1];
-                if (!qe_isblank(prev))
-                    break;
-            }
-            if ((mode_flags & CLANG_REGEX)
-            &&  !qe_findchar("])", prev)
-            &&  (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
-            ||   sbuf[i1] == C_STYLE_KEYWORD
-            ||   (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ')
-            &&    !(qe_isalnum(prev) || prev == ')')))) {
-                /* parse regex */
-                state |= IN_C_REGEX;
-                delim = '/';
-            parse_regex:
-                style = C_STYLE_REGEX;
-                while (i < n) {
-                    c = str[i++];
-                    if (c == '\\') {
-                        if (i < n) {
-                            i += 1;
-                        }
-                    } else
-                    if (state & IN_C_CHARCLASS) {
-                        if (c == ']') {
-                            state &= ~IN_C_CHARCLASS;
-                        }
-                        /* ECMA 5: ignore '/' inside char classes */
-                    } else {
-                        if (c == '[') {
-                            state |= IN_C_CHARCLASS;
-                        } else
-                        if (c == delim) {
-                            while (qe_isalnum_(str[i])) {
-                                i++;
+            if (mode_flags & CLANG_REGEX) {
+                /* XXX: should use more context to tell regex from divide */
+                char32_t prev = ' ';
+                for (i1 = start; i1 > indent; ) {
+                    prev = str[--i1];
+                    if (!qe_isblank(prev))
+                        break;
+                }
+                if (!qe_findchar("])", prev)
+                &&  (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
+                ||   sbuf[i1] == C_STYLE_KEYWORD
+                ||   (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ')
+                &&    !(qe_isalnum(prev) || prev == ')')))) {
+                    /* parse regex */
+                    state |= IN_C_REGEX;
+                    delim = '/';
+                parse_regex:
+                    style = C_STYLE_REGEX;
+                    while (i < n) {
+                        c = str[i++];
+                        if (c == '\\') {
+                            if (i < n) {
+                                i += 1;
                             }
-                            state &= ~IN_C_REGEX;
-                            style = style0;
-                            break;
+                        } else
+                        if (state & IN_C_CHARCLASS) {
+                            if (c == ']') {
+                                state &= ~IN_C_CHARCLASS;
+                            }
+                            /* ECMA 5: ignore '/' inside char classes */
+                        } else {
+                            if (c == '[') {
+                                state |= IN_C_CHARCLASS;
+                            } else
+                            if (c == delim) {
+                                while (qe_isalnum_(str[i])) {
+                                    i++;
+                                }
+                                state &= ~IN_C_REGEX;
+                                style = style0;
+                                break;
+                            }
                         }
                     }
+                    SET_STYLE(sbuf, start, i, C_STYLE_REGEX);
+                    continue;
                 }
-                SET_STYLE(sbuf, start, i, C_STYLE_REGEX);
-                continue;
             }
             break;
         case '%':
@@ -364,15 +394,6 @@ static void c_colorize_line(QEColorizeContext *cp,
                 SET_STYLE(sbuf, start, i, C_STYLE_PREPROCESS);
                 break;
             }
-            if (mode_flags & CLANG_PREPROC) {
-                state |= IN_C_PREPROCESS;
-                style = style0 = C_STYLE_PREPROCESS;
-            }
-            if (flavor == CLANG_D) {
-                /* only #line is supported, but can occur anywhere */
-                state |= IN_C_PREPROCESS;
-                style = style0 = C_STYLE_PREPROCESS;
-            }
             if (flavor == CLANG_AWK || flavor == CLANG_PHP
             ||  flavor == CLANG_LIMBO || flavor == CLANG_SQUIRREL) {
                 goto parse_comment1;
@@ -382,32 +403,38 @@ static void c_colorize_line(QEColorizeContext *cp,
                 goto parse_regex;
             }
             if (flavor == CLANG_HAXE || flavor == CLANG_CBANG) {
-                i += get_c_identifier(kbuf, countof(kbuf), str + i, flavor);
+                i += get_c_identifier(kbuf, countof(kbuf), 0, str, i, n, flavor);
                 // XXX: check for proper preprocessor directive?
                 SET_STYLE(sbuf, start, i, C_STYLE_PREPROCESS);
                 continue;
             }
             if (flavor == CLANG_PIKE) {
+                int klen;
                 if (str[i] == '\"') {
                     i++;
-                    goto parse_string;
+                    goto parse_string; // FIXME: accept embedded newlines
                 }
+                if (str[i] == '(') {
+                    // FIXME: parse literal strings until `#)`
+                }
+                if (str[i] == '[') {
+                    // FIXME: parse literal strings until `#]`
+                }
+                if (str[i] == '{') {
+                    // FIXME: parse literal strings until `#}`
+                }
+                if (ustr_match_keyword(str + i, "string", &klen)) {
+                    /* Pike's version of #embed */
+                    style = C_STYLE_PREPROCESS;
+                    i += klen;
+                    break;
+                }
+            }
+            if (mode_flags & CLANG_PREPROC) {
                 state |= IN_C_PREPROCESS;
                 style = style0 = C_STYLE_PREPROCESS;
             }
             break;
-        case 'L':       /* wide character and string literals */
-            if (mode_flags & CLANG_WLITERALS) {
-                if (str[i] == '\'') {
-                    i++;
-                    goto parse_string_q;
-                }
-                if (str[i] == '\"') {
-                    i++;
-                    goto parse_string;
-                }
-            }
-            goto normal;
         // case 'r':
             /* XXX: D language r" wysiwyg chars " */
         // case 'X':
@@ -424,6 +451,7 @@ static void c_colorize_line(QEColorizeContext *cp,
             delim = '\'';
             goto string;
         case '`':
+            // FIXME: Support `operator in Pike
             if (flavor == CLANG_SCALA || flavor == CLANG_GMSCRIPT) {
                 /* scala quoted identifier */
                 while (i < n) {
@@ -464,9 +492,9 @@ static void c_colorize_line(QEColorizeContext *cp,
                     /* ignore escape sequences and newlines */
                     state |= IN_C_STRING_D;   // XXX: IN_RAW_STRING
                     style1 = C_STYLE_STRING;
-                    delim = str[i];
+                    delim = str[i++];
                     style = style1;
-                    for (i++; i < n;) {
+                    while (i < n) {
                         c = str[i++];
                         if (c == delim) {
                             if (str[i] == c) {
@@ -588,11 +616,15 @@ static void c_colorize_line(QEColorizeContext *cp,
                 SET_STYLE(sbuf, start, i, C_STYLE_NUMBER);
                 continue;
             }
-            if (qe_isalpha_(c) || c == '$' || (c == '@' && flavor != CLANG_PIKE)) {
-                /* XXX: should support :: */
-                i = start + get_c_identifier(kbuf, countof(kbuf), str + start, flavor);
+            if (is_c_identifier_start(c, flavor)) {
+                i += get_c_identifier(kbuf, countof(kbuf), c, str, i, n, flavor);
+                if (str[i] == '\'' || str[i] == '\"') {
+                    /* check for encoding prefix */
+                    if ((mode_flags & CLANG_WLITERALS) && strfind("L|u|U|u8", kbuf))
+                        goto reswitch;
+                }
                 if (strfind(syn->keywords, kbuf)
-                ||  ((mode_flags & CLANG_CC) && strfind(c_keywords, kbuf))
+                ||  ((mode_flags & CLANG_C_KEYWORDS) && strfind(c_keywords, kbuf))
                 ||  ((flavor == CLANG_CSS) && str[i] == ':')) {
                     SET_STYLE(sbuf, start, i, C_STYLE_KEYWORD);
                     continue;
@@ -610,11 +642,9 @@ static void c_colorize_line(QEColorizeContext *cp,
                 if ((start == 0 || str[start - 1] != '.')
                 &&  (!qe_findchar(".(:", str[i]) || flavor == CLANG_PIKE)
                 &&  (sreg_match(syn->types, kbuf, 1)
-                ||   ((mode_flags & CLANG_CC) && strfind(c_types, kbuf))
-                ||   (((mode_flags & CLANG_CC) || (flavor == CLANG_D)) &&
-                     strend(kbuf, "_t", NULL))
-                ||   ((mode_flags & CLANG_CAP_TYPE) &&
-                      qe_isupper(c) && qe_haslower(kbuf))
+                ||   ((mode_flags & CLANG_C_TYPES) && strfind(c_types, kbuf))
+                ||   ((mode_flags & CLANG_T_TYPES) && strend(kbuf, "_t", NULL))
+                ||   ((mode_flags & CLANG_CAP_TYPE) && qe_isupper(c) && qe_haslower(kbuf))
                 ||   (flavor == CLANG_HAXE && qe_isupper(c) && qe_haslower(kbuf) &&
                       (start == 0 || !qe_findchar("(", str[start - 1]))))) {
                     /* if not cast, assume type declaration */
@@ -759,7 +789,7 @@ static int c_line_has_label(EditState *s, const char32_t *buf, int len,
                             const QETermStyle *sbuf)
 {
     char kbuf[64];
-    int i, j, style;
+    int i, style;
 
     i = cp_skip_blanks(buf, 0, len);
 
@@ -770,10 +800,10 @@ static int c_line_has_label(EditState *s, const char32_t *buf, int len,
     ||  style == C_STYLE_PREPROCESS)
         return 0;
 
-    j = get_c_identifier(kbuf, countof(kbuf), buf + i, CLANG_C);
+    i += get_c_identifier(kbuf, countof(kbuf), 0, buf, i, len, CLANG_C);
     if (style == C_STYLE_KEYWORD && strfind("case|default", kbuf))
         return 1;
-    i = cp_skip_blanks(buf, i + j, len);
+    i = cp_skip_blanks(buf, i, len);
     return (buf[i] == ':');
 }
 
@@ -1367,8 +1397,8 @@ ModeDef c_mode = {
     .mode_probe = c_mode_probe,
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_C | CLANG_CC,
-    .keywords = c_keywords,
-    .types = c_types,
+    .keywords = "", //c_keywords,
+    .types = "", //c_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
 };
@@ -1509,24 +1539,31 @@ static ModeDef carbon_mode = {
 /*---------------- C2 language ----------------*/
 
 static const char c2_keywords[] = {
-    // should remove C keywords:
-    //"extern|static|typedef|long|short|signed|unsigned|"
-    /* new C2 keywords */
-    "module|import|as|public|local|type|func|nil|elemsof|"
-    /* boolean values */
-    "false|true|"
+    // Module related
+    "module|import|as|public|"
+    // Types -> c2_types
+    // Type related
+    "auto|asm|cast|const|elemsof|enum|enum_min|enum_max|"
+    "false|fn|local|nil|offsetof|to_container|public|"
+    "sizeof|struct|template|true|type|union|volatile|"
+    // Control flow related
+    "break|case|continue|default|do|else|fallthrough|"
+    "for|goto|if|return|switch|sswitch|while|"
+    // other
+    "assert|static_assert"
 };
 
 static const char c2_types[] = {
-    "bool|int8|int16|int32|int64|uint8|uint16|uint32|uint64|"
-    "float32|float64|"
+    "bool|i8|i16|i32|i64|u8|u16|u32|u64|isize|usize|f32|f64|void|"
+    "reg8|reg16|reg32|reg64|"
+    "char"  // same as i8, a design error
 };
 
 static ModeDef c2_mode = {
     .name = "C2",
-    .extensions = "c2|c2h|c2t",
+    .extensions = "c2|c2h|c2i|c2t",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_C2 | CLANG_CC,
+    .colorize_flags = CLANG_C2 | CLANG_PREPROC | CLANG_CAP_TYPE,
     .keywords = c2_keywords,
     .types = c2_types,
     .indent_func = c_indent_line,
@@ -1677,55 +1714,55 @@ static int is_js_identifier_part(char32_t c) {
     return (qe_isalnum_(c) || c == '$' || c >= 128);
 }
 
+// FIXME: should merge into ustr_get_identifier()
 static int get_js_identifier(char *dest, int size, char32_t c,
-                             const char32_t *str, int i, int n)
+                             const char32_t *str, int i0, int n)
 {
     /*@API utils
-       Grab an identifier from a char32_t buffer, accept non-ASCII identifiers
-       and encode in UTF-8.
+       Grab an identifier from a `char32_t` buffer,
+       accept non-ASCII identifiers and encode in UTF-8.
        @argument `dest` a pointer to the destination array
        @argument `size` the length of the destination array in bytes
        @argument `c` the initial code point or `0` if none
        @argument `str` a valid pointer to an array of codepoints
-       @argument `i` the index to the next codepoint
+       @argument `i0` the index to the next codepoint
        @argument `n` the length of the codepoint array
        @return the number of codepoints used in the source array.
        @note `dest` can be a null pointer if `size` is `0`.
      */
-    int pos = 0, j = i;
+    int pos = 0, i = i0;
 
     if (c == 0) {
-        if (!(j < n && is_js_identifier_start(c = str[j++]))) {
+        if (!(i < n && is_js_identifier_start(c = str[i++]))) {
             if (size > 0)
                 *dest = '\0';
             return 0;
         }
     }
-
-    for (;; j++) {
+    for (;; i++) {
         if (c < 128) {
-            if (pos < size - 1) {
+            if (pos + 1 < size) {
                 dest[pos++] = c;
             }
         } else {
             char buf[6];
-            int i1, len = utf8_encode(buf, c);
-            for (i1 = 0; i1 < len; i1++) {
-                if (pos < size - 1) {
-                    dest[pos++] = buf[i1];
-                }
+            int len = utf8_encode(buf, c);
+            if (pos + len < size) {
+                memcpy(dest + pos, buf, len);
+                pos += len;
+            } else {
+                size = pos + 1;
             }
         }
-        if (j >= n)
+        if (i >= n)
             break;
-        c = str[j];
-        // should use unicode_alpha test
+        c = str[i];
         if (!is_js_identifier_part(c))
             break;
     }
     if (pos < size)
         dest[pos] = '\0';
-    return j - i;
+    return i - i0;
 }
 
 static void js_colorize_line(QEColorizeContext *cp,
@@ -1734,7 +1771,7 @@ static void js_colorize_line(QEColorizeContext *cp,
 {
     int i = 0, start, i1, indent;
     int style, tag, level;
-    char32_t c, prev, delim;
+    char32_t c, delim;
     char kbuf[64];
     int mode_flags = syn->colorize_flags;
     int flavor = (mode_flags & CLANG_FLAVOR);
@@ -1773,12 +1810,18 @@ static void js_colorize_line(QEColorizeContext *cp,
     while (i < n) {
         start = i;
         c = str[i++];
-
         switch (c) {
         case '*':
-            if (start == indent && cp->partial_file)
+            /* lone star at the beginning of a line in a shell buffer
+             * is treated as a comment start.  This improves colorization
+             * of diff and git output.
+             */
+            if (start == indent && cp->partial_file
+            &&  (i == n || str[i] == ' ' || str[i] == '/')) {
+                i--;
                 goto parse_comment2;
-            goto normal;
+            }
+            continue;
         case '/':
             if (str[i] == '*') {
                 /* C style multi-line comment */
@@ -1815,60 +1858,64 @@ static void js_colorize_line(QEColorizeContext *cp,
                 i = n;
                 break;
             }
-            /* XXX: should use more context to tell regex from divide */
-            prev = ' ';
-            for (i1 = start; i1 > indent; ) {
-                prev = str[--i1];
-                if (!qe_isblank(prev))
-                    break;
-            }
-            if ((mode_flags & CLANG_REGEX)
-            &&  !qe_findchar("])", prev)
-            &&  (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
-            ||   sbuf[i1] == C_STYLE_KEYWORD
-            ||   (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ')
-            &&    !(qe_isalnum(prev) || prev == ')')))) {
-                /* parse regex */
-                state |= IN_C_REGEX;
-                delim = '/';
-            parse_regex:
-                style = C_STYLE_REGEX;
-                while (i < n) {
-                    c = str[i++];
-                    if (c == '\\') {
-                        if (i < n) {
-                            i += 1;
-                        }
-                    } else
-                    if (state & IN_C_CHARCLASS) {
-                        if (c == ']') {
-                            state &= ~IN_C_CHARCLASS;
-                        }
-                        /* ECMA 5: ignore '/' inside char classes */
-                    } else {
-                        if (c == '[') {
-                            state |= IN_C_CHARCLASS;
-                        } else
-                        if (c == delim) {
-                            while (qe_isalnum_(str[i])) {
-                                i++;
+            if (mode_flags & CLANG_REGEX) {
+                /* XXX: should use more context to tell regex from divide */
+                char32_t prev = ' ';
+                for (i1 = start; i1 > indent; ) {
+                    prev = str[--i1];
+                    if (!qe_isblank(prev))
+                        break;
+                }
+                if (!qe_findchar("])", prev)
+                &&  (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
+                ||   sbuf[i1] == C_STYLE_KEYWORD
+                ||   (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ')
+                &&    !(qe_isalnum(prev) || prev == ')')))) {
+                    /* parse regex */
+                    state |= IN_C_REGEX;
+                    delim = '/';
+                parse_regex:
+                    style = C_STYLE_REGEX;
+                    while (i < n) {
+                        c = str[i++];
+                        if (c == '\\') {
+                            if (i < n) {
+                                i += 1;
                             }
-                            state &= ~IN_C_REGEX;
-                            break;
+                        } else
+                        if (state & IN_C_CHARCLASS) {
+                            if (c == ']') {
+                                state &= ~IN_C_CHARCLASS;
+                            }
+                            /* ECMA 5: ignore '/' inside char classes */
+                        } else {
+                            if (c == '[') {
+                                state |= IN_C_CHARCLASS;
+                            } else
+                            if (c == delim) {
+                                while (qe_isalnum_(str[i])) {
+                                    i++;
+                                }
+                                state &= ~IN_C_REGEX;
+                                break;
+                            }
                         }
                     }
+                    break;
                 }
-                break;
             }
             continue;
         case '#':       /* preprocessor */
-            /* v8: #include */
-            if (start == 0 &&
-                (str[i] == '!' ||
-                 (flavor == CLANG_V8 &&
-                  ustrstart(str + i + 1, "include", NULL))))
-            {
+            if (start == 0 && str[i] == '!') {
                 /* recognize a shebang comment line */
+                style = C_STYLE_PREPROCESS;
+                i = n;
+                break;
+            }
+            if (flavor == CLANG_V8 && start == 0
+            &&  ustrstart(str + i + 1, "include", NULL)) {
+                /* v8: #include */
+                // FIXME: handle multiline comments
                 style = C_STYLE_PREPROCESS;
                 i = n;
                 break;
@@ -1968,7 +2015,6 @@ static void js_colorize_line(QEColorizeContext *cp,
             tag = 0;
             continue;
         default:
-        normal:
             if (qe_isdigit(c)) {
                 /* XXX: should parse actual number syntax */
                 /* decimal, binary, octal and hexadecimal literals:
@@ -2546,7 +2592,8 @@ static ModeDef d_mode = {
     .name = "D",
     .extensions = "d|di",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_D,
+    /* only #line is supported, but can occur anywhere */
+    .colorize_flags = CLANG_D | CLANG_PREPROC | CLANG_T_TYPES,
     .keywords = d_keywords,
     .types = d_types,
     .indent_func = c_indent_line,
@@ -2783,15 +2830,17 @@ static ModeDef dart_mode = {
 /*---------------- Pike programming language ----------------*/
 
 static const char pike_keywords[] = {
-    "break|case|catch|class|constant|continue|default|do|else|enum|extern|"
+    "auto|break|case|catch|class|constant|continue|const|default|do|else|enum|extern|"
     "final|for|foreach|gauge|global|if|import|inherit|inline|"
-    "lambda|local|nomask|optional|predef|"
-    "private|protected|public|return|sscanf|static|switch|typedef|typeof|"
-    "while|__attribute__|__deprecated__|__func__|"
+    "lambda|local|optional|predef|private|protected|public|"
+    "return|sscanf|static|switch|throw|typedef|typeof|while|"
+    "_Static_assert|__async__|__attribute__|__deprecated__|"
+    "__experimental__|__func__|__generic__|__generator__|__weak__|"
+    "__unused__|__unknown__"
 };
 
 static const char pike_types[] = {
-    "array|float|int|string|function|mapping|multiset|mixed|object|program|"
+    "array|float|int|string|function|mapping|mixed|multiset|object|program|"
     "variant|void|"
 };
 
@@ -2799,7 +2848,7 @@ static ModeDef pike_mode = {
     .name = "Pike",
     .extensions = "pike",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_PIKE,
+    .colorize_flags = CLANG_PIKE | CLANG_PREPROC,
     .keywords = pike_keywords,
     .types = pike_types,
     .indent_func = c_indent_line,
@@ -4401,8 +4450,8 @@ static void c3_colorize_line(QEColorizeContext *cp,
 
     while (i < n) {
         start = i;
+    reswitch:
         c = str[i++];
-
         switch (c) {
         case '*':
             if ((state & IN_C3_CONTRACTS) && str[i] == '>') {
@@ -4411,9 +4460,16 @@ static void c3_colorize_line(QEColorizeContext *cp,
                 style = C3_STYLE_PREPROCESS;
                 break;
             }
-            if (start == indent && cp->partial_file)
+            /* lone star at the beginning of a line in a shell buffer
+             * is treated as a comment start.  This improves colorization
+             * of diff and git output.
+             */
+            if (start == indent && cp->partial_file
+            &&  (i == n || str[i] == ' ' || str[i] == '/')) {
+                i--;
                 goto parse_comment2;
-            goto normal;
+            }
+            continue;
         case '/':
             if (str[i] == '*') {
                 /* C style multi-line comment */
@@ -4524,9 +4580,8 @@ static void c3_colorize_line(QEColorizeContext *cp,
         case '(':
         case '{':
             tag = 0;
-            break;
+            continue;
         default:
-        normal:
             if (qe_isdigit(c)) {
                 /* XXX: should parse actual number syntax */
                 /* decimal, binary, octal and hexadecimal literals:
@@ -4543,7 +4598,11 @@ static void c3_colorize_line(QEColorizeContext *cp,
                 i += get_js_identifier(kbuf, countof(kbuf), c, str, i, n);
                 if (cp->state_only)
                     continue;
-
+                if (str[i] == '\'' || str[i] == '\"') {
+                    /* check for encoding prefix */
+                    if (strfind("x|b64", kbuf))
+                        goto reswitch;
+                }
                 /* keywords used as object property tags are regular identifiers.
                  * `default` is always considered a keyword as the context cannot be
                  * determined precisely by this simplistic lexical parser */
