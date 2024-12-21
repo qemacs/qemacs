@@ -2816,7 +2816,8 @@ static int get_indent_size(EditState *s, int p1, int p2) {
 /* mode=0: fill the current paragraph
  * mode=1: fill all paragraphs in the current region
  * mode=2: fill all paragraphs in the buffer
- * mode=3: fill region as paragraph
+ * mode=3: fill whole region as single paragraph
+ * if region is active, use mode=1 instead of mode=0
  */
 void do_fill_paragraph(EditState *s, int mode, int argval)
 {
@@ -2843,8 +2844,9 @@ void do_fill_paragraph(EditState *s, int mode, int argval)
     if (!eb_is_blank_line(b, par_start, NULL))
         par_start = eb_prev_paragraph(b, par_start);
 
+    offset = par_start;
     for (;;) {
-        par_start = eb_skip_blank_lines(b, par_start, 1);
+        par_start = eb_skip_blank_lines(b, offset, 1);
 
         /* did we reach the end of the region? */
         if (par_start >= end)
@@ -2854,9 +2856,12 @@ void do_fill_paragraph(EditState *s, int mode, int argval)
         par_end = end;
         if (mode != 3)
             par_end = eb_next_paragraph(b, par_start);
-        indent0_size = get_indent_size(s, par_start, par_end);
+        if (end < par_end)
+            end = par_end;
+        indent_size = indent0_size = get_indent_size(s, par_start, par_end);
         offset = eb_next_line(b, par_start);
-        indent_size = get_indent_size(s, offset, par_end);
+        if (offset < par_end)
+            indent_size = get_indent_size(s, offset, par_end);
 
         /* reflow words to fill lines */
         col = 0;
@@ -2888,10 +2893,11 @@ void do_fill_paragraph(EditState *s, int mode, int argval)
                 col += indent0_size + word_size;
             } else {
                 if (word_start == offset) {
-                    /* space at end of paragraph: append a newline */
+                    /* space at end of paragraph: replace with a newline */
                     nb = eb_respace(b, chunk_start, word_start, 1, 0);
-                    if (end >= word_start)
-                        end += nb;
+                    offset += nb;
+                    par_end += nb;
+                    end += nb;
                     break;
                 }
                 if (col + 1 + word_size > b->fill_column) {
