@@ -31,14 +31,21 @@
 enum {
     SHARP_STYLE_TEXT =       QE_STYLE_DEFAULT,
     SHARP_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    SHARP_STYLE_STRING =     QE_STYLE_STRING,
+    SHARP_STYLE_CONFIG =     QE_STYLE_PREPROCESS,
 };
+
+#define SHARP_STRING1  2
+#define SHARP_STRING2  4
+#define SHARP_CONFIG   8
 
 static void sharp_colorize_line(QEColorizeContext *cp,
                                 const char32_t *str, int n,
                                 QETermStyle *sbuf, ModeDef *syn)
 {
-    int i = 0, start;
+    int i = 0, start, style = SHARP_STYLE_TEXT;
     char32_t c;
+    int mode_flags = syn->colorize_flags;
 
     while (i < n) {
         start = i;
@@ -46,11 +53,34 @@ static void sharp_colorize_line(QEColorizeContext *cp,
         switch (c) {
         case '#':
             i = n;
-            SET_STYLE(sbuf, start, i, SHARP_STYLE_COMMENT);
+            style = SHARP_STYLE_COMMENT;
+            break;
+        case '\'':
+            if (mode_flags & SHARP_STRING1)
+                goto parse_string;
+            continue;
+        case '\"':
+            if (mode_flags & SHARP_STRING2)
+                goto parse_string;
+            continue;
+        parse_string:
+            while (i < n && str[i++] != c)
+                continue;
+            style = SHARP_STYLE_STRING;
+            break;
+        case '$':
+            if (mode_flags & SHARP_CONFIG) {
+                while (i < n && !qe_isspace(str[i]))
+                    i++;
+                style = SHARP_STYLE_CONFIG;
+                break;
+            }
             continue;
         default:
-            break;
+            continue;
         }
+        SET_STYLE(sbuf, start, i, style);
+        style = SHARP_STYLE_TEXT;
     }
 }
 
@@ -58,7 +88,8 @@ static int sharp_mode_probe(ModeDef *mode, ModeProbeData *pd)
 {
     const char *p = cs8(pd->buf);
 
-    if (stristart(pd->filename, ".gitignore", NULL))
+    if (stristart(pd->filename, ".gitignore", NULL)
+    ||  stristart(pd->filename, ".clang-format", NULL))
         return 70;
 
     while (qe_isspace(*p))
@@ -75,56 +106,45 @@ static int sharp_mode_probe(ModeDef *mode, ModeProbeData *pd)
 static ModeDef sharp_mode = {
     .name = "sharp",
     .mode_probe = sharp_mode_probe,
+    .colorize_flags = 0,
     .colorize_func = sharp_colorize_line,
 };
 
 /*---------------- Yaml file coloring ----------------*/
 
-/* Very simple colorizer: # introduces comments, strings */
-
-enum {
-    YAML_STYLE_TEXT =       QE_STYLE_DEFAULT,
-    YAML_STYLE_COMMENT =    QE_STYLE_COMMENT,
-    YAML_STYLE_STRING =     QE_STYLE_STRING,
-};
-
-static void yaml_colorize_line(QEColorizeContext *cp,
-                               const char32_t *str, int n,
-                               QETermStyle *sbuf, ModeDef *syn)
-{
-    int i = 0, start;
-    char32_t c;
-
-    while (i < n) {
-        start = i;
-        c = str[i++];
-        switch (c) {
-        case '#':
-            i = n;
-            SET_STYLE(sbuf, start, i, YAML_STYLE_COMMENT);
-            continue;
-        case '\'':
-        case '\"':
-            while (i < n && str[i++] != c)
-                continue;
-            SET_STYLE(sbuf, start, i, YAML_STYLE_STRING);
-            continue;
-        default:
-            break;
-        }
-    }
-}
+/* Very simple colorizer: comments, strings */
 
 static ModeDef yaml_mode = {
     .name = "Yaml",
     .extensions = "yaml|yml",
-    .colorize_func = yaml_colorize_line,
+    .colorize_flags = SHARP_STRING1 | SHARP_STRING2,
+    .colorize_func = sharp_colorize_line,
+};
+
+/*---------------- C2 recipe file coloring ----------------*/
+
+/* Very simple colorizer: comments, strings, config */
+
+static int recipe_mode_probe(ModeDef *mode, ModeProbeData *pd)
+{
+    if (stristart(pd->filename, "recipe.txt", NULL))
+        return 70;
+
+    return 1;
+}
+
+static ModeDef recipe_mode = {
+    .name = "C2-recipe",
+    .mode_probe = recipe_mode_probe,
+    .colorize_flags = SHARP_STRING1 | SHARP_STRING2 | SHARP_CONFIG,
+    .colorize_func = sharp_colorize_line,
 };
 
 static int sharp_init(QEmacsState *qs)
 {
     qe_register_mode(qs, &sharp_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &yaml_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &recipe_mode, MODEF_SYNTAX);
     return 0;
 }
 
