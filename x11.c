@@ -325,8 +325,10 @@ static int x11_dpy_init(QEditScreen *s, QEmacsState *qs, int w, int h)
         if (vinfo) {
             xs->visual_depth = vinfo->depth;
         }
+        XFree(vinfo);
     }
-
+    
+    
     xs->xim = XOpenIM(xs->display, NULL, NULL, NULL);
     xs->xic = XCreateIC(xs->xim, XNInputStyle,
                         XIMPreeditNothing | XIMStatusNothing,
@@ -448,15 +450,32 @@ static void xv_init(QEditScreen *s)
         s->video_format = QEBITMAP_FORMAT_YUV420P;
     }
 }
+
+static void xv_close(QEditScreen *s)
+{
+    X11State *xs = s->priv_data;
+
+    XFree(xs->xv_fo);
+    XvFreeAdaptorInfo(xs->xv_ai);
+}
+
 #endif
 
 static void x11_dpy_close(QEditScreen *s)
 {
     X11State *xs = s->priv_data;
 
+#ifdef CONFIG_XV
+    xv_close(s);
+#endif
+
 #ifdef CONFIG_DOUBLE_BUFFER
     XFreePixmap(xs->display, xs->dbuffer);
 #endif
+
+    XFreeGC(xs->display, xs->gc_pixmap);
+    XFreeGC(xs->display, xs->gc);    
+
     XCloseDisplay(xs->display);
     qe_free(&s->priv_data);
 }
