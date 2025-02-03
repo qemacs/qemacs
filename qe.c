@@ -11633,7 +11633,7 @@ static void qe_load_all_modules(QEmacsState *qs)
     char filename[MAX_FILENAME_SIZE];
     void *h;
     void *sym;
-    int (*init_func)(void);
+    int (*init_func)(QEmacsState *);
 
     ec = qs->ec;
     qs->ec.function = "load-all-modules";
@@ -11677,7 +11677,7 @@ static void qe_load_all_modules(QEmacsState *qs)
         }
 
         /* all is OK: we can init the module now */
-        (*init_func)();
+        (*init_func)(qs);
     }
     find_file_close(&ffst);
 

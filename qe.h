@@ -646,10 +646,10 @@ void eb_delete_properties(EditBuffer *b, int offset, int offset2);
 /* dynamic module case */
 
 #define qe_module_init(fn) \
-        int qe__module_init(QEmacsState *qs) { return fn(qs); }
+        int __qe_module_init(QEmacsState *qs) { return fn(qs); }
 
 #define qe_module_exit(fn) \
-        void qe__module_exit(QEmacsState *qs) { fn(qs); }
+        void __qe_module_exit(QEmacsState *qs) { fn(qs); }
 
 #else /* QE_MODULE */
 
