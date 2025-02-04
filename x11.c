@@ -327,8 +327,7 @@ static int x11_dpy_init(QEditScreen *s, QEmacsState *qs, int w, int h)
         }
         XFree(vinfo);
     }
-    
-    
+
     xs->xim = XOpenIM(xs->display, NULL, NULL, NULL);
     xs->xic = XCreateIC(xs->xim, XNInputStyle,
                         XIMPreeditNothing | XIMStatusNothing,
@@ -458,7 +457,6 @@ static void xv_close(QEditScreen *s)
     XFree(xs->xv_fo);
     XvFreeAdaptorInfo(xs->xv_ai);
 }
-
 #endif
 
 static void x11_dpy_close(QEditScreen *s)
@@ -474,7 +472,7 @@ static void x11_dpy_close(QEditScreen *s)
 #endif
 
     XFreeGC(xs->display, xs->gc_pixmap);
-    XFreeGC(xs->display, xs->gc);    
+    XFreeGC(xs->display, xs->gc);
 
     XCloseDisplay(xs->display);
     qe_free(&s->priv_data);
