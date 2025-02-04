@@ -54,6 +54,7 @@ enum {
     LUA_STYLE_LONGLIT =  QE_STYLE_STRING,
     LUA_STYLE_NUMBER =   QE_STYLE_NUMBER,
     LUA_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
+    LUA_STYLE_TYPE =     QE_STYLE_TYPE,
     LUA_STYLE_FUNCTION = QE_STYLE_FUNCTION,
 };
 
@@ -182,6 +183,12 @@ static void lua_colorize_line(QEColorizeContext *cp,
                     SET_STYLE(sbuf, start, i, LUA_STYLE_FUNCTION);
                     continue;
                 }
+                if (syn->types
+                &&  (strfind(syn->types, kbuf)
+                ||   (qe_isupper(c) && qe_islower(kbuf[1])))) {
+                    SET_STYLE(sbuf, start, i, LUA_STYLE_TYPE);
+                    continue;
+                }
                 continue;
             }
             break;
@@ -198,9 +205,32 @@ static ModeDef lua_mode = {
     .colorize_func = lua_colorize_line,
 };
 
+static char const teal_keywords[] = {
+    "|and|break|do|else|elseif|end|false|for|function|goto|if|in"
+    "|local|nil|not|or|repeat|require|return|then|true|until|while"
+    "|self|record|interface|enum|type|is|where"
+    "|"
+};
+
+static char const teal_types[] = {
+    // other types start with a capital letter
+    "|any|boolean|integer|number|string|FILE"
+    "|"
+};
+
+static ModeDef teal_mode = {
+    .name = "Teal",
+    .extensions = "tl",
+    .shell_handlers = "tl",
+    .keywords = teal_keywords,
+    .types = teal_types,
+    .colorize_func = lua_colorize_line,
+};
+
 static int lua_init(QEmacsState *qs)
 {
     qe_register_mode(qs, &lua_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &teal_mode, MODEF_SYNTAX);
     return 0;
 }
 
