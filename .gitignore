@@ -43,10 +43,10 @@ t
 tt
 ttt
 # uncommitted-files
-STATS
 BUGS
 DONE
 IDEAS
+STATS
+TAGS
 .qerc
 cflags.mk
-TAGS
