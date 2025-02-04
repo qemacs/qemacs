@@ -1087,6 +1087,30 @@ static void x11_dpy_flush(QEditScreen *s)
     update_reset(xs);
 #endif
 }
+static void set_window_bordered(QEditScreen *s, int border) {
+    X11State *xs = s->priv_data;
+    
+    Atom WM_HINTS = XInternAtom(xs->display, "_MOTIF_WM_HINTS", True);
+    if (WM_HINTS != None) {
+        // Hints used by Motif compliant window managers
+        struct
+        {
+            unsigned long flags;
+            unsigned long functions;
+            unsigned long decorations;
+            long input_mode;
+            unsigned long status;
+        } MWMHints = {
+            (1L << 1), 0, border ? 1 : 0, 0, 0
+        };
+
+        XChangeProperty(xs->display, xs->window, WM_HINTS, WM_HINTS, 32,
+                            PropModeReplace, (unsigned char *)&MWMHints,
+                            sizeof(MWMHints) / sizeof(long));
+    } else {
+        XSetTransientForHint(xs->display, xs->window, RootWindow(xs->display, xs->xscreen));
+    }
+}
 
 static void x11_dpy_full_screen(QEditScreen *s, int full_screen)
 {
@@ -1097,6 +1121,7 @@ static void x11_dpy_full_screen(QEditScreen *s, int full_screen)
     XGetWindowAttributes(xs->display, xs->window, &attr1);
     if (full_screen) {
         if (attr1.width != xs->screen_width || attr1.height != xs->screen_height) {
+            set_window_bordered(s, 0);
             /* store current window position and size */
             XTranslateCoordinates(xs->display, xs->window, attr1.root, 0, 0,
                                   &xs->last_window_x, &xs->last_window_y, &win);
@@ -1107,6 +1132,7 @@ static void x11_dpy_full_screen(QEditScreen *s, int full_screen)
         }
     } else {
         if (xs->last_window_width) {
+            set_window_bordered(s, 1);
             XMoveResizeWindow(xs->display, xs->window,
                               xs->last_window_x, xs->last_window_y,
                               xs->last_window_width, xs->last_window_height);
