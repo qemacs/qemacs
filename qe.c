@@ -9306,9 +9306,9 @@ static void quit_examine_buffers(QuitState *is)
         if (use_session_file)
             do_save_session(qs->active_window, 0);
 #endif
-        qe_free(&is);
         url_exit();
     }
+    qe_free(&is);
 }
 
 static void quit_key(void *opaque, int ch)
