@@ -374,6 +374,17 @@ static void css_init_idents(void)
     }
 }
 
+static void css_free_idents(void)
+{
+    int i;
+
+    for (i = 0; i < table_ident_nb; i++)
+        qe_free(&table_ident[i]);
+    qe_free(&table_ident);
+    table_ident_nb = table_ident_allocated = 0;
+    memset(hash_ident, 0, sizeof(hash_ident));
+}
+
 /****************************************************/
 
 /* set a counter in the current element to value "value". If not
@@ -4608,4 +4619,9 @@ void css_delete_document(CSSContext **sp)
 void css_init(void)
 {
     css_init_idents();
+}
+
+void css_exit(void)
+{
+    css_free_idents();
 }

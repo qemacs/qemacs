@@ -7839,6 +7839,17 @@ StringArray *qe_get_history(QEmacsState *qs, const char *name) {
     return &p->history;
 }
 
+#ifndef CONFIG_TINY
+static void qe_free_history_list(QEmacsState *qs) {
+    HistoryEntry *p;
+    while ((p = qs->first_history) != NULL) {
+        qs->first_history = p->next;
+        free_strings(&p->history);
+        qe_free(&p);
+    }
+}
+#endif
+
 void do_minibuffer_history(EditState *s, int n)
 {
     QEmacsState *qs = s->qs;
@@ -11988,6 +11999,7 @@ int main(int argc, char **argv)
         qs->buffer_cache_size = qs->buffer_cache_len = 0;
         qe_clear_macro(qs);
         qe_free(&qs->macro_format);
+        qe_free_history_list(qs);
     }
 #endif
     return status;

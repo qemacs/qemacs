@@ -952,4 +952,10 @@ static int html_init(QEmacsState *qs)
     return 0;
 }
 
+static void html_exit(QEmacsState *qs)
+{
+    css_exit();
+}
+
 qe_module_init(html_init);
+qe_module_exit(html_exit);

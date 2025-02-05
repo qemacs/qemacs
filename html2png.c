@@ -513,5 +513,6 @@ int main(int argc, char **argv)
 
     /* close screen */
     dpy_close(screen);
+    css_exit();
     return 0;
 }

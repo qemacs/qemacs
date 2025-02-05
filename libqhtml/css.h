@@ -611,6 +611,7 @@ typedef struct CSSContext {
 /* document managing */
 
 void css_init(void);
+void css_exit(void);
 
 CSSContext *css_new_document(struct QEditScreen *screen,
                              struct EditBuffer *b);
