@@ -119,12 +119,13 @@ endif
 
 TARGETLIBS:=
 
+TOP:=0
 ifeq (,$(TARGET))
 TARGET:=qe
 TARGETS:=kmaps ligatures tqe qe-manual.md
+ifeq (,$(DEBUG_SUFFIX))
 TOP:=1
-else
-TOP:=0
+endif
 endif
 ifeq (,$(TARGET_OBJ))
 TARGET_OBJ:=$(TARGET)
