@@ -1089,7 +1089,7 @@ static void x11_dpy_flush(QEditScreen *s)
 }
 static void set_window_bordered(QEditScreen *s, int border) {
     X11State *xs = s->priv_data;
-    
+
     Atom WM_HINTS = XInternAtom(xs->display, "_MOTIF_WM_HINTS", True);
     if (WM_HINTS != None) {
         // Hints used by Motif compliant window managers
@@ -1121,6 +1121,7 @@ static void x11_dpy_full_screen(QEditScreen *s, int full_screen)
     XGetWindowAttributes(xs->display, xs->window, &attr1);
     if (full_screen) {
         if (attr1.width != xs->screen_width || attr1.height != xs->screen_height) {
+            /*NOTE: window border hides before resize*/
             set_window_bordered(s, 0);
             /* store current window position and size */
             XTranslateCoordinates(xs->display, xs->window, attr1.root, 0, 0,
@@ -1132,10 +1133,11 @@ static void x11_dpy_full_screen(QEditScreen *s, int full_screen)
         }
     } else {
         if (xs->last_window_width) {
-            set_window_bordered(s, 1);
             XMoveResizeWindow(xs->display, xs->window,
                               xs->last_window_x, xs->last_window_y,
                               xs->last_window_width, xs->last_window_height);
+            /*NOTE: window border shows after resize*/
+            set_window_bordered(s, 1);
         }
     }
 }
