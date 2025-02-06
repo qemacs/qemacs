@@ -47,8 +47,8 @@
 #endif
 
 
-#define _NET_WM_STATE_REMOVE 0l
-#define _NET_WM_STATE_ADD    1l
+#define _NET_WM_STATE_REMOVE 0L
+#define _NET_WM_STATE_ADD    1L
 
 //#define CONFIG_DOUBLE_BUFFER  1
 
@@ -1126,7 +1126,7 @@ static int x11_dpy_full_screen_check(QEditScreen *s) {
     int result;
     int retval = 0;
 
-    property = XInternAtom(xs->display, "_NET_WM_STATE", True);
+    property = XInternAtom(xs->display, "_NET_WM_STATE", False);
 
     if (property == None) {
         return 0;
