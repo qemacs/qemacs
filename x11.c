@@ -46,6 +46,10 @@
 #include <X11/extensions/Xvlib.h>
 #endif
 
+
+#define _NET_WM_STATE_REMOVE 0L
+#define _NET_WM_STATE_ADD    1L
+
 //#define CONFIG_DOUBLE_BUFFER  1
 
 /* NOTE: XFT code is currently broken */
@@ -61,6 +65,7 @@ typedef struct X11State {
     QEmacsState *qs;
     Display *display;
     int xscreen;
+    Window root;
     Window window;
     Atom wm_delete_window;
     GC gc, gc_pixmap;
@@ -223,6 +228,7 @@ static int x11_dpy_init(QEditScreen *s, QEmacsState *qs, int w, int h)
         return -1;
     }
     xs->xscreen = DefaultScreen(xs->display);
+    xs->root = DefaultRootWindow(xs->display);
 
     bg = BlackPixel(xs->display, xs->xscreen);
     fg = WhitePixel(xs->display, xs->xscreen);
@@ -1087,114 +1093,42 @@ static void x11_dpy_flush(QEditScreen *s)
     update_reset(xs);
 #endif
 }
-static void x11_dpy_bordered(QEditScreen *s, int border) {
-    X11State *xs = s->priv_data;
-
-    struct
-    {
-        unsigned long flags;
-        unsigned long functions;
-        unsigned long decorations;
-        long input_mode;
-        unsigned long status;
-    }  hints;
-    Atom property;
-    hints.flags = 2;
-    hints.functions = 0;
-    hints.decorations = border ? 1 : 0;
-    hints.input_mode = 0;
-    hints.status = 0;
-    property = XInternAtom(xs->display, "_MOTIF_WM_HINTS", True);
-    if (property != None) {
-        XChangeProperty(xs->display, xs->window, property, property, 32, PropModeReplace, (unsigned char *)&hints, 5);
-    }
-}
-
-
-static int x11_dpy_full_screen_check(QEditScreen *s) {
-    X11State *xs = s->priv_data;
-    Atom type;
-    Atom property;
-    Atom *atoms = NULL;
-    unsigned long len;
-    unsigned long remaining;
-    int format;
-    int result;
-    int retval = 0;
-
-    property = XInternAtom(xs->display, "_NET_WM_STATE", True);
-
-    if (property == None) {
-        return 0;
-    }
-
-    result = XGetWindowProperty(
-        xs->display,
-        xs->window,
-        property,
-        0,
-        32,
-        False,
-        XA_ATOM,
-        &type,
-        &format,
-        &len,
-        &remaining,
-        (unsigned char **)&atoms);
-
-    if ((result == Success) && atoms) {
-        Atom wm_fullscreen = XInternAtom(xs->display, "_NET_WM_STATE_FULLSCREEN", False);
-
-        for (unsigned int i = 0; i < len; i++) {
-            if (atoms[i] == wm_fullscreen) {
-                retval = 1;
-                break;
-            }
-        }
-        XFree(atoms);
-    }
-    return retval;
-}
-
 
 static void x11_dpy_full_screen(QEditScreen *s, int full_screen)
 {
     X11State *xs = s->priv_data;
+    Atom wm_state;
+    Atom wm_state_fullscreen;
+    XEvent event;
+    XWindowAttributes attribs;
 
-    if (full_screen) {
-        x11_dpy_bordered(s, 0);
-    }
+    wm_state = XInternAtom(xs->display, "_NET_WM_STATE", False);
+    wm_state_fullscreen = XInternAtom(xs->display, "_NET_WM_STATE_FULLSCREEN", False);
 
-    XEvent xev;
-    Atom wm_state = XInternAtom(xs->display, "_NET_WM_STATE", False);
-    Atom wm_fullscreen = XInternAtom(xs->display, "_NET_WM_STATE_FULLSCREEN", False);
-    memset(&xev, 0, sizeof(xev));
-    xev.type = ClientMessage;
-    xev.xclient.window = xs->window;
-    xev.xclient.message_type = wm_state;
-    xev.xclient.format = 32;
-    xev.xclient.data.l[0] = full_screen ? 1 : 0;
-    xev.xclient.data.l[1] = wm_fullscreen;
-    xev.xclient.data.l[2] = 0;
+    memset(&event, 0, sizeof(event));
+    event.type = ClientMessage;
+    event.xclient.window = xs->window;
+    event.xclient.format = 32;
+    event.xclient.message_type = wm_state;
+    event.xclient.data.l[0] = full_screen ? _NET_WM_STATE_ADD : _NET_WM_STATE_REMOVE;
+    event.xclient.data.l[1] = wm_state_fullscreen;
+    event.xclient.data.l[2] = 0;
+    event.xclient.data.l[3] = 1;
+    event.xclient.data.l[4] = 0;
 
-    XSendEvent(xs->display, DefaultRootWindow(xs->display), False, SubstructureRedirectMask | SubstructureNotifyMask, &xev);
-
-    Atom bypass_compositor = XInternAtom(xs->display, "_NET_WM_BYPASS_COMPOSITOR", False);
-    unsigned long compositing_disable_on = 0;
-
-    if (full_screen) {
-        compositing_disable_on = 2;
-    }
-
-    if (bypass_compositor != None) {
-        XChangeProperty(xs->display, xs->window, bypass_compositor, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&compositing_disable_on, 1);
-    }
+    XSendEvent(xs->display, xs->root, False,
+               SubstructureNotifyMask | SubstructureRedirectMask,
+               &event);
 
     XFlush(xs->display);
 
-    if (!full_screen) {
-        x11_dpy_bordered(s, 1);
-    }
+    /*
+      last_window_width, last_window_height, last_window_x, last_window_y
+      not need since window manager doing geometric.
+    */
+    XGetWindowAttributes(xs->display, xs->window, &attribs);
+    xs->screen_width = attribs.width;
+    xs->screen_height = attribs.height;
 }
 
 static void x11_dpy_selection_activate(QEditScreen *s)
@@ -1454,11 +1388,9 @@ static void x11_handle_event(void *opaque)
         case ConfigureNotify:
             if (x11_term_resize(s, xev.xconfigure.width, xev.xconfigure.height)) {
                 qe_expose_set(s, rgn, 0, 0, s->width, s->height);
-                // fullscreen mode may be toggled by user through window manager
-                qs->is_full_screen = x11_dpy_full_screen_check(s);
-                if (!qs->is_full_screen) {
-                    x11_dpy_bordered(s, 1);
-                }
+                /* FIXME: fullscreen may be set via window managers,
+                 * record it to qs->is_full_screen the right way.
+                 */
             }
             break;
 
