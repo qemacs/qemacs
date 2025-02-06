@@ -46,6 +46,10 @@
 #include <X11/extensions/Xvlib.h>
 #endif
 
+
+#define _NET_WM_STATE_REMOVE 0l
+#define _NET_WM_STATE_ADD    1l
+
 //#define CONFIG_DOUBLE_BUFFER  1
 
 /* NOTE: XFT code is currently broken */
@@ -1173,7 +1177,7 @@ static void x11_dpy_full_screen(QEditScreen *s, int full_screen)
     xev.xclient.window = xs->window;
     xev.xclient.message_type = wm_state;
     xev.xclient.format = 32;
-    xev.xclient.data.l[0] = full_screen ? 1 : 0;
+    xev.xclient.data.l[0] = full_screen ? _NET_WM_STATE_ADD : _NET_WM_STATE_REMOVE;
     xev.xclient.data.l[1] = wm_fullscreen;
     xev.xclient.data.l[2] = 0;
 
@@ -1183,7 +1187,7 @@ static void x11_dpy_full_screen(QEditScreen *s, int full_screen)
     unsigned long compositing_disable_on = 0;
 
     if (full_screen) {
-        compositing_disable_on = 2;
+        compositing_disable_on = 1;
     }
 
     if (bypass_compositor != None) {
