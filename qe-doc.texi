@@ -204,8 +204,8 @@ M-~                     : not-modified
 @section Search and replace
 
 @example
-C-s                     : isearch-backward
-C-r                     : isearch-forward
+C-r                     : isearch-backward
+C-s                     : isearch-forward
 M-%                     : query-replace
 M-r                     : replace-string
 @end example
