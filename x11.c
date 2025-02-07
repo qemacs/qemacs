@@ -46,9 +46,9 @@
 #include <X11/extensions/Xvlib.h>
 #endif
 
-
-#define _NET_WM_STATE_REMOVE 0L
-#define _NET_WM_STATE_ADD    1L
+#define _NET_WM_STATE_REMOVE    0L
+#define _NET_WM_STATE_ADD       1L
+#define _NET_WM_STATE_TOGGLE    2L
 
 //#define CONFIG_DOUBLE_BUFFER  1
 
@@ -99,6 +99,12 @@ typedef struct X11State {
 
     int visual_depth;
 
+    XErrorHandler error_handler;
+
+    Atom NET_WM_STATE;
+    Atom NET_WM_STATE_FULLSCREEN;
+    Atom NET_WM_STATE_MAXIMIZED_VERT;
+    Atom NET_WM_STATE_MAXIMIZED_HORZ;
 } X11State;
 
 /* global variables set from the command line */
@@ -183,6 +189,176 @@ static inline void update_rect(X11State *xs,
 {
 }
 #endif
+
+/* Retrieve a single window property of the specified type
+ * Inspired by glfwGetWindowPropertyX11 from glfw
+ */
+
+static unsigned long x11_get_window_property(X11State *xs,
+                                             Window window,
+                                             Atom property,
+                                             Atom type,
+                                             unsigned char** value)
+{
+    Atom actualType;
+    int actualFormat;
+    unsigned long itemCount, bytesAfter;
+
+    XGetWindowProperty(xs->display,
+                       window,
+                       property,
+                       0,
+                       LONG_MAX,
+                       False,
+                       type,
+                       &actualType,
+                       &actualFormat,
+                       &itemCount,
+                       &bytesAfter,
+                       value);
+
+    return itemCount;
+}
+
+static int error_code;
+
+static int error_handler(Display *display, XErrorEvent* event)
+{
+
+    error_code = event->error_code;
+    char buffer1[1024];
+    XGetErrorText(display, event->error_code, buffer1, 1024);
+    fprintf(stderr,
+            "X error of failed request: %s\n"
+            "Major opcode: %3d\n"
+            "Serial number: %5lu\n", buffer1, event->request_code, event->serial);
+    return 0;
+}
+
+
+// Sets the X error handler callback
+//
+static void x11_grab_error_handler(X11State *xs)
+{
+    error_code = Success;
+    xs->error_handler = XSetErrorHandler(error_handler);
+}
+
+static void x11_release_error_handler(X11State *xs)
+{
+    // Synchronize to make sure all commands are processed
+    XSync(xs->display, False);
+    XSetErrorHandler(xs->error_handler);
+    xs->error_handler = NULL;
+}
+
+static Atom get_atom_if_supported(X11State *xs, Atom* supported_atoms,
+                               unsigned long atom_count,
+                               char* atom_name)
+{
+    Atom atom = XInternAtom(xs->display, atom_name, False);
+
+    for (unsigned long i = 0;  i < atom_count;  i++)
+    {
+        if (supported_atoms[i] == atom)
+            return atom;
+    }
+
+    return None;
+}
+
+/* Detect if Window manager supports Fullscreen
+ * Inspired by detectEWMH(void) from glfw
+ */
+
+static void detectEWMH(X11State *xs)
+{
+
+    Window* window_from_root = NULL;
+    Window* window_from_child = NULL;
+
+    Atom net_supporting_wm_check;
+    Atom net_supported;
+
+    Atom* supported_atoms = NULL;
+    unsigned long atom_count;
+
+    xs->NET_WM_STATE = None;
+    xs->NET_WM_STATE_FULLSCREEN = None;
+    xs->NET_WM_STATE_MAXIMIZED_VERT = None;
+    xs->NET_WM_STATE_MAXIMIZED_HORZ = None;
+
+    net_supporting_wm_check = XInternAtom(xs->display, "_NET_SUPPORTING_WM_CHECK", False);
+    net_supported = XInternAtom(xs->display, "_NET_SUPPORTED", False);
+
+    if (net_supporting_wm_check == None && net_supported == None) {
+        return;
+    }
+
+    /* First we read the _NET_SUPPORTING_WM_CHECK property on the root window */
+
+    if (!x11_get_window_property(xs, xs->root,
+                                 net_supporting_wm_check,
+                                 XA_WINDOW,
+                                 (unsigned char**) &window_from_root))
+    {
+        return;
+    }
+
+    x11_grab_error_handler(xs);
+
+    /*
+     * If it exists, it should be the XID of a top-level window
+     * Then we look for the same property on that window
+     */
+
+    if (!x11_get_window_property(xs, *window_from_root,
+                                   net_supporting_wm_check,
+                                   XA_WINDOW,
+                                   (unsigned char**) &window_from_child))
+    {
+        x11_release_error_handler(xs);
+        XFree(window_from_root);
+        return;
+    }
+
+    x11_release_error_handler(xs);
+
+    /* If the property exists, it should contain the XID of the window */
+
+    if (*window_from_root != *window_from_child)
+    {
+        XFree(window_from_root);
+        XFree(window_from_child);
+        return;
+    }
+
+    XFree(window_from_root);
+    XFree(window_from_child);
+
+
+    /* We are now fairly sure that an EWMH-compliant WM is currently running
+     * We can now start querying the WM about what features it supports by
+     * looking in the _NET_SUPPORTED property on the root window
+     * It should contain a list of supported EWMH protocol and state atoms
+     */
+    atom_count = x11_get_window_property(xs, xs->root,
+                                  net_supported,
+                                  XA_ATOM,
+                                  (unsigned char**) &supported_atoms);
+
+    // See which of the atoms we support that are supported by the WM
+
+    xs->NET_WM_STATE = get_atom_if_supported(xs, supported_atoms, atom_count, "_NET_WM_STATE");
+    xs->NET_WM_STATE_FULLSCREEN = get_atom_if_supported(xs, supported_atoms, atom_count, "_NET_WM_STATE_FULLSCREEN");
+    xs->NET_WM_STATE_MAXIMIZED_VERT = get_atom_if_supported(xs, supported_atoms, atom_count, "_NET_WM_STATE_MAXIMIZED_VERT");
+    xs->NET_WM_STATE_MAXIMIZED_HORZ = get_atom_if_supported(xs, supported_atoms, atom_count, "_NET_WM_STATE_MAXIMIZED_HORZ");
+
+    if (supported_atoms)
+        XFree(supported_atoms);
+}
+
+
 
 static int x11_dpy_probe(void)
 {
@@ -397,6 +573,8 @@ static int x11_dpy_init(QEditScreen *s, QEmacsState *qs, int w, int h)
 #endif
     fd = ConnectionNumber(xs->display);
     set_read_handler(fd, x11_handle_event, s);
+
+    detectEWMH(xs);
     return 0;
 }
 
@@ -1094,41 +1272,93 @@ static void x11_dpy_flush(QEditScreen *s)
 #endif
 }
 
+static void x11_send_event_to_wm (X11State *xs, Atom type,
+                                  long a, long b, long c, long d, long e)
+{
+    XEvent event;
+    memset(&event, 0, sizeof(event));
+
+    event.type = ClientMessage;
+    event.xclient.window = xs->window;
+    event.xclient.format = 32; // Data is 32-bit longs
+    event.xclient.message_type = type;
+    event.xclient.data.l[0] = a;
+    event.xclient.data.l[1] = b;
+    event.xclient.data.l[2] = c;
+    event.xclient.data.l[3] = d;
+    event.xclient.data.l[4] = e;
+
+    XSendEvent(xs->display, xs->root,
+               False,
+               SubstructureNotifyMask | SubstructureRedirectMask,
+               &event);
+}
+
+static void x11_dpy_maximize(QEditScreen *s, int maximize)
+{
+    X11State *xs = s->priv_data;
+    XWindowAttributes attribs;
+    Window dummy;
+
+    /* if window manager supports Extended window manager hints */
+    if (xs->NET_WM_STATE_MAXIMIZED_VERT
+        && xs->NET_WM_STATE_MAXIMIZED_HORZ)
+    {
+        x11_send_event_to_wm(xs, xs->NET_WM_STATE,
+                             maximize ?
+                             _NET_WM_STATE_ADD :
+                             _NET_WM_STATE_REMOVE,
+                             xs->NET_WM_STATE_MAXIMIZED_VERT,
+                             xs->NET_WM_STATE_MAXIMIZED_HORZ, 1, 0);
+    }
+    else
+    {
+        if (maximize) {
+
+            XGetWindowAttributes(xs->display, xs->window, &attribs);
+            xs->last_window_width = attribs.width;
+            xs->last_window_height = attribs.height;
+            XTranslateCoordinates(xs->display, xs->window, xs->root,
+                                  0, 0, &xs->last_window_x, &xs->last_window_y, &dummy);
+            XMoveResizeWindow(xs->display, xs->window,
+                              0, 0, xs->screen_width, xs->screen_height);
+        } else {
+            if (xs->last_window_width) {
+                XMoveResizeWindow(xs->display, xs->window,
+                                  xs->last_window_x, xs->last_window_y,
+                                  xs->last_window_width, xs->last_window_height);
+            }
+        }
+    }
+
+    XFlush(xs->display);
+}
+
 static void x11_dpy_full_screen(QEditScreen *s, int full_screen)
 {
     X11State *xs = s->priv_data;
-    Atom wm_state;
-    Atom wm_state_fullscreen;
-    XEvent event;
-    XWindowAttributes attribs;
+    /* if window manager supports Extended window manager hints */
+    if (xs->NET_WM_STATE && xs->NET_WM_STATE_FULLSCREEN)
+    {
+        {
+            x11_send_event_to_wm(xs, xs->NET_WM_STATE,
+                                 full_screen ?
+                                 _NET_WM_STATE_ADD :
+                                 _NET_WM_STATE_REMOVE,
+                                 xs->NET_WM_STATE_FULLSCREEN, 0, 1, 0);
 
-    wm_state = XInternAtom(xs->display, "_NET_WM_STATE", False);
-    wm_state_fullscreen = XInternAtom(xs->display, "_NET_WM_STATE_FULLSCREEN", False);
-
-    memset(&event, 0, sizeof(event));
-    event.type = ClientMessage;
-    event.xclient.window = xs->window;
-    event.xclient.format = 32;
-    event.xclient.message_type = wm_state;
-    event.xclient.data.l[0] = full_screen ? _NET_WM_STATE_ADD : _NET_WM_STATE_REMOVE;
-    event.xclient.data.l[1] = wm_state_fullscreen;
-    event.xclient.data.l[2] = 0;
-    event.xclient.data.l[3] = 1;
-    event.xclient.data.l[4] = 0;
-
-    XSendEvent(xs->display, xs->root, False,
-               SubstructureNotifyMask | SubstructureRedirectMask,
-               &event);
-
+        }
+    }
+    /* else do the simple way */
+    else
+    {
+        /* simply move resize the window
+         * still has problems, toggling fullscreen moves window position.
+         * There should be a another way. until then just maximize and restore
+         */
+        x11_dpy_maximize(s, full_screen);
+    }
     XFlush(xs->display);
-
-    /*
-      last_window_width, last_window_height, last_window_x, last_window_y
-      not need since window manager doing geometric.
-    */
-    XGetWindowAttributes(xs->display, xs->window, &attribs);
-    xs->screen_width = attribs.width;
-    xs->screen_height = attribs.height;
 }
 
 static void x11_dpy_selection_activate(QEditScreen *s)
