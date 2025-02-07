@@ -1909,6 +1909,10 @@ extern int is_player;
 /* flags from libqhtml/css.h */
 int gxml_mode_init(EditBuffer *b, int flags, const char *default_stylesheet);
 
+/* lang/sql.c */
+
+extern ModeDef sql_mode;   /* used in tcl_mode */
+
 /* image.c */
 
 int qe_bitmap_format_to_pix_fmt(int format);

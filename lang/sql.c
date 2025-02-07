@@ -196,7 +196,7 @@ static int sql_mode_probe(ModeDef *mode, ModeProbeData *pd)
     return 1;
 }
 
-static ModeDef sql_mode = {
+ModeDef sql_mode = {
     .name = "SQL",
     .extensions = "sql|Sql|mysql|sqlite|sqlplus|rdb|xdb|db",
     .mode_probe = sql_mode_probe,
