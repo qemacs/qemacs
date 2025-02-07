@@ -7727,7 +7727,6 @@ static void do_minibuffer_electric_key(EditState *s, int key, int argval) {
     MinibufState *mb = minibuffer_get_state(s, 0);
 
     /* erase beginning of line if typing / or ~ in certain places */
-    // XXX: behavior on yank should be customized too
     if (mb && mb->completion && (mb->completion->flags & CF_FILENAME)
     &&  ((c = eb_nextc(s->b, 0, &offset)) == '/' || c == '~')) {
         stop = s->offset;
@@ -7743,6 +7742,32 @@ static void do_minibuffer_electric_key(EditState *s, int key, int argval) {
         }
     }
     do_char(s, key, argval);
+}
+
+static void do_minibuffer_electric_yank(EditState *s) {
+    MinibufState *mb = minibuffer_get_state(s, 0);
+    int stop = s->b->total_size;
+    int offset;
+    char32_t c;
+
+    do_yank(s);
+
+    /* erase beginning of line if yanking absolute path after / */
+    if (mb && mb->completion && (mb->completion->flags & CF_FILENAME)
+    &&  ((c = eb_nextc(s->b, 0, &offset)) == '/' || c == '~')) {
+        c = eb_prevc(s->b, stop, &offset);
+        if (c == '/') {
+            /* check for absolute path */
+            if (eb_match_char32(s->b, stop, '/', NULL)
+            ||  eb_match_char32(s->b, stop, '~', NULL)
+            ||  eb_match_str_utf8(s->b, stop, "http://", NULL)
+            ||  eb_match_str_utf8(s->b, stop, "https://", NULL)
+            ||  eb_match_str_utf8(s->b, stop, "ftp://", NULL)) {
+                eb_delete(s->b, 0, stop);
+            }
+        }
+    }
+    s->qs->this_cmd_func = (CmdFunc)do_yank;
 }
 
 /* space does completion only if a completion method is defined */
@@ -8112,6 +8137,9 @@ static const CmdDef minibuffer_commands[] = {
           "Insert a character into the minibuffer with side effects",
           do_minibuffer_electric_key, ESii,
           "*" "k" "p")
+    CMD2( "minibuffer-electric-yank", "C-y",
+          "Yank from kill buffer with side effects",
+          do_minibuffer_electric_yank, ES, "*")
     /* commands used to configure search flags */
     CMD0( "minibuffer-toggle-case-fold", "M-c, C-c",
           "toggle search case-sensitivity",
