@@ -2532,7 +2532,7 @@ static CompletionDef charname_completion = {
 
 /*---------------- style and color ----------------*/
 
-int color_print_entry(CompleteState *cp, EditState *s, const char *name) {
+static int eb_print_color(EditBuffer *b, const char *name) {
     QETermStyle style = QE_STYLE_DEFAULT;
     QETermStyle style2 = QE_STYLE_DEFAULT;
     QEColor color = 0, rgb = 0;
@@ -2550,52 +2550,101 @@ int color_print_entry(CompleteState *cp, EditState *s, const char *name) {
         style2 = QE_TERM_COMPOSITE | QE_TERM_MAKE_COLOR(bg, 16);
         rgb = qe_unmap_color(bg, 8192);
     }
-    s->b->cur_style = QE_STYLE_FUNCTION;
-    len = eb_printf(s->b, "%s\t", name);
-    s->b->tab_width = max_int(s->b->tab_width, len + 1);
-    s->b->cur_style = QE_STYLE_DEFAULT;
-    len += eb_printf(s->b, " %-10s ", alt_name);
-    s->b->cur_style = style;
-    len += eb_puts(s->b, "[   ]");
-    s->b->cur_style = style2;
-    len += eb_puts(s->b, "[  Sample  ]");
-    s->b->cur_style = QE_STYLE_DEFAULT;
-    len2 = eb_printf(s->b, "  p%-4d", bg);
+    b->cur_style = QE_STYLE_FUNCTION;
+    len = eb_printf(b, "%s\t", name);
+    b->tab_width = max_int(b->tab_width, len + 1);
+    b->cur_style = QE_STYLE_DEFAULT;
+    len += eb_printf(b, " %-10s ", alt_name);
+    b->cur_style = style;
+    len += eb_puts(b, "[   ]");
+    b->cur_style = style2;
+    len += eb_puts(b, "[  Sample  ]");
+    b->cur_style = QE_STYLE_DEFAULT;
+    len2 = eb_printf(b, "  p%-4d", bg);
     if (dist != 0)
-        len2 += eb_printf(s->b, "  dist=%-4d", dist);
+        len2 += eb_printf(b, "  dist=%-4d", dist);
     if (color != rgb)
-        len2 += eb_printf(s->b, "  #%06x", rgb & 0xFFFFFF);
+        len2 += eb_printf(b, "  #%06x", rgb & 0xFFFFFF);
     if (len2 < 32)
-        len += eb_printf(s->b, "%*s", 32 - len2, "");
+        len += eb_printf(b, "%*s", 32 - len2, "");
     return len + len2;
 }
 
-int style_print_entry(CompleteState *cp, EditState *s, const char *name) {
-    QETermStyle style = QE_STYLE_DEFAULT;
+int color_print_entry(CompleteState *cp, EditState *s, const char *name) {
+    return eb_print_color(s->b, name);
+}
+
+static int eb_print_style(EditBuffer *b, const char *name, int style) {
     QEStyleDef *stp = NULL;
     char buf[80];
     int i, len;
 
-    for (i = 0; i < QE_STYLE_NB; i++) {
-        if (!strcmp(name, qe_styles[i].name)) {
-            style = i;
-            stp = &qe_styles[i];
-            break;
+    if (name != NULL) {
+        for (i = 0; i < QE_STYLE_NB; i++) {
+            if (!strcmp(name, qe_styles[i].name)) {
+                style = i;
+                break;
+            }
         }
     }
-    s->b->cur_style = QE_STYLE_FUNCTION;
-    len = eb_printf(s->b, "%s\t", name);
-    s->b->tab_width = max_int(s->b->tab_width, len + 1);
-    s->b->cur_style = style;
-    len += eb_puts(s->b, "[  Sample  ]");
-    s->b->cur_style = QE_STYLE_DEFAULT;
+    if (style >= 0 && style < QE_STYLE_NB) {
+        stp = &qe_styles[style];
+        name = stp->name;
+    }
+    b->cur_style = QE_STYLE_FUNCTION;
+    len = eb_printf(b, "%s\t", name);
+    b->tab_width = max_int(b->tab_width, len + 1);
+    b->cur_style = style;
+    len += eb_puts(b, "[  Sample  ]");
+    b->cur_style = QE_STYLE_DEFAULT;
 
     *buf = '\0';
     if (stp) {
         qe_term_get_style_string(buf, sizeof buf, stp);
     }
-    len += eb_printf(s->b, " %-40s", buf);
+    len += eb_printf(b, " %-40s", buf);
     return len;
+}
+
+int style_print_entry(CompleteState *cp, EditState *s, const char *name) {
+    return eb_print_style(s->b, name, QE_STYLE_DEFAULT);
+}
+
+static void do_list_styles(EditState *s) {
+    EditBuffer *b;
+    int i;
+
+    b = new_help_buffer(s);
+    if (!b)
+        return;
+
+    for (i = 0; i < QE_STYLE_NB; i++) {
+        eb_print_style(b, NULL, i);
+        eb_putc(b, '\n');
+    }
+    show_popup(s, b, "Quick Emacs Styles");
+}
+
+static void do_list_colors(EditState *s, int argval) {
+    EditBuffer *b;
+    char buf[32];
+    int i;
+
+    b = qe_new_buffer(s->qs, "*Colors*",
+                      BC_REUSE | BC_CLEAR | BF_SYSTEM | BF_UTF8 | BF_STYLE8);
+    if (!b)
+        return;
+
+    for (i = 0; i < nb_qe_colors; i++) {
+        eb_print_color(b, qe_colors[i].name);
+        eb_putc(b, '\n');
+    }
+    for (i = 0; i < 8192; i++) {
+        snprintf(buf, sizeof buf, "p%d", i);
+        eb_print_color(b, buf);
+        eb_putc(b, '\n');
+    }
+    show_popup(s, b, "Quick Emacs Colors");
 }
 
 /*---------------- paragraph handling ----------------*/
@@ -3254,6 +3303,12 @@ static const CmdDef extra_commands[] = {
           "Read a color and produce its hex RGB value",
           do_read_color, ESsi,
           "s{Color: }[color]|color|" "p")
+    CMD2( "list-colors", "C-c C",
+          "List available colors",
+          do_list_colors, ESi, "p")
+    CMD2( "list-styles", "C-c S",
+          "List available styles and their definitions",
+          do_list_styles, ES, "")
 
     CMD2( "set-eol-type", "",
           "Set the end of line style: [0=Unix, 1=Dos, 2=Mac]",
