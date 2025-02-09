@@ -7,7 +7,7 @@
 * should `mark` be a window variable instead of a buffer variable?
 * should `tab-width` be a window variable instead of or in addition to a buffer variable?
 * extra modes for drujensen/fib repo:
-    es(escript), janet, k(K), p6, pony, ps1, pyx(cython), raku(rakudo), tcl, vb, zig
+    es(escript), janet, k(K), p6, pony, ps1, pyx(cython), raku(rakudo), vb, zig
     detect flavors: ldc2?, bash, powershell, pypy, qb64, guile, sbcl
 * drag out of window should generate **autorepeat** scrolling requests
 * prevent mouse focus to window if searching
@@ -481,7 +481,6 @@ insert_window_left()  deletes some left-most windows
 * basic: fix fuzzy completion when single unanchored match
 * completion: minibuffer completion: bad return on `C-x C-f . SPC qe SPC RET`
 * minibuf: use more mode specific bindings
-* minibuf: `minibuffer-electric-yank` in minibuffer to fix pathname
 * basic: completion in `load-resource-file`
 * completion: abbreviate lines in file completion list popup
 * open file with fuzzy completion
@@ -973,7 +972,6 @@ insert_window_left()  deletes some left-most windows
   * `sparql-mode`
   * `systemverilog-mode`
   * `t2t-mode`
-  * `tcl-mode`: Tcl files.
   * `texinfo-mode`
   * `vbnet-mode`
   * `verilog-mode`

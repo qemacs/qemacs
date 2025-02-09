@@ -27,32 +27,32 @@
 /*---------------- Tool Command Language coloring ----------------*/
 
 static char const tcl_keywords[] = {
-    "package|require|if|else|elseif|namespace|proc|return|variable|"
-    "eval|export|for|format|foreach|provide|self|method|constructor|"
-    "try|catch|finally|throw|ne|eq|on|error|while|switch|default|global|"
-    "array|dict|string|regexp|regsub|file|list|concat|append|split|"
-    "lsort|llength|lrange|lappend|lindex|lassign|lsearch|lseq|lset|"
-    "lreplace|lmap|lreverse|"
-    "incr|decr|exec|break|continue|parray|exit|expr|set|"
-    "unset|join|after|trace|debug|interp|auto_load|"
-    "uplevel|upvar|clock|"
-    "rename|close|cd|info|source|filter|open|chan|glob|read|write|"
-    "fconfigure|subst|gets|puts|cat|"
+    "after|append|apply|array|auto_execok|auto_import|auto_load|"
+    "auto_mkindex|auto_mkindex_oldfilename|auto_qualify|auto_reset|"
+    "bgerror|binary|break|catch|cd|chan|clock|close|concat|const|continue|"
+    "coroinject|coroprobe|coroutine|"
+    "dde|dict|encoding|eof|epoll|error|eval|exec|exit|expr|"
+    "fblocked|fconfigure|fcopy|file|fileevent|finally|flush|for|foreach|"
+    "format|gets|glob|global|history|http|if|incr|info|interp|join|kqueue|"
+    "lappend|lassign|ledit|lindex|linsert|list|llength|lmap|load|lpop|"
+    "lrange|lremove|lrepeat|lreplace|lreverse|lsearch|lseq|lset|lsort|"
+    "mathfunc|mathop|memory|msgcat|namespace|open|package|parray|pid|"
+    "pkg::create|pkg_mkIndex|platform|platform::shell|"
+    "proc|puts|pwd|re_syntax|read|refchan|regexp|registry|regsub|"
+    "rename|return|scan|seek|select|set|socket|source|split|string|subst|"
+    "switch|tailcall|tcltest|tclvars|tell|throw|time|tm|trace|trap|try|"
+    "unknown|unload|unset|update|uplevel|upvar|variable|vwait|while|"
+    "yield|yieldto|zlib|"
 };
 
 static char const tcl_operators[] = {
     "eq|ne|lt|le|gt|ge|in|ni|"
 };
 
-static char const tcl_types[] = {
-    "|"
-};
-
 enum {
     IN_TCL_CONTINUATION = 1,
-    IN_TCL_STRING1 = 2,
-    IN_TCL_STRING2 = 4,
-    IN_TCL_COMMENT = 8,
+    IN_TCL_STRING = 2,
+    IN_TCL_COMMENT = 4,
     IN_TCL_DB = 0x80,
 };
 
@@ -69,14 +69,51 @@ enum {
     TCL_STYLE_VARIABLE =   QE_STYLE_VARIABLE,
 };
 
+static int tcl_get_word(char *dest, int size, char32_t c,
+                        const char32_t *str, int i, int n,
+                        const char *stop)
+{
+    /* @API utils
+       Extract a Tcl word from a wide string into a char array.
+       @argument `dest` a valid pointer to a destination array.
+       @argument `size` the length of the destination array.
+       @argument `c` the first codepoint to copy.
+       @argument `str` a valid wide string pointer.
+       @argument `i` the offset of the first codepoint to copy.
+       @argument `n` the offset to the end of the wide string.
+       @return the number of elements consumed from the source string.
+       @note: the return value can be larger than the destination array length.
+       In this case, the destination array contains a truncated string, null
+       terminated unless `size <= 0`.
+       @note: non ASCII code-points are copied as FF bytes
+     */
+    int pos = 0, j;
+
+    for (j = i;; j++) {
+        if (pos + 1 < size) {
+            /* c is assumed to be an ASCII character */
+            dest[pos++] = c < 0x80 ? c : 0xFF;
+        }
+        if (j >= n)
+            break;
+        c = str[j];
+        if (c < 0x80 && strchr(stop, c))
+            break;
+    }
+    if (pos < size) {
+        dest[pos] = '\0';
+    }
+    return j - i;
+}
+
 static void tcl_colorize_line(QEColorizeContext *cp,
                               const char32_t *str, int n,
                               QETermStyle *sbuf, ModeDef *syn)
 {
-    char kbuf[16];
+    char kbuf[64];
     int i = 0, start = i, k, style = 0, indent = -1, expr = -1, atclose = 0, klen;
     int colstate = cp->colorize_state;
-    char32_t c;
+    char32_t c, c1;
 
 dispatch_colstate:
     if (colstate) {
@@ -91,11 +128,7 @@ dispatch_colstate:
             if (i == n)
                 colstate = cp->colorize_state | IN_TCL_DB;
         } else
-        if (state & IN_TCL_STRING1) {
-            c = '\'';
-            goto in_string;
-        } else
-        if (state & IN_TCL_STRING2) {
+        if (state & IN_TCL_STRING) {
             c = '\"';
             goto in_string;
         } else
@@ -122,30 +155,62 @@ dispatch_colstate:
             indent = expr = i;
             continue;
         case '#':
+            if (start != indent)
+                goto regular_word;
         in_comment:
             i = n;
             style = TCL_STYLE_COMMENT;
             if (str[i - 1] == '\\')
                 colstate |= IN_TCL_COMMENT;
             break;
-        //case '\'':
         case '\"':
             /* parse string */
         in_string:
-            while (i < n) {
-                char32_t c1 = str[i++];
-                if (c1 == '\\') {
-                    if (i == n) {
-                        colstate |= (c == '\'') ? IN_TCL_STRING1 : IN_TCL_STRING2;
-                        break;
-                    }
-                    i++;
-                } else
-                if (c1 == c)
-                    break;
-            }
             style = TCL_STYLE_STRING;
+            colstate |= IN_TCL_STRING;
+            while (i < n) {
+                c1 = str[i++];
+                if (c1 == '\\') {
+                    if (i < n)
+                        i++;
+                    continue;
+                }
+                if (c1 == c) {
+                    colstate &= ~IN_TCL_STRING;
+                    break;
+                }
+                if (c1 == '$' && i < n) {
+                    SET_STYLE(sbuf, start, i - 1, TCL_STYLE_STRING);
+                    start = i - 1;
+                    c1 = str[i++];
+                    if (c1 == '{') {  // parse ${xxx}
+                        while (i < n) {
+                            c1 = str[i++];
+                            if (c1 == '\\') {
+                                if (i < n)
+                                    i++;
+                                continue;
+                            }
+                            if (c1 == '}') {
+                                break;
+                            }
+                        }
+                    } else
+                    if (qe_isalnum_(c1) || c1 == ':') {
+                        i += tcl_get_word(kbuf, countof(kbuf), c1, str, i, n, " \t$[]{}\"\\");
+                    } else {
+                        i--;
+                        continue;
+                    }
+                    SET_STYLE(sbuf, start, i, TCL_STYLE_VARIABLE);
+                    start = i;
+                    continue;
+                }
+            }
             break;
+        case '(':
+        case ')':
+            continue;
         case '[':
             atclose = 0;
             indent = i;
@@ -163,14 +228,26 @@ dispatch_colstate:
             expr = -1;
             continue;
         case '$':
-            if (str[i] == '{') {
-                while (i < n && str[i++] != '}')
-                    continue;
+            if (i == n)
+                continue;
+            c1 = str[i];
+            if (c1 == '{') {
+                while (i < n) {
+                    c1 = str[i++];
+                    if (c1 == '\\') {
+                        if (i < n)
+                            i++;
+                        continue;
+                    }
+                    if (c1 == '}') {
+                        break;
+                    }
+                }
                 style = TCL_STYLE_VARIABLE;
                 break;
             }
-            if (qe_isalpha_(str[i])) {
-                i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
+            if (qe_isalnum_(c1) || c1 == ':') {
+                i += tcl_get_word(kbuf, countof(kbuf), c1, str, i, n, " \t(){}[];$\\");
                 style = TCL_STYLE_VARIABLE;
                 break;
             }
@@ -186,47 +263,41 @@ dispatch_colstate:
                 k = 2;
             while (k-- > 0 && qe_isxdigit(str[i]))
                 i++;
-            style = TCL_STYLE_PREPROCESS;
-            break;
-        case ':':
-            if (str[i] == ':') {
-                i++;
-                goto has_word;
-            }
+            SET_STYLE(sbuf, start, i, TCL_STYLE_PREPROCESS);
+            if (i < n && str[i] != '\\' && !qe_isspace(str[i]))
+                goto regular_word;
             continue;
         default:
-            /* parse numbers */
+        regular_word:
+            i += tcl_get_word(kbuf, countof(kbuf), c, str, i, n, " \t)}[];$\\");
+            /* check for numbers */
             if (qe_isdigit(c)) {
-                for (; qe_isdigit_(str[i]); i++)
-                    continue;
-                if (str[i] == '.') {
-                    i++;
-                    for (; qe_isdigit_(str[i]); i++)
-                        continue;
+                u8 *p = (u8*)kbuf + 1;
+                while (qe_isdigit_(*p))
+                    p++;
+                if (*p == '.') {
+                    p++;
+                    while (qe_isdigit_(*p))
+                        p++;
                 }
-                if (str[i] == 'e' || str[i] == 'E') {
-                    k = i + 1;
-                    if (str[k] == '+' || str[k] == '-')
+                if (*p == 'e' || *p == 'E') {
+                    k = 1;
+                    if (p[k] == '+' || p[k] == '-')
                         k++;
-                    if (qe_isdigit(str[k])) {
-                        for (i = k + 1; qe_isdigit_(str[i]); i++)
-                            continue;
+                    if (qe_isdigit(p[k])) {
+                        p += k + 1;
+                        while (qe_isdigit_(*p))
+                            p++;
                     }
                 }
-                if (qe_isalpha_(str[i]))
-                    goto has_word;
-                style = TCL_STYLE_NUMBER;
-                break;
-            }
-            /* parse identifiers and keywords */
-            if (qe_isalpha_(c)) {
-            has_word:
-                i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
-                if (str[i] == ':' && str[i + 1] == ':') {
-                    c = ':';
-                    i += 2;
-                    goto has_word;
+                if (*p == '\0') {
+                    style = TCL_STYLE_NUMBER;
+                    break;
                 }
+            }
+            /* check for predefined commands */
+            // XXX: should use a state machine
+            if (qe_isalpha(c)) {
                 if (atclose) {
                     if (strfind("else|elseif|default|trap|on|finally", kbuf)) {
                         style = TCL_STYLE_KEYWORD;
@@ -235,7 +306,7 @@ dispatch_colstate:
                 } else
                 if (start == indent) {
                     if (!strcmp("db", kbuf)
-                    &&  ustr_match_keyword(str + i, " eval {", &klen)) {
+                    &&  ustr_match_str(str + i, " eval {", &klen)) {
                         i += klen;
                         SET_STYLE(sbuf, start, i - 1, TCL_STYLE_KEYWORD);
                         colstate = IN_TCL_DB;
@@ -259,7 +330,7 @@ dispatch_colstate:
                 }
                 break;
             }
-            continue;
+            break;
         }
         atclose = 0;
         if (style) {
@@ -276,11 +347,12 @@ static int tcl_mode_probe(ModeDef *mode, ModeProbeData *p) {
         return 85;
 
     if (strstr(cs8(p->buf), "package require Tk")
+    ||  strstart(cs8(p->buf), "#!/usr/bin/tclsh", NULL)
+    ||  strstart(cs8(p->buf), "#!/usr/bin/env tclsh", NULL)
     ||  strstart(cs8(p->buf), "# created by tools/loadICU.tcl", NULL)
     ||  strstart(cs8(p->buf), "# created by tools/tclZIC.tcl", NULL)
-    ||  strstart(cs8(p->buf), "# -*- tcl -*-", NULL)
-    ||  strstart(cs8(p->buf), "#!/usr/bin/tclsh", NULL)
-    ||  strstart(cs8(p->buf), "#!/usr/bin/env tclsh", NULL))
+    ||  strstr(cs8(p->buf), "# -*- tcl -*-")
+    ||  strstr(cs8(p->buf), "# vim:se syntax=tcl:"))
         return 85;
 
     return 1;
@@ -290,7 +362,6 @@ static ModeDef tcl_mode = {
     .name = "Tcl",
     .extensions = "tcl",
     .keywords = tcl_keywords,
-    .types = tcl_types,
     .colorize_func = tcl_colorize_line,
     .mode_probe = tcl_mode_probe,
 };

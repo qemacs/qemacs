@@ -429,6 +429,7 @@ int ustr_get_identifier_x(char *dest, int size, char32_t c,
                           const char32_t *str, int i, int n, char32_t c1);
 int ustr_get_identifier_lc(char *dest, int size, char32_t c,
                            const char32_t *str, int i, int n);
+int ustr_match_str(const char32_t *str, const char *p, int *lenp);
 int ustr_match_keyword(const char32_t *str, const char *keyword, int *lenp);
 int utf8_get_word(char *dest, int size, char32_t c,
                   const char32_t *str, int i, int n);
