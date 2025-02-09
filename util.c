@@ -1711,6 +1711,25 @@ int utf8_get_word(char *dest, int size, char32_t c,
     return j - i;
 }
 
+int ustr_match_str(const char32_t *str, const char *p, int *lenp) {
+    /*@API utils
+       Match an ASCII string in a wide string.
+       @argument `str` a valid wide string pointer.
+       @argument `p` a valid string pointer.
+       @argument `lenp` a pointer to store the length if matched.
+       @return a boolean success value.
+       @note: the string is assumed to contain only ASCII characters.
+     */
+    int i;
+    for (i = 0; p[i]; i++) {
+        if (str[i] != (u8)p[i])
+            return 0;
+    }
+    if (lenp)
+        *lenp = i;
+    return 1;
+}
+
 int ustr_match_keyword(const char32_t *str, const char *keyword, int *lenp) {
     /*@API utils
        Match a keyword in a wide string.
@@ -1719,19 +1738,16 @@ int ustr_match_keyword(const char32_t *str, const char *keyword, int *lenp) {
        @argument `lenp` a pointer to store the length if matched.
        @return a boolean success value.
        @note: the keyword is assumed to contain only ASCII characters.
-       A match requires a string match not followed by a valid ASCII identifier
-       character.
+       A match requires a string match not followed by a valid ASCII
+       identifier character.
      */
-    int i;
-    for (i = 0; keyword[i]; i++) {
-        if (str[i] != (u8)keyword[i])
-            return 0;
+    int len;
+    if (ustr_match_str(str, keyword, &len) && !qe_isalnum_(str[len])) {
+        if (lenp)
+            *lenp = len;
+        return 1;
     }
-    if (qe_isalnum_(str[i]))
-        return 0;
-    if (lenp)
-        *lenp = i;
-    return 1;
+    return 0;
 }
 
 /*---------------- Functions for handling keys ----------------*/

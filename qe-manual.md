@@ -2573,8 +2573,22 @@ Match a keyword in a wide string.
 Return a boolean success value.
 
 Note: the keyword is assumed to contain only ASCII characters.
-A match requires a string match not followed by a valid ASCII identifier
-character.
+A match requires a string match not followed by a valid ASCII
+identifier character.
+
+### `int ustr_match_str(const char32_t *str, const char *p, int *lenp);`
+
+Match an ASCII string in a wide string.
+
+* argument `str` a valid wide string pointer.
+
+* argument `p` a valid string pointer.
+
+* argument `lenp` a pointer to store the length if matched.
+
+Return a boolean success value.
+
+Note: the string is assumed to contain only ASCII characters.
 
 ### `int ustristart(const char32_t *str0, const char *val, int *lenp);`
 
