@@ -2,6 +2,7 @@
  * CSS2 parser for qemacs.
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
+ * Copyright (c) 2007-2025 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -875,7 +876,8 @@ static void beat(CSSParseState *b, int *ch_ptr, const char *str)
     *ch_ptr = ch;
 }
 
-static void parse_simple_selector(CSSSimpleSelector *ss, CSSParseState *b,
+static void parse_simple_selector(CSSSimpleSelector *ss, // output only
+                                  CSSParseState *b,
                                   int *ch_ptr)
 {
     char value[1024];

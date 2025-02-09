@@ -3,7 +3,10 @@
  * linked with qemacs
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2007-2023 Charlie Gordon.
+ * Copyright (c) 2007-2025 Charlie Gordon.
+ *
+ * This utility generates C source code for a string containing the minimized
+ * version of the css input file for embedding in a C application.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
