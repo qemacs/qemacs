@@ -44,7 +44,6 @@
 * auto-complete previously used commands when no other context is available
 * handle paste bracketting in xterm: `ESC [ 2 0 0 ~ xxx ESC [ 2 0 1 ~`
 * display images using iTerm's image transfert protocol
-* add `show-styles` and `show-colors`
 * evaluate colors in expressions: `rgb(r,g,b)`, `hsl(h,s,l)`, `hsv(h,s,v)`
 * do not abort macro on incremental search failure, just on final failure upon RET
 * `show-date-and-time` should distinguish between `C-u` and explicit number prefix
@@ -61,7 +60,6 @@
   - alternative: keep previous window if changing the buffer so swapping back restores the position and mode
   - add a previous window for `predict_switch_to_buffer`
 * `-color_code` command line option to display available colors on terminal
-* `show-colors` display colors in a popup buffer with samples
 * automatic remote config fetch based on email at qemacs.org:
   - .qemacs, .bashrc...
 * shell buffer remote filesystem using commands `get` and `put` (for ssh sessions)
