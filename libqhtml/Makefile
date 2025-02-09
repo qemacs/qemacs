@@ -1,7 +1,7 @@
 # Libqhtml tiny HTML/CSS rendering library for QEmacs
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2024 Charlie Gordon.
+# Copyright (c) 2000-2025 Charlie Gordon.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal

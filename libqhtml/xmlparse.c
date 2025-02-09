@@ -2,6 +2,7 @@
  * XML/HTML parser for qemacs.
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
+ * Copyright (c) 2007-2025 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -162,10 +163,10 @@ enum XMLParseState {
 
 /* string buffer optimized for strings lengths <= STRING_BUF_SIZE */
 typedef struct StringBuffer {
-    unsigned char *buf;
+    char *buf;
     int allocated_size;
     int size;
-    unsigned char buf1[STRING_BUF_SIZE];
+    char buf1[STRING_BUF_SIZE];
 } StringBuffer;
 
 static inline void strbuf_init(StringBuffer *b)
@@ -185,7 +186,7 @@ static inline void strbuf_reset(StringBuffer *b)
 static void strbuf_addch1(StringBuffer *b, char32_t ch)
 {
     int size1;
-    unsigned char *ptr;
+    char *ptr;
 
     size1 = b->allocated_size + STRING_BUF_SIZE;
     ptr = b->buf;
@@ -197,15 +198,15 @@ static void strbuf_addch1(StringBuffer *b, char32_t ch)
         b->buf = ptr;
         b->allocated_size = size1;
 
-        b->size += utf8_encode((char*)b->buf + b->size, ch);
+        b->size += utf8_encode(b->buf + b->size, ch);
     }
 }
 
 static inline void strbuf_addch(StringBuffer *b, char32_t ch)
 {
-    if (b->size < b->allocated_size) {
+    if (b->size + UTF8_CHAR_LEN_MAX < b->allocated_size) {
         /* fast case */
-        b->size += utf8_encode((char*)b->buf + b->size, ch);
+        b->size += utf8_encode(b->buf + b->size, ch);
     } else {
         strbuf_addch1(b, ch);
     }
@@ -789,10 +790,10 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
     value = css_attr_str(box, CSS_ID_style);
     if (value) {
         CSSParseState b1, *b = &b1;
-
+        b->error_opaque = s->error_opaque;
         b->ptr = NULL;
-        b->line_num = s->line_num; /* XXX: slightly incorrect */
         b->filename = s->filename;
+        b->line_num = s->line_num; /* XXX: slightly incorrect */
         b->ignore_case = s->ignore_case;
         *last_prop = css_parse_properties(b, value);
     }
@@ -1119,7 +1120,7 @@ static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
         case XML_STATE_TAG:
             if (ch == '>') {
                 strbuf_addch(&s->str, '\0');
-                ret = parse_tag(s, (char *)s->str.buf);
+                ret = parse_tag(s, s->str.buf);
                 switch (ret) {
                 default:
                 case XML_STATE_TEXT:
@@ -1151,7 +1152,7 @@ static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
                    not flush if comment */
                 if (buf) {
                     strbuf_addch(&s->str, '\0');
-                    flush_text(s, (char *)s->str.buf);
+                    flush_text(s, s->str.buf);
                     strbuf_reset(&s->str);
                 } else {
                     flush_text_buffer(s, b, text_offset_start, offset0);
@@ -1195,16 +1196,16 @@ static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
                 if (len >= 0 &&
                     s->str.buf[len] == '<' &&
                     s->str.buf[len + 1] == '/' &&
-                    !xml_tagcmp((char *)s->str.buf + len + 2, s->pretag)) {
+                    !xml_tagcmp(s->str.buf + len + 2, s->pretag)) {
                     s->str.buf[len] = '\0';
 
                     if (!xml_tagcmp(s->pretag, "style")) {
                         if (s->style_sheet) {
                             CSSParseState b1, *bp = &b1;
                             bp->error_opaque = s->error_opaque;
-                            bp->ptr = (char *)s->str.buf;
-                            bp->line_num = s->line_num; /* XXX: incorrect */
+                            bp->ptr = s->str.buf;
                             bp->filename = s->filename;
+                            bp->line_num = s->line_num; /* XXX: incorrect */
                             bp->ignore_case = s->ignore_case;
                             css_parse_style_sheet(s->style_sheet, bp);
                         }
@@ -1213,7 +1214,7 @@ static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
                     } else {
                         /* just add the content */
                         if (buf) {
-                            flush_text(s, (char *)s->str.buf);
+                            flush_text(s, s->str.buf);
                         } else {
                             /* XXX: would be incorrect if non ascii chars */
                             flush_text_buffer(s, b, text_offset_start, offset - taglen);
