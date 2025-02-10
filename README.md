@@ -46,7 +46,7 @@ included with double width glyphs.
 (like XEmacs). X Input methods supported. Xft extension supported for
 anti-aliased font display.
 
-- Bitmap images are displayed on graphics displays and as ASCII colored text
+- Bitmap images are displayed on graphics displays and as colored text
 on text terminals, which is handy when browsing files over an ssh connection.
 (QEmacs uses the public domain [`stb_image`](https://github.com/nothings/stb/blob/master/stb_image.h)
 package for image parsing.
@@ -71,7 +71,8 @@ QEmacs is released under the MIT license.
 
 ## Contributing to QEmacs
 
-Please contact the [qemacs-devel](https://lists.nongnu.org/mailman/listinfo/qemacs-devel) mailing list.
+QEmacs official repository is available on [Github](https://github.com/qemacs/qemacs).
+You are welcome to contribute by opening an issue or submitting a Pull Request. Older discussions are archived on the  [qemacs-devel](https://lists.nongnu.org/mailman/listinfo/qemacs-devel) mailing list.
 
 ## Authors
 
