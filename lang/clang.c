@@ -600,7 +600,7 @@ static void c_colorize_line(QEColorizeContext *cp,
         normal:
             if (state & IN_C_PREPROCESS)
                 break;
-            if (qe_isdigit(c) || (c == '.' && qe_isdigit(str[i + 1]))) {
+            if (qe_isdigit(c) || (c == '.' && qe_isdigit(str[i]))) {
                 /* XXX: parsing ppnumbers, which is OK for C and C++ */
                 /* XXX: should parse actual number syntax */
                 /* XXX: D ignores embedded '_' and accepts l,u,U,f,F,i suffixes */
@@ -1558,9 +1558,8 @@ static const char c2_keywords[] = {
 };
 
 static const char c2_types[] = {
-    "bool|i8|i16|i32|i64|u8|u16|u32|u64|isize|usize|f32|f64|void|"
-    "reg8|reg16|reg32|reg64|"
-    "char"  // same as i8, a design error
+    "void|bool|char|i8|i16|i32|i64|u8|u16|u32|u64|isize|usize|f32|f64|"
+    "reg8|reg16|reg32|reg64|va_list"
 };
 
 static ModeDef c2_mode = {

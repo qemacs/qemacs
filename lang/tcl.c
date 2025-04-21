@@ -299,7 +299,7 @@ dispatch_colstate:
             // XXX: should use a state machine
             if (qe_isalpha(c)) {
                 if (atclose) {
-                    if (strfind("else|elseif|default|trap|on|finally", kbuf)) {
+                    if (strfind("else|elseif|default|trap|on|finally|break|continue|return", kbuf)) {
                         style = TCL_STYLE_KEYWORD;
                         break;
                     }

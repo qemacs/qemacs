@@ -4,6 +4,10 @@
 
 ## Current work
 
+* add cat mode where colorizer is chosen based on extension of filename between ==> xxx <==
+* start directory of make command should be the default directory of current buffer
+* delete *bufed* buffer when exiting bufed or clear flags on `bufed` invocation
+
 * should `mark` be a window variable instead of a buffer variable?
 * should `tab-width` be a window variable instead of or in addition to a buffer variable?
 * extra modes for drujensen/fib repo:
