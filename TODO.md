@@ -4,6 +4,16 @@
 
 ## Current work
 
+clang: colorize git conflict markers
+<<<<<<< HEAD
+            }
+            defaultCase = c;
+
+=======
+            } else
+>>>>>>> a450183c (Analyser: fix scope stack and init_checkers' array)
+            if (!is_last) {
+
 * add cat mode where colorizer is chosen based on extension of filename between ==> xxx <==
 * start directory of make command should be the default directory of current buffer
 * delete *bufed* buffer when exiting bufed or clear flags on `bufed` invocation

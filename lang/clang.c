@@ -2,7 +2,7 @@
  * C mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2024 Charlie Gordon.
+ * Copyright (c) 2002-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -198,6 +198,13 @@ enum {
     IN_C_COMMENT_SHIFT = 8,  /* shift for block comment nesting level */
     IN_C_COMMENT_LEVEL = 0x700, /* mask for block comment nesting level */
 };
+
+static int rep_count(const char32_t *str, char32_t c) {
+    int count = 0;
+    while (str[count] == c)
+        count++;
+    return count;
+}
 
 static void c_colorize_line(QEColorizeContext *cp,
                             const char32_t *str, int n,
@@ -466,6 +473,30 @@ static void c_colorize_line(QEColorizeContext *cp,
                 SET_STYLE(sbuf, start, i, C_STYLE_VARIABLE);
                 continue;
             }
+            if (flavor == CLANG_C2) {
+                // c2 raw strings
+                int count = 1 + rep_count(str + i, '`');
+                int count2 = 0;
+                // check for markdown-like tag line
+                for (i += count - 1; i < n; i++) {
+                    if ((count2 = rep_count(str + i, '`')) >= count)
+                        break;
+                }
+                if (i < n) {
+                    i += count2;
+                    SET_STYLE(sbuf, start, i, C_STYLE_STRING_BQ);
+                    continue;
+                }
+                i = n;
+                if (count >= 3) {
+                    SET_STYLE(sbuf, start, start + count, C_STYLE_STRING_BQ);
+                    SET_STYLE(sbuf, start + count, i, QE_STYLE_COMMENT);
+                    continue;
+                }
+                SET_STYLE(sbuf, start, i, C_STYLE_STRING_BQ);
+                state |= IN_C_STRING_BQ;
+                continue;
+            }
             if (flavor == CLANG_GO || flavor == CLANG_D) {
                 /* go language multi-line string, no escape sequences */
             parse_string_bq:
@@ -475,6 +506,11 @@ static void c_colorize_line(QEColorizeContext *cp,
                 while (i < n) {
                     c = str[i++];
                     if (c == delim) {
+                        if (flavor == CLANG_C2) {
+                            // TODO: actually match the opening count
+                            while (str[i] == delim)
+                                i++;
+                        }
                         state &= ~IN_C_STRING;
                         break;
                     }
@@ -1547,12 +1583,12 @@ static const char c2_keywords[] = {
     "module|import|as|public|"
     // Types -> c2_types
     // Type related
-    "auto|asm|cast|const|elemsof|enum|enum_min|enum_max|"
+    "asm|cast|const|elemsof|enum|enum_min|enum_max|"
     "false|fn|local|nil|offsetof|to_container|public|"
     "sizeof|struct|template|true|type|union|volatile|"
     // Control flow related
-    "break|case|continue|default|do|else|fallthrough|"
-    "for|goto|if|return|switch|sswitch|while|"
+    "break|case|continue|default|else|fallthrough|"
+    "for|goto|if|return|switch|while|"
     // other
     "assert|static_assert"
 };
@@ -4367,15 +4403,16 @@ static ModeDef jakt_mode = {
 static const char c3_keywords[] = {
     "asm|assert|bitstruct|break|case|catch|const|continue|def|"
     "default|defer|distinct|do|else|enum|extern|false|fault|"
-    "for|foreach|foreach_r|fn|tlocal|if|inline|import|macro|"
-    "module|nextcase|null|return|static|struct|switch|true|try|"
-    "union|var|while|"
+    "for|foreach|foreach_r|fn|if|inline|interface|import|macro|"
+    "module|nextcase|null|return|static|struct|switch|tlocal|true|"
+    "try|union|var|while|"
     /* directives */
-    "$alignof|$assert|$case|$checks|$default|$defined|"
-    "$echo|$else|$endfor|$endforeach|$endif|$endswitch|"
-    "$for|$foreach|$if|$include|$nameof|$offsetof|"
-    "$qnameof|$sizeof|$stringify|$switch|$vacount|$vaconst|"
-    "$varef|$vaarg|$vaexpr|$vasplat|"
+    "$alignof|$and|$append|$assert|$assignable|$case|$concat|$default|"
+    "$defined|$echo|$else|$embed|$endfor|$endforeach|$endif|$endswitch|"
+    "$eval|$error|$exec|$extnameof|$feature|$for|$foreach|$if|$include|"
+    "$is_const|$nameof|$offsetof|$or|$qnameof|$sizeof|$stringify|"
+    "$switch|$typefrom|$typeof|$stringify|$vaarg|$vaconst|$vacount|"
+    "$vaexpr|$varef|$vasplat|$vatype|"
 };
 
 static const char c3_types[] = {
@@ -4383,7 +4420,7 @@ static const char c3_types[] = {
     // Integer types
     "short|ushort|int|uint|long|ulong|int128|uint128|iptr|uptr|isz|usz|"
     // Floating point types
-    "float16|float|double|float128|"
+    "float128|double|float|bfloat|float16|"
     // Other types
     "any|anyfault|typeid|"
     // C compatibility types
@@ -4582,7 +4619,15 @@ static void c3_colorize_line(QEColorizeContext *cp,
                 break;
             }
             continue;
+        case '[':
+            if (str[i] == '<')  // LVEC token
+                i++;
+            continue;
         case '(':
+            if (str[i] == '<')  // LGENPAR token
+                i++;
+            tag = 0;
+            continue;
         case '{':
             tag = 0;
             continue;
