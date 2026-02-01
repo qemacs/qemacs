@@ -519,7 +519,7 @@ static int get_trailchar(mode_t mode)
 {
     int trailchar = 0;
 
-    if (mode & S_IEXEC) {
+    if (mode & S_IXUSR) {
         trailchar = '*';
     }
     if (S_ISDIR(mode)) {
