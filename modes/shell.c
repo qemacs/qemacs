@@ -196,7 +196,8 @@ static int run_process(ShellState *s,
                        int cols, int rows, const char *path,
                        int shell_flags)
 {
-    int pty_fd, pid, i, nb_fds;
+    long i, nb_fds;
+    int pty_fd, pid;
     char tty_name[MAX_FILENAME_SIZE];
     char lines_string[20];
     char columns_string[20];
@@ -242,7 +243,7 @@ static int run_process(ShellState *s,
         setsid();
 #endif
         /* close all files */
-        nb_fds = getdtablesize();
+        nb_fds = sysconf(_SC_OPEN_MAX);
         for (i = 0; i < nb_fds; i++)
             close(i);
 
