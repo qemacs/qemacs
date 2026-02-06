@@ -3518,11 +3518,12 @@ static void do_next_error(EditState *s, int arg, int dir)
     do_find_file(s, fullpath, 0);
     do_goto_line(qs->active_window, line_num, col_num);
 
+#if 0  // conflicts with muscle memory (chqrlie)
     if (!qs->first_transient_key) {
         qe_register_transient_binding(qs, "next-error", "M-n");
         qe_register_transient_binding(qs, "previous-error", "M-p");
     }
-
+#endif
     put_status(s, "=> %s", error_message);
 }
 
