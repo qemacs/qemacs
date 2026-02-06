@@ -214,7 +214,7 @@ OBJS+= modes/unihex.o   modes/bufed.o    modes/orgmode.o  modes/markdown.o \
        lang/tiger.o     lang/asm.o       lang/inifile.o   lang/postscript.o \
        lang/sharp.o     lang/emf.o       lang/csv.o       lang/crystal.o   \
        lang/rye.o       lang/nanorc.o    lang/tcl.o       modes/fractal.o  \
-       $(EXTRA_MODES)
+       lang/algol68.o	$(EXTRA_MODES)
 ifndef CONFIG_WIN32
 OBJS+= modes/shell.o    modes/dired.o    modes/archive.o  modes/latex-mode.o
 endif

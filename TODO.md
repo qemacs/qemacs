@@ -4,6 +4,7 @@
 
 ## Current work
 
+odin: c-mode indentation does not work because of lack of semicolons
 clang: colorize git conflict markers
 <<<<<<< HEAD
             }
