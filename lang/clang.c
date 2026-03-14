@@ -1590,12 +1590,18 @@ static const char c2_keywords[] = {
     "break|case|continue|default|else|fallthrough|"
     "for|goto|if|return|switch|while|"
     // other
-    "assert|static_assert"
+    "assert|static_assert|"
+    // C keywords (supported in extern "C" blocks)
+    "extern|typedef|"
+    // C keywords (reserved)
+    "alignas|alignof|auto|constexpr|do|inline|nullptr|"
+    "register|restrict|static|thread_local|typeof|typeof_unqual"
 };
 
 static const char c2_types[] = {
     "void|bool|char|i8|i16|i32|i64|u8|u16|u32|u64|isize|usize|f32|f64|"
-    "reg8|reg16|reg32|reg64|va_list"
+    "reg8|reg16|reg32|reg64|va_list|"
+    "int|short|long|float|double|signed|unsigned|size_t|ssize_t"
 };
 
 static ModeDef c2_mode = {
