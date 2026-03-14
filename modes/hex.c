@@ -61,7 +61,7 @@ static int hex_display_line(EditState *s, DisplayState *ds, int offset)
     display_bol(ds);
 
     ds->style = HEX_STYLE_OFFSET;
-    display_printf(ds, -1, -1, "%08x ", offset);
+    display_printf(ds, -1, -1, "%08x ", (unsigned)offset);
 
     ateof = 0;
     len = s->b->total_size - offset;
@@ -321,7 +321,7 @@ void hex_write_char(EditState *s, int key)
 static void hex_mode_line(EditState *s, buf_t *out)
 {
     basic_mode_line(s, out, '-');
-    buf_printf(out, "--0x%x--0x%x", s->offset, s->b->total_size);
+    buf_printf(out, "--0x%x--0x%x", (unsigned)s->offset, (unsigned)s->b->total_size);
     buf_printf(out, "--%d%%", compute_percent(s->offset, s->b->total_size));
 }
 

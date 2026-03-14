@@ -89,7 +89,7 @@ static int unihex_display_line(EditState *s, DisplayState *ds, int offset)
     display_bol(ds);
 
     ds->style = UNIHEX_STYLE_OFFSET;
-    display_printf(ds, -1, -1, "%08x ", offset);
+    display_printf(ds, -1, -1, "%08x ", (unsigned)offset);
     //int charpos = eb_get_char_offset(s->b, offset);
     //display_printf(ds, -1, -1, "%08x ", charpos);
     //display_printf(ds, -1, -1, "%08x %08x ", charpos, offset);
@@ -224,8 +224,8 @@ static void unihex_mode_line(EditState *s, buf_t *out)
 {
     basic_mode_line(s, out, '-');
     buf_printf(out, "--0x%x--0x%x--%s",
-               eb_get_char_offset(s->b, s->offset),
-               s->offset, s->b->charset->name);
+               (unsigned)eb_get_char_offset(s->b, s->offset),
+               (unsigned)s->offset, s->b->charset->name);
     buf_printf(out, "--%d%%", compute_percent(s->offset, s->b->total_size));
 }
 

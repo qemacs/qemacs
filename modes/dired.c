@@ -489,7 +489,7 @@ static int format_date(char *dest, int size,
                    systm.tm_year + 1900); /* year */
         break;
     case TF_SECONDS:
-        buf_printf(out, "%10lu", (long)systime); /* seconds */
+        buf_printf(out, "%10lu", (unsigned long)systime); /* seconds */
         break;
     default:
     case TF_COMPACT:
