@@ -8489,6 +8489,10 @@ void do_buffer_navigation(EditState *s, int argval, int dir)
         qe_register_transient_binding(qs, "previous-buffer", "left, C-left");
     }
     buffer_index = (buffer_index + argval * dir) % buffer_count;
+    /* buffer == negative, when dir == -1*/
+    if (buffer_index < 0) {
+        buffer_index = buffer_count + buffer_index;
+    }
     b = qe_get_buffer_from_index(qs, buffer_index, BF_SYSTEM, 0);
     if (b)
         switch_to_buffer(s, b);
