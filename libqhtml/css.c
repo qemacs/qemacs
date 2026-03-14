@@ -1041,14 +1041,14 @@ static void css_counter_str(char *text, int text_size,
         break;
     case CSS_LIST_STYLE_TYPE_LOWER_ALPHA:
         upper = 0;
-        fallthrough;
+        FALLTHROUGH;
     case CSS_LIST_STYLE_TYPE_UPPER_ALPHA:
         if (num_to_alpha(buf, index, upper))
             goto decimal;
         break;
     case CSS_LIST_STYLE_TYPE_LOWER_ROMAN:
         upper = 0;
-        fallthrough;
+        FALLTHROUGH;
     case CSS_LIST_STYLE_TYPE_UPPER_ROMAN:
         if (num_to_roman(buf, index, upper))
             goto decimal;

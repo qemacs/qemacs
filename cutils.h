@@ -53,11 +53,11 @@
 #endif
 
 #if defined(__GNUC__) && __GNUC__ >= 7
-#define fallthrough           __attribute__((__fallthrough__))
+#define FALLTHROUGH           __attribute__((__fallthrough__))
 #elif defined(__clang__) && __clang_major__ >= 12
-#define fallthrough           __attribute__((__fallthrough__))
+#define FALLTHROUGH           __attribute__((__fallthrough__))
 #else
-#define fallthrough           do {} while (0)
+#define FALLTHROUGH           do {} while (0)
 #endif
 
 #ifndef offsetof

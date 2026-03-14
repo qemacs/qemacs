@@ -214,7 +214,7 @@ static void perl_colorize_line(QEColorizeContext *cp,
                 style = PERL_STYLE_KEYWORD;
                 break;
             }
-            fallthrough;
+            FALLTHROUGH;
         case '*':
         case '@':       /* arrays */
         case '%':       /* associative arrays */

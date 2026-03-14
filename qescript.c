@@ -276,10 +276,10 @@ static int qe_cfg_parse_string(QEmacsDataSource *ds, const char **pp, int delim)
                 break;
             case 'U':
                 maxc += 4;  /* maxc will be 8 */
-                fallthrough;
+                FALLTHROUGH;
             case 'u':
                 maxc += 5;  /* maxc will be 4 */
-                fallthrough;
+                FALLTHROUGH;
             case 'x':
                 for (ch = 0; qe_isxdigit(*p) && maxc-- != 0; p++) {
                     ch = (ch << 4) | qe_digit_value(*p);

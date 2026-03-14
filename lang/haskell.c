@@ -130,7 +130,7 @@ static void haskell_colorize_line(QEColorizeContext *cp,
                 state |= level << IN_HASKELL_COMMENT_SHIFT;
                 break;
             }
-            fallthrough;
+            FALLTHROUGH;
 
         case '}':
         case '(':

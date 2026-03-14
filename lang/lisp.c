@@ -261,7 +261,7 @@ static void lisp_colorize_line(QEColorizeContext *cp,
         case ',':
             if (str[i] == '@')
                 i++;
-            fallthrough;
+            FALLTHROUGH;
         case '`':
             style = LISP_STYLE_MACRO;
             break;

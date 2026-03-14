@@ -4243,7 +4243,7 @@ static void ppl_colorize_line(QEColorizeContext *cp,
                 i = n;
                 break;
             }
-            /* fallthrough */
+            FALLTHROUGH;
         case '=':
             if (str[i] == 'v' || str[i] == 'r')
                 i++;

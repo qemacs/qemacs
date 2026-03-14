@@ -129,7 +129,7 @@ static void icon_colorize_line(QEColorizeContext *cp,
         case '.':
             c = '0';
             i--;
-            fallthrough;
+            FALLTHROUGH;
 
         default:
             if (qe_isdigit(c)) {
