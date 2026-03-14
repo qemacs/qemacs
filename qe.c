@@ -3242,7 +3242,7 @@ void do_what_cursor_position(EditState *s)
         }
         buf_puts(out, "char:");
         if (c < 32 || c == 127) {
-            buf_printf(out, " ^%c", (c + '@') & 127);
+            buf_printf(out, " ^%c", (int)((c + '@') & 127));
         } else
         if (c < 127 || (c >= 160 && c <= MAX_UNICODE_DISPLAY)) {
             buf_put_byte(out, ' ');
@@ -5147,7 +5147,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
                  */
                 if (c == '\r' && s->b->eol_type == EOL_MAC)
                     c = '\n';
-                display_printf(ds, offset0, offset, "^%c", ('@' + c) & 127);
+                display_printf(ds, offset0, offset, "^%c", (int)(('@' + c) & 127));
             } else
             if (c >= 128
             &&  (s->qs->show_unicode == 1 ||
@@ -9934,7 +9934,7 @@ void qe_save_window_layout(EditState *s, EditBuffer *b)
             eb_get_pos(e->b, &mark_row, &mark_col, e->b->mark);
             eb_get_pos(e->b, &top_row, &top_col, e->offset_top);
             eb_printf(b, "create_window(\"%s\", "
-                      "\"%d,%d,%d,%d flags:%d wrap:%d",
+                      "\"%d,%d,%d,%d flags:%d wrap:%u",
                       e->b->filename,
                       scale(e->x1, 1000, qs->width),
                       scale(e->y1, 1000, qs->height - qs->status_height),
@@ -10560,7 +10560,7 @@ void qe_handle_event(QEmacsState *qs, QEEvent *ev)
             char buf[32];
             buf_t out[1];
             buf_init(out, buf, sizeof buf);
-            buf_printf(out, "0x%04X ", ev->key_event.key);
+            buf_printf(out, "0x%04X ", (unsigned)ev->key_event.key);
             buf_put_key(out, ev->key_event.key);
             buf_put_byte(out, ' ');
             qe_trace_bytes(qs, buf, out->len, EB_TRACE_KEY);
@@ -10589,7 +10589,7 @@ void qe_handle_event(QEmacsState *qs, QEEvent *ev)
             char buf[32];
             buf_t out[1];
             buf_init(out, buf, sizeof buf);
-            buf_printf(out, "%d %d %d %d %d ", ev->button_event.type,
+            buf_printf(out, "%u %d %d %d %d ", ev->button_event.type,
                        ev->button_event.shift, ev->button_event.button,
                        ev->button_event.x, ev->button_event.y);
             qe_trace_bytes(qs, buf, out->len, EB_TRACE_MOUSE);

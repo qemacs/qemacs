@@ -1730,6 +1730,7 @@ typedef struct QEValue {
     int len;                // string length
     union {
         long long value;    // number value
+        unsigned long long uvalue; // same as unsigned
         char *str;          // string value
         // XXX: should have other object pointer types
         // XXX: could have floating point values with type double

@@ -327,7 +327,7 @@ QEFont *select_font(QEditScreen *s, int style, int size)
             return NULL;
 
         dpy_error(s, "open_font: cannot open style=%X size=%d",
-                  style, size);
+                  (unsigned)style, size);
         goto fail;
     }
 

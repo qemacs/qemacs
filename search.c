@@ -344,7 +344,7 @@ static void buf_encode_search_str(buf_t *out, const char *str)
     while (*str) {
         char32_t c = utf8_decode(&str);
         if (c < 32 || c == 127) {
-            buf_printf(out, "^%c", (c + '@') & 127);
+            buf_printf(out, "^%c", (int)((c + '@') & 127));
         } else {
             buf_putc_utf8(out, c);
         }

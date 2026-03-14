@@ -923,7 +923,7 @@ static void forward_block(EditState *s, int dir)
                     if (level < MAX_LEVEL && balance[level] != c) {
                         /* XXX: should set mark and offset */
                         put_error(s, "Unmatched delimiter %c <> %c",
-                                  c, balance[level]);
+                                  (int)c, (int)balance[level]);
                         goto done;
                     }
                     if (level == 0) {
@@ -1007,7 +1007,7 @@ static void forward_block(EditState *s, int dir)
                     if (level < MAX_LEVEL && balance[level] != c) {
                         /* XXX: should set mark and offset */
                         put_error(s, "Unmatched delimiter %c <> %c",
-                                  c, balance[level]);
+                                  (int)c, (int)balance[level]);
                         goto done;
                     }
                     if (level == 0) {
@@ -1718,7 +1718,7 @@ static void do_describe_buffer(EditState *s, int argval)
     if (b->eol_type == EOL_MAC)
         buf_puts(desc, " mac");
 
-    eb_printf(b1, "    eol_type: %d %s\n", b->eol_type, buf);
+    eb_printf(b1, "    eol_type: %u %s\n", b->eol_type, buf);
     eb_printf(b1, "     charset: %s  (bytes=%d, shift=%d)\n",
               b->charset->name, b->char_bytes, b->char_shift);
 
@@ -1746,7 +1746,7 @@ static void do_describe_buffer(EditState *s, int argval)
     if (b->flags & BF_STYLES)
         buf_puts(desc, " STYLES");
 
-    eb_printf(b1, "       flags: 0x%02x %s\n", b->flags, buf);
+    eb_printf(b1, "       flags: 0x%02x %s\n", (unsigned)b->flags, buf);
 #if 0
     eb_printf(b1, "      probed: %d\n", b->probed);
 #endif
@@ -1825,7 +1825,7 @@ static void do_describe_buffer(EditState *s, int argval)
                 byte_quote(cbuf, sizeof cbuf, i);
                 col += eb_printf(b1, "'%s'", cbuf);
             } else {
-                col += eb_printf(b1, "0x%02x", i);
+                col += eb_printf(b1, "0x%02x", (unsigned)i);
             }
             if (col >= 60) {
                 eb_putc(b1, '\n');
@@ -1846,7 +1846,7 @@ static void do_describe_buffer(EditState *s, int argval)
         eb_printf(b1, "    page  size  flags  lines   col  chars  addr\n");
         for (i = 0, p = b->page_table; i < b->nb_pages && i < 100; i++, p++) {
             eb_printf(b1, "    %4d  %4d  %5x  %5d  %4d  %5d  %p  |",
-                      i, p->size, p->flags, p->nb_lines, p->col, p->nb_chars,
+                      i, p->size, (unsigned)p->flags, p->nb_lines, p->col, p->nb_chars,
                       (void *)p->data);
             pc = p->data;
             n = min_offset(p->size, 16);
@@ -1878,7 +1878,7 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d, %d\n", w, "xleft, ytop", s->xleft, s->ytop);
     eb_printf(b1, "%*s: %d, %d\n", w, "width, height", s->width, s->height);
     eb_printf(b1, "%*s: %d, %d, %d, %d\n", w, "x1, y1, x2, y2", s->x1, s->y1, s->x2, s->y2);
-    eb_printf(b1, "%*s: %#x%s%s%s%s%s%s%s\n", w, "flags", s->flags,
+    eb_printf(b1, "%*s: %#x%s%s%s%s%s%s%s\n", w, "flags", (unsigned)s->flags,
               (s->flags & WF_POPUP) ? " POPUP" : "",
               (s->flags & WF_MODELINE) ? " MODELINE" : "",
               (s->flags & WF_RSEPARATOR) ? " RSEPARATOR" : "",
@@ -1898,7 +1898,7 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d\n", w, "overwrite", s->overwrite);
     eb_printf(b1, "%*s: %d\n", w, "bidir", s->bidir);
     eb_printf(b1, "%*s: %d\n", w, "cur_rtl", s->cur_rtl);
-    eb_printf(b1, "%*s: %d  %s\n", w, "wrap", s->wrap,
+    eb_printf(b1, "%*s: %u  %s\n", w, "wrap", s->wrap,
               s->wrap == WRAP_AUTO ? "AUTO" :
               s->wrap == WRAP_TRUNCATE ? "TRUNCATE" :
               s->wrap == WRAP_LINE ? "LINE" :
@@ -1921,7 +1921,7 @@ static void do_describe_window(EditState *s, int argval)
     if (s->colorize_nb_valid_lines) {
         int pos = eb_printf(b1, "%*s: [%d] {", w, "colorize_states", s->colorize_nb_valid_lines);
         int i, from, len;
-        int bits = 0;
+        unsigned int bits = 0;
         int w1;
         char buf[32];
         for (i = 0; i < s->colorize_nb_valid_lines; i++) {
@@ -1975,12 +1975,12 @@ static void do_describe_screen(EditState *e, int argval)
                   s->unicode_version / 10, s->unicode_version % 10);
     }
     eb_printf(b1, "%*s: %d\n", w, "media", s->media);
-    eb_printf(b1, "%*s: %d\n", w, "bitmap_format", s->bitmap_format);
-    eb_printf(b1, "%*s: %d\n\n", w, "video_format", s->video_format);
+    eb_printf(b1, "%*s: %u\n", w, "bitmap_format", s->bitmap_format);
+    eb_printf(b1, "%*s: %u\n\n", w, "video_format", s->video_format);
 
     eb_printf(b1, "%*s: %d\n", w, "QE_TERM_STYLE_BITS", QE_TERM_STYLE_BITS);
-    eb_printf(b1, "%*s: %x << %d\n", w, "QE_TERM_FG_COLORS", QE_TERM_FG_COLORS, QE_TERM_FG_SHIFT);
-    eb_printf(b1, "%*s: %x << %d\n\n", w, "QE_TERM_BG_COLORS", QE_TERM_BG_COLORS, QE_TERM_BG_SHIFT);
+    eb_printf(b1, "%*s: %x << %d\n", w, "QE_TERM_FG_COLORS", (unsigned)QE_TERM_FG_COLORS, QE_TERM_FG_SHIFT);
+    eb_printf(b1, "%*s: %x << %d\n\n", w, "QE_TERM_BG_COLORS", (unsigned)QE_TERM_BG_COLORS, QE_TERM_BG_SHIFT);
 
     dpy_describe(s, b1);
 

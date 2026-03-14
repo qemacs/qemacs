@@ -1977,7 +1977,7 @@ int buf_put_key(buf_t *out, int key) {
     } else
         // FIXME: handle @-_  @@@
     if (key >= KEY_CTRL('@') && key <= KEY_CTRL('_')) {
-        buf_printf(out, "C-%c", qe_tolower(key + 'A' - 1));
+        buf_printf(out, "C-%c", (int)qe_tolower(key + 'A' - 1));
     } else {
         buf_putc_utf8(out, key);
     }

@@ -49,7 +49,7 @@ static int dump_font(const char *filename, const char *name)
         if ((j & 7) == 0)
             printf("   ");
         j++;
-        printf(" 0x%02x,", c);
+        printf(" 0x%02x,", (unsigned)c);
         if ((j & 7) == 0)
             printf("\n");
     }

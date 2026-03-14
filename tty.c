@@ -165,7 +165,7 @@ typedef struct TTYState {
     const char *term_name;
     const char *term_program;
     enum TermCode term_code;
-    int term_flags;
+    unsigned int term_flags;
 #define KBS_CONTROL_H           0x01
 #define USE_ERASE_END_OF_LINE   0x02
 #define USE_BOLD_AS_BRIGHT_FG   0x04
@@ -1521,9 +1521,9 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b, TTYState *ts) {
 
     for (ip = ts->comb_cache; *ip != 0; ip += *ip & 0xFFFF) {
         if (*ip & 0x10000) {
-            eb_printf(b, "   FREE   %d\n", (*ip & 0xFFFF) - 1);
+            eb_printf(b, "   FREE   %u\n", (*ip & 0xFFFF) - 1);
         } else {
-            eb_printf(b, "  %06X  %d:",
+            eb_printf(b, "  %06X  %u:",
                       (unsigned int)(TTY_CHAR_COMB + (ip - ts->comb_cache)),
                       (*ip & 0xFFFF) - 1);
             for (i = 1; i < (*ip & 0xFFFF); i++) {
@@ -1758,7 +1758,7 @@ static void tty_dpy_flush(QEditScreen *s)
                     if (ts->term_bg_colors_count > 256 && bgcolor >= 256) {
                         /* XXX: should special case dynamic palette */
                         QEColor rgb = qe_unmap_color(bgcolor, ts->tty_bg_colors_count);
-                        TTY_FPRINTF(s->STDOUT, "\033[48;2;%d;%d;%dm",
+                        TTY_FPRINTF(s->STDOUT, "\033[48;2;%u;%u;%um",
                                     (rgb >> 16) & 255, (rgb >> 8) & 255, (rgb >> 0) & 255);
                     } else
 #endif
@@ -1790,7 +1790,7 @@ static void tty_dpy_flush(QEditScreen *s)
 #if TTY_STYLE_BITS == 32
                     if (ts->term_fg_colors_count > 256 && fgcolor >= 256) {
                         QEColor rgb = qe_unmap_color(fgcolor, ts->tty_fg_colors_count);
-                        TTY_FPRINTF(s->STDOUT, "\033[38;2;%d;%d;%dm",
+                        TTY_FPRINTF(s->STDOUT, "\033[38;2;%u;%u;%um",
                                     (rgb >> 16) & 255, (rgb >> 8) & 255, (rgb >> 0) & 255);
                     } else
 #endif
@@ -2168,7 +2168,7 @@ static void tty_dpy_describe(QEditScreen *s, EditBuffer *b)
 
     if (ts->term_name)
         eb_printf(b, "%*s: %s\n", w, "term_name", ts->term_name);
-    eb_printf(b, "%*s: %d  %s\n", w, "term_code", ts->term_code,
+    eb_printf(b, "%*s: %u  %s\n", w, "term_code", ts->term_code,
               term_code_name[ts->term_code]);
     eb_printf(b, "%*s: %d\n", w, "tty_mk", tty_mk);
     eb_printf(b, "%*s: %d\n", w, "tty_mouse", tty_mouse);
