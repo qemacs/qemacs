@@ -85,7 +85,7 @@ static void latex_colorize_line(QEColorizeContext *cp,
                 SET_STYLE(sbuf, start, i, LATEX_STYLE_COMMENT);
                 break;
             }
-            fallthrough;
+            FALLTHROUGH;
 
         case '\\':
             /* \function[keyword]{variable} */

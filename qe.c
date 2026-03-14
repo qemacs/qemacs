@@ -3124,20 +3124,20 @@ void do_goto(EditState *s, const char *str, int unit)
     switch (*p) {
     case 'g':
         pos *= 1000;
-        fallthrough;
+        FALLTHROUGH;
     case 'm':
         pos *= 1000;
-        fallthrough;
+        FALLTHROUGH;
     case 'k':
         pos *= 1000;
         p++;
         break;
     case 'G':
         pos *= 1024;
-        fallthrough;
+        FALLTHROUGH;
     case 'M':
         pos *= 1024;
-        fallthrough;
+        FALLTHROUGH;
     case 'K':
         pos *= 1024;
         p++;
@@ -10582,7 +10582,7 @@ void qe_handle_event(QEmacsState *qs, QEEvent *ev)
             qs->mouse_clicks++;
         else
             qs->mouse_clicks = 1;
-        /* fallthrough */
+        FALLTHROUGH;
     case QE_BUTTON_RELEASE_EVENT:
     case QE_MOTION_EVENT:
         if (qs->trace_buffer) {

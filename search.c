@@ -1192,7 +1192,7 @@ static void query_replace_key(void *opaque, int key)
     case '.':
         query_replace_replace(is);
         s->offset = is->found_offset;
-        fallthrough;
+        FALLTHROUGH;
     default:
         query_replace_abort(is);
         return;
