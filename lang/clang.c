@@ -1583,19 +1583,19 @@ static const char c2_keywords[] = {
     "module|import|as|public|"
     // Types -> c2_types
     // Type related
-    "asm|cast|const|elemsof|enum|enum_min|enum_max|"
+    "asm|cast|const|elemsof|enum|extern|"
     "false|fn|local|nil|offsetof|to_container|public|"
-    "sizeof|struct|template|true|type|union|volatile|"
+    "sizeof|static|struct|template|tlocal|true|type|union|volatile|"
     // Control flow related
     "break|case|continue|default|else|fallthrough|"
-    "for|goto|if|return|switch|while|"
+    "for|goto|if|return|switch|when|while|"
     // other
     "assert|static_assert|"
     // C keywords (supported in extern "C" blocks)
-    "extern|typedef|"
+    "typedef|"
     // C keywords (reserved)
     "alignas|alignof|auto|constexpr|do|inline|nullptr|"
-    "register|restrict|static|thread_local|typeof|typeof_unqual"
+    "register|restrict|thread_local|typeof|typeof_unqual"
 };
 
 static const char c2_types[] = {
