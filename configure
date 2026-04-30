@@ -3,7 +3,7 @@
 # QEmacs configure script
 #
 # Copyright (c) 2002 Fabrice Bellard
-# Copyright (c) 2002-2023 Charlie Gordon
+# Copyright (c) 2002-2026 Charlie Gordon
 #
 #
 # set temporary file name
@@ -71,7 +71,8 @@ extralibs=""
 simpleidct="yes"
 bigendian="no"
 
-tiny="no"
+tiny_only="no"
+tiny="yes"
 x11="no"
 xv="no"
 xshm="no"
@@ -231,11 +232,12 @@ echo "  --disable-x11            disable Xwindow support"
 echo "  --disable-xv             disable Xvideo extension support"
 echo "  --disable-xshm           disable XShm extension support"
 echo "  --disable-xrender        disable Xrender extension support"
-echo "  --enable-tiny            build a very small version"
+echo "  --disable-tiny           do not build the very small version"
 echo "  --disable-html           disable graphical html support"
 echo "  --disable-png            disable png support"
 echo "  --disable-plugins        disable plugins support"
 echo "  --disable-ffmpeg         disable ffmpeg support"
+echo "  --tiny-only              only build the very small version"
 echo "  --with-ffmpegdir=DIR     find ffmpeg sources and libraries in DIR"
 echo "                           for audio/video/image support"
 echo ""
@@ -295,6 +297,9 @@ for opt do
         ;;
       --with-ffmpeglibdir=*)
         ffmpeg_libdir=${opt#--with-ffmpeglibdir=}
+        ;;
+      --tiny-only)
+        tiny_only="yes"
         ;;
       --disable-*)
         value="no"
@@ -491,7 +496,8 @@ if test "$ffmpeg" = "yes" ; then
     fi
 fi
 
-if test "$tiny" = "yes" ; then
+if test "$tiny_only" = "yes" ; then
+    tiny="yes"
     ffmpeg="no"
     x11="no"
     xv="no"
@@ -695,8 +701,13 @@ if test "$xrender" = "yes" ; then
 fi
 
 if test "$tiny" = "yes" ; then
-  echo "#define CONFIG_TINY 1" >> $TMPH
+  #echo "#define CONFIG_TINY 1" >> $TMPH
   echo "CONFIG_TINY=yes" >> $TMPMAK
+fi
+
+if test "$tiny_only" = "yes" ; then
+  #echo "#define CONFIG_TINY 1" >> $TMPH
+  echo "CONFIG_TINY_ONLY=yes" >> $TMPMAK
 fi
 
 if test "$html" = "yes" ; then

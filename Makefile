@@ -1,7 +1,7 @@
 # QEmacs, tiny but powerful multimode editor
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2025 Charlie Gordon.
+# Copyright (c) 2000-2026 Charlie Gordon.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,10 @@
 
 DEPTH=.
 OSNAME:=$(shell uname -s)
+
+ifeq (,$(wildcard $(DEPTH)/config.mak))
+    $(error you should run ./configure prior to make)
+endif
 
 include $(DEPTH)/config.mak
 
@@ -116,17 +120,51 @@ CFLAGS += -D__UBSAN__
 CFLAGS += -fsanitize=undefined $(SANITIZE_CFLAGS) -g
 LDFLAGS += -fsanitize=undefined $(SANITIZE_CFLAGS) -g
 endif
+ifdef CONFIG_32BIT
+CFLAGS += -m32
+LDFLAGS += -m32
+endif
+
+BINDIR:=$(DEPTH)/bin
 
 TARGETLIBS:=
 
-TOP:=0
 ifeq (,$(TARGET))
-TARGET:=qe
-TARGETS:=kmaps ligatures tqe qe-manual.md
-ifeq (,$(DEBUG_SUFFIX))
-TOP:=1
+
+TARGETS :=
+ifndef CONFIG_TINY_ONLY
+  TARGETS += qe
 endif
+ifdef CONFIG_TINY
+  TARGETS += tqe
 endif
+ifdef CONFIG_X11
+  TARGETS += xqe
+endif
+ifdef CONFIG_DOC
+  TARGETS += qe-doc.html
+endif
+TARGET_OBJ := other
+
+all: $(TARGETS)
+
+# targets that require recursion
+qe:		force;	$(MAKE) TARGET=qe
+xqe:		force;	$(MAKE) TARGET=xqe TARGET_OBJ=qe TARGET_X11=1
+tqe:		force;	$(MAKE) TARGET=tqe TARGET_TINY=1
+tqe1:		force;	$(MAKE) TARGET=tqe TARGET_TINY=1 tqe1$(EXE)
+asan qe_asan:	force;	$(MAKE) TARGET=qe ASAN=1
+msan qe_msan:	force;	$(MAKE) TARGET=qe MSAN=1
+ubsan qe_ubsan:	force;	$(MAKE) TARGET=qe UBSAN=1
+debug qe_debug:	force;	$(MAKE) TARGET=qe DEBUG=1
+xqe_debug:	force;	$(MAKE) TARGET=xqe TARGET_OBJ=qe TARGET_X11=1 DEBUG=1
+tqe_debug:	force;	$(MAKE) TARGET=tqe TARGET_TINY=1 DEBUG=1
+qe-manual.md:   force;  $(MAKE) TARGET=qe qe-manual.md
+
+else
+
+# We have a specific TARGET (qe, xqe or tqe)
+
 ifeq (,$(TARGET_OBJ))
 TARGET_OBJ:=$(TARGET)
 endif
@@ -134,18 +172,11 @@ endif
 OBJS:= qe.o cutils.o util.o color.o charset.o buffer.o search.o input.o display.o \
        qescript.o modes/hex.o
 
-ifdef CONFIG_32BIT
-CFLAGS += -m32
-LDFLAGS += -m32
-endif
-
 ifdef TARGET_TINY
 ECHO_CFLAGS += -DCONFIG_TINY
 CFLAGS += -DCONFIG_TINY -Os
 #CFLAGS += -m32
 #LDFLAGS += -m32
-else
-OBJS+= extras.o variables.o
 endif
 
 #ifdef CONFIG_DARWIN
@@ -162,10 +193,6 @@ ifdef CONFIG_DLL
   LDFLAGS += -Wl,-E
 endif
 
-ifdef CONFIG_DOC
-  TARGETS += qe-doc.html
-endif
-
 ifdef CONFIG_HAIKU
   OBJS += haiku.o
   LIBS += -lbe -lstdc++
@@ -180,7 +207,14 @@ else
   LIBS+= $(EXTRALIBS)
 endif
 
+ifeq (qe,$(TARGET))
+# qe-manual.md depends on $(SRCS) and $(DEPENDS)
+TARGETS += kmaps ligatures qe-manual.md
+endif
+
 ifndef TARGET_TINY
+
+OBJS+= extras.o variables.o
 
 ifdef CONFIG_QSCRIPT
   OBJS+= qscript.o eval.o
@@ -218,7 +252,7 @@ OBJS+= modes/unihex.o   modes/bufed.o    modes/orgmode.o  modes/markdown.o \
 ifndef CONFIG_WIN32
 OBJS+= modes/shell.o    modes/dired.o    modes/archive.o  modes/latex-mode.o
 endif
-endif
+endif  # ifdef CONFIG_ALL_MODES
 
 # currently not used in qemacs
 ifdef CONFIG_CFB
@@ -249,14 +283,10 @@ else
   OBJS+= modes/stb.o
 endif
 
-ifdef CONFIG_X11
-  TARGETS += xqe
-endif
-
 ifdef TARGET_X11
   OBJS+= x11.o
-  ECHO_CFLAGS += -DCONFIG_X11
-  DEFINES += -DCONFIG_X11
+  #ECHO_CFLAGS += -DCONFIG_X11
+  #DEFINES += -DCONFIG_X11
   CFLAGS += $(XCFLAGS)
   LDFLAGS += $(XLDFLAGS)
   LIBS += $(XLIBS)
@@ -281,24 +311,12 @@ DEPENDS:= qe.h config.h config.mak charset.h color.h cutils.h display.h \
 
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
-BINDIR:=$(DEPTH)/bin
-
 OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/$(TARGET_OBJ)$(DEBUG_SUFFIX)
 CFLAGS+= -I$(OBJS_DIR)
 OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
 OBJS+= $(OBJS_DIR)/$(TARGET)_modules.o
 
-#
-# Dependencies
-#
-ifeq (1,$(TOP))
 all: $(TARGETLIBS) $(TARGET)$(DEBUG_SUFFIX)$(EXE) $(TARGETS)
-else
-all: $(TARGETLIBS) $(TARGET)$(DEBUG_SUFFIX)$(EXE)
-endif
-
-libqhtml: force
-	$(MAKE) -C libqhtml all
 
 ifneq (,$(DEBUG_SUFFIX))
 $(TARGET)$(DEBUG_SUFFIX)$(EXE): $(OBJS) $(DEP_LIBS)
@@ -318,22 +336,8 @@ $(TARGET)$(EXE): $(TARGET)_g$(EXE) Makefile
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 endif
 
-ifeq (1,$(TOP))
-
-# targets that require recursion
-xqe:		force;	$(MAKE) TARGET=xqe TARGET_OBJ=qe TARGET_X11=1
-tqe:		force;	$(MAKE) TARGET=tqe TARGET_TINY=1
-tqe1:		force;	$(MAKE) TARGET=tqe TARGET_TINY=1 tqe1$(EXE)
-asan qe_asan:	force;	$(MAKE) TARGET=qe ASAN=1
-msan qe_msan:	force;	$(MAKE) TARGET=qe MSAN=1
-ubsan qe_ubsan:	force;	$(MAKE) TARGET=qe UBSAN=1
-debug qe_debug:	force;	$(MAKE) TARGET=qe DEBUG=1
-xqe_debug:	force;	$(MAKE) TARGET=xqe TARGET_OBJ=qe TARGET_X11=1 DEBUG=1
-tqe_debug:	force;	$(MAKE) TARGET=tqe TARGET_TINY=1 DEBUG=1
-
-else
-
-# Amalgation mode produces a larger executable
+ifeq (tqe,$(TARGET))
+# Amalgamation mode produces a larger executable
 TSRCS:=qe.c cutils.c util.c color.c charset.c buffer.c search.c input.c display.c \
        modes/hex.c parser.c unix.c tty.c win32.c qeend.c
 TSRCS+= $(OBJS_DIR)/tqe_modules.c
@@ -408,6 +412,11 @@ $(OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 
 %.s: %.cpp $(DEPENDS) Makefile
 	g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -S $<
+
+endif # ifneq(,$(TARGET))
+
+libqhtml: force
+	$(MAKE) -C libqhtml all
 
 #
 # Host utilities
@@ -527,6 +536,7 @@ unicode_width: $(BINDIR)/unitable$(EXE) Makefile
 #libunicode_table: $(BINDIR)/unicode_gen$(EXE) Makefile
 #	$(BINDIR)/unicode_gen libunicode-table.h
 
+ifneq (,$(TARGET))
 #
 # fonts (only needed for html2png)
 #
@@ -557,14 +567,13 @@ OBJS1:=$(addprefix $(OBJS_DIR)/, $(OBJS1))
 html2png$(EXE): $(OBJS1) $(LIBQHTML)
 	$(echo) LD $@
 	$(cmd)  $(CC) $(LDFLAGS) -o $@ $(OBJS1) $(QHTML_LIBS) $(HTMLTOPPM_LIBS)
+endif
 
-# autotest target
-test:
-	$(MAKE) -C tests test
-
+ifeq (qe,$(TARGET))
 # documentation
 qe-manual.md: $(BINDIR)/scandoc$(EXE) qe-manual.c $(SRCS) $(DEPENDS) Makefile
 	$(BINDIR)/scandoc$(EXE) qe-manual.c $(SRCS) $(DEPENDS) > $@
+endif
 
 qe-doc.html: qe-doc.texi Makefile
 	LANGUAGE=en_US LC_ALL=en_US.UTF-8 texi2html -monolithic $<
@@ -589,7 +598,7 @@ clean:
 	rm -f *~ *.o *.a *.exe *_g *_debug TAGS gmon.out core *.exe.stackdump \
            qe tqe tqe1 xqe kmaptoqe ligtoqe html2png cptoqe jistoqe \
            fbftoqe fbffonts.c allmodules.txt basemodules.txt '.#'*[0-9] \
-           qe_asan qe_msan qe_ubsan
+           *qe_asan *qe_msan *qe_ubsan
 
 distclean: clean
 	$(MAKE) -C libqhtml distclean
@@ -602,7 +611,7 @@ install: $(TARGETS) qe.1
 ifdef CONFIG_X11
 	$(INSTALL) -m 755 -s xqe$(EXE) $(DESTDIR)$(prefix)/bin/qemacs$(EXE)
 else
-  ifdef CONFIG_TINY
+  ifdef CONFIG_TINY_ONLY
 	$(INSTALL) -m 755 -s tqe$(EXE) $(DESTDIR)$(prefix)/bin/qemacs$(EXE)
   else
 	$(INSTALL) -m 755 -s qe$(EXE) $(DESTDIR)$(prefix)/bin/qemacs$(EXE)
@@ -634,6 +643,10 @@ rebuild:
 
 TAGS: force
 	etags *.[ch]
+
+# autotest target
+test:
+	$(MAKE) -C tests test
 
 colortest:
 	tests/16colors.pl

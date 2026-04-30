@@ -1522,6 +1522,46 @@ ModeDef cpp_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- C2 language ----------------*/
+
+static const char c2_keywords[] = {
+    // Module related
+    "module|import|as|public|"
+    // Types -> c2_types
+    // Type related
+    "asm|cast|const|elemsof|enum|extern|"
+    "false|fn|local|nil|offsetof|to_container|public|"
+    "sizeof|static|struct|template|tlocal|true|type|union|volatile|"
+    // Control flow related
+    "break|case|continue|default|else|fallthrough|"
+    "for|goto|if|return|switch|when|while|"
+    // other
+    "assert|static_assert|"
+    // C keywords (supported in extern "C" blocks)
+    "typedef|"
+    // C keywords (reserved)
+    "alignas|alignof|auto|constexpr|do|inline|nullptr|"
+    "register|restrict|thread_local|typeof|typeof_unqual"
+};
+
+static const char c2_types[] = {
+    "void|bool|char|i8|i16|i32|i64|u8|u16|u32|u64|isize|usize|f32|f64|"
+    "reg8|reg16|reg32|reg64|va_list|"
+    "int|short|long|float|double|signed|unsigned|size_t|ssize_t"
+};
+
+static ModeDef c2_mode = {
+    .name = "C2",
+    .extensions = "c2|c2h|c2i|c2t",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_C2 | CLANG_PREPROC | CLANG_CAP_TYPE,
+    .keywords = c2_keywords,
+    .types = c2_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 #ifndef CONFIG_TINY
 /*---------------- Carbon programming language ----------------*/
 
@@ -1571,46 +1611,6 @@ static ModeDef carbon_mode = {
     .colorize_flags = CLANG_CARBON | CLANG_STR3,
     .keywords = carbon_keywords,
     .types = carbon_types,
-    .indent_func = c_indent_line,
-    .auto_indent = 1,
-    .fallback = &c_mode,
-};
-
-/*---------------- C2 language ----------------*/
-
-static const char c2_keywords[] = {
-    // Module related
-    "module|import|as|public|"
-    // Types -> c2_types
-    // Type related
-    "asm|cast|const|elemsof|enum|extern|"
-    "false|fn|local|nil|offsetof|to_container|public|"
-    "sizeof|static|struct|template|tlocal|true|type|union|volatile|"
-    // Control flow related
-    "break|case|continue|default|else|fallthrough|"
-    "for|goto|if|return|switch|when|while|"
-    // other
-    "assert|static_assert|"
-    // C keywords (supported in extern "C" blocks)
-    "typedef|"
-    // C keywords (reserved)
-    "alignas|alignof|auto|constexpr|do|inline|nullptr|"
-    "register|restrict|thread_local|typeof|typeof_unqual"
-};
-
-static const char c2_types[] = {
-    "void|bool|char|i8|i16|i32|i64|u8|u16|u32|u64|isize|usize|f32|f64|"
-    "reg8|reg16|reg32|reg64|va_list|"
-    "int|short|long|float|double|signed|unsigned|size_t|ssize_t"
-};
-
-static ModeDef c2_mode = {
-    .name = "C2",
-    .extensions = "c2|c2h|c2i|c2t",
-    .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_C2 | CLANG_PREPROC | CLANG_CAP_TYPE,
-    .keywords = c2_keywords,
-    .types = c2_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
@@ -2156,6 +2156,86 @@ ModeDef js_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- JSON data format ----------------*/
+
+static const char json_keywords[] = {
+    "null|true|false|NaN"
+};
+
+static const char json_types[] = {
+    ""
+};
+
+static int json_mode_probe(ModeDef *mode, ModeProbeData *pd)
+{
+    const char *p = cs8(pd->buf);
+
+    if (match_extension(pd->filename, mode->extensions))
+        return 80;
+
+    if (*p == '{' && p[1] == '\n') {
+        while (qe_isspace((unsigned char)*++p))
+            continue;
+        if (*p == '\"')
+            return 50;
+    }
+    return 1;
+}
+
+static ModeDef json_mode = {
+    .name = "json",
+    .extensions = "json",
+    .mode_probe = json_mode_probe,
+    .colorize_func = js_colorize_line,
+    .colorize_flags = CLANG_JSON,
+    .keywords = json_keywords,
+    .types = json_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+/*---------------- Typescript programming language ----------------*/
+
+static const char ts_keywords[] = {
+    /* keywords */
+    "break|case|catch|class|const|continue|debugger|default|"
+    "delete|do|else|enum|export|extends|false|finally|"
+    "for|function|if|import|in|instanceof|new|null|"
+    "return|super|switch|this|throw|true|try|typeof|"
+    "var|void|while|with|"
+    /* keywords in strict mode */
+    "implements|interface|let|package|"
+    "private|protected|public|static|yield|"
+    /* special names */
+    "abstract|as|async|await|constructor|declare|from|"
+    "get|is|module|namespace|of|require|set|type|"
+    /* other names? */
+    "readonly|"
+    /* constants */
+    "undefined|Infinity|NaN|"
+    /* strict mode quasi keywords */
+    "eval|arguments|"
+};
+
+static const char ts_types[] = {
+    "any|boolean|number|string|symbol|"
+};
+
+static ModeDef ts_mode = {
+    .name = "TypeScript",
+    .alt_name = "ts",
+    .extensions = "ts|tsx",
+    //.shell_handlers = "ts",
+    .colorize_func = js_colorize_line,
+    .colorize_flags = CLANG_TS | CLANG_REGEX,
+    .keywords = ts_keywords,
+    .types = ts_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 #ifndef CONFIG_TINY
 /*---------------- V8 Torque programming language ----------------*/
 
@@ -2229,47 +2309,6 @@ ModeDef css_mode = {
     .keywords = css_keywords,
     .types = css_types,
     .indent_func = c_indent_line,
-    .fallback = &c_mode,
-};
-
-/*---------------- Typescript programming language ----------------*/
-
-static const char ts_keywords[] = {
-    /* keywords */
-    "break|case|catch|class|const|continue|debugger|default|"
-    "delete|do|else|enum|export|extends|false|finally|"
-    "for|function|if|import|in|instanceof|new|null|"
-    "return|super|switch|this|throw|true|try|typeof|"
-    "var|void|while|with|"
-    /* keywords in strict mode */
-    "implements|interface|let|package|"
-    "private|protected|public|static|yield|"
-    /* special names */
-    "abstract|as|async|await|constructor|declare|from|"
-    "get|is|module|namespace|of|require|set|type|"
-    /* other names? */
-    "readonly|"
-    /* constants */
-    "undefined|Infinity|NaN|"
-    /* strict mode quasi keywords */
-    "eval|arguments|"
-};
-
-static const char ts_types[] = {
-    "any|boolean|number|string|symbol|"
-};
-
-static ModeDef ts_mode = {
-    .name = "TypeScript",
-    .alt_name = "ts",
-    .extensions = "ts|tsx",
-    //.shell_handlers = "ts",
-    .colorize_func = js_colorize_line,
-    .colorize_flags = CLANG_TS | CLANG_REGEX,
-    .keywords = ts_keywords,
-    .types = ts_types,
-    .indent_func = c_indent_line,
-    .auto_indent = 1,
     .fallback = &c_mode,
 };
 
@@ -2374,45 +2413,6 @@ static ModeDef koka_mode = {
     .colorize_flags = CLANG_KOKA | CLANG_REGEX | CLANG_NEST_COMMENTS,
     .keywords = koka_keywords,
     .types = koka_types,
-    .indent_func = c_indent_line,
-    .auto_indent = 1,
-    .fallback = &c_mode,
-};
-
-/*---------------- JSON data format ----------------*/
-
-static const char json_keywords[] = {
-    "null|true|false|NaN"
-};
-
-static const char json_types[] = {
-    ""
-};
-
-static int json_mode_probe(ModeDef *mode, ModeProbeData *pd)
-{
-    const char *p = cs8(pd->buf);
-
-    if (match_extension(pd->filename, mode->extensions))
-        return 80;
-
-    if (*p == '{' && p[1] == '\n') {
-        while (qe_isspace((unsigned char)*++p))
-            continue;
-        if (*p == '\"')
-            return 50;
-    }
-    return 1;
-}
-
-static ModeDef json_mode = {
-    .name = "json",
-    .extensions = "json",
-    .mode_probe = json_mode_probe,
-    .colorize_func = js_colorize_line,
-    .colorize_flags = CLANG_JSON,
-    .keywords = json_keywords,
-    .types = json_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
@@ -4746,24 +4746,24 @@ static int c_init(QEmacsState *qs)
     qe_register_commands(qs, &c_mode, c_commands, countof(c_commands));
     qe_register_mode(qs, &cpp_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &js_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &json_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &ts_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &java_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &php_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &go_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &yacc_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &lex_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &csharp_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &c2_mode, MODEF_SYNTAX);
 #ifndef CONFIG_TINY
     qe_register_mode(qs, &v8_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &bee_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &idl_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &carbon_mode, MODEF_SYNTAX);
-    qe_register_mode(qs, &c2_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &objc_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &awk_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &css_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &less_mode, MODEF_SYNTAX);
-    qe_register_mode(qs, &json_mode, MODEF_SYNTAX);
-    qe_register_mode(qs, &ts_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &jspp_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &koka_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &as_mode, MODEF_SYNTAX);
