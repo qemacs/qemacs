@@ -9632,8 +9632,11 @@ static EditState **get_window_link(EditState *s)
 void do_other_window(EditState *s)
 {
     EditState *e = get_next_window(s, 0, 0);
-    if (e)
+    if (e) {
+        if (e->flags & WF_MINIBUF)
+            edit_invalidate(e, 0);
         s->qs->active_window = e;
+    }
 }
 
 void do_previous_window(EditState *s)
