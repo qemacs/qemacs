@@ -906,6 +906,10 @@ static void forward_block(EditState *s, int dir)
                             break;
                     }
                 }
+                if (eb_read_one_byte(s->b, s->offset - 1) == c) {
+                    s->offset = offset;
+                    goto done;
+                }
                 break;
             case ')':
             case ']':
@@ -986,6 +990,10 @@ static void forward_block(EditState *s, int dir)
                             pos++;
                         } else
                         if (c1 == c) {
+                            if (eb_read_one_byte(s->b, s->offset) == c) {
+                                s->offset = offset;
+                                goto done;
+                            }
                             break;
                         }
                     }
