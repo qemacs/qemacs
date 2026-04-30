@@ -1621,6 +1621,7 @@ void do_unset_key(EditState *s, const char *keystr, int local);
 void do_bof(EditState *s);
 void do_eof(EditState *s);
 void do_bol(EditState *s);
+void do_bol_nspace(EditState *s);
 void do_eol(EditState *s);
 void do_word_left_right(EditState *s, int n);
 void do_mark_region(EditState *s, int mark, int offset);
