@@ -9386,7 +9386,6 @@ static void quit_key(void *opaque, int ch)
     case KEY_CTRL('g'):
         /* abort */
         qe_ungrab_keys(is->qs);
-        // FIXME: should use put_error()
         put_error(is->qs->active_window, "&Quit");
         return;
     default:
@@ -9775,7 +9774,8 @@ void do_delete_hidden_windows(EditState *s)
     }
 }
 
-/* XXX: add minimum size test and refuse to split if reached */
+#define MIN_WINDOW_SIZE 128
+
 EditState *qe_split_window(EditState *s, int side_by_side, int prop)
 {
     EditState *e;
@@ -9788,10 +9788,16 @@ EditState *qe_split_window(EditState *s, int side_by_side, int prop)
     if (prop <= 0)
         return NULL;
 
-    /* This will clone mode and mode data to the newly created window */
-    generic_save_window_data(s);
     w = s->x2 - s->x1;
     h = s->y2 - s->y1;
+
+    if (w * h < MIN_WINDOW_SIZE) {
+        put_error(s, "too small for splitting");
+        return NULL;
+    }
+
+    /* This will clone mode and mode data to the newly created window */
+    generic_save_window_data(s);
     if (side_by_side) {
         w1 = (w * min_int(prop, 100) + 50) / 100;
         e = qe_new_window(s->b, s->x1 + w1, s->y1,
