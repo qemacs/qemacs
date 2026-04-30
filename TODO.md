@@ -2,10 +2,44 @@
 
 # QEmacs TODO list
 
+## Bugs
+
+* encode non printing characters in filenames and buffer names
+* change buffer list layout to increase buffer name width if needed
+* support M-n and M-p to move by 4 lines in popup lists
+* fix warning: `int (*eb_printf_fun)(EditBuffer *b, const char *fmt, ...) = (void*)eb_printf;`
+* fix crash bug on `C-X C-B C-X C-F xxx RET`
+* fix cursor positioning beyond end of screen
+* swap buffer names in `compare-files`
+* check file time and length when selecting a different buffer or running any command on the current buffer:
+  - if a macro is running, stop it
+  - prompt the user for (r) read, (i) ignore, (k) keep, (c) compare
+  - if not modified since save, read in separate buffer and compare.
+     - if difference before window start, mark and/or point, try and resync
+  - if modified, modified version should be kept in a separate buffer.
+    emacs behavior:
+        You want to modify a buffer whose disk file has changed
+        since you last read it in or saved it with this buffer.
+
+        If you say y to go ahead and modify this buffer,
+        you risk ruining the work of whoever rewrote the file.
+        If you say r to revert, the contents of the buffer are refreshed
+        from the file on disk.
+        If you say n, the change you started to make will be aborted.
+
+        Usually, you should type r to get the latest version of the
+        file, then make the change again.
+
+* keep modified status when undoing past a buffer save command
+
 ## Current work
 
-odin: c-mode indentation does not work because of lack of semicolons
-clang: colorize git conflict markers
+* in markdown mode, for code blocks without a language tag, try and determine the language from contents
+* kill eval result so it can be yanked where appropriate
+* add binding to convert the list of search matches into a multi-cursor (use `C-\` ?)
+
+* odin: c-mode indentation does not work because of lack of semicolons
+* clang: colorize git conflict markers
 <<<<<<< HEAD
             }
             defaultCase = c;
@@ -90,7 +124,6 @@ clang: colorize git conflict markers
 * add bindings for other editors: `nano`, `vscode`, `emacs`, `qe`, (`vim` ???)
 * load bindings corresponding to invokation command or cmdline option
 * fix scroll window behavior (for Mg)
-* fix cursor positioning beyond end of screen
 * `C-g` in incremental search should reset the last search flags
 * support multiple modes in window using array of mode pointers
 * column number in status bar should account for TABs
@@ -100,28 +133,6 @@ clang: colorize git conflict markers
 * automatic multifile tags in project directory (where source management or tags file is found)
 * add parametric syntax definitions (nanorc files).
 * implement a maximum macro length and abort macro learning mode if reached
-* keep modified status when undoing past a buffer save command
-* swap buffer names in `compare-files`
-* check file time and length when selecting a different buffer or running any command on the current buffer:
-  - if a macro is running, stop it
-  - prompt the user for (r) read, (i) ignore, (k) keep, (c) compare
-  - if not modified since save, read in separate buffer and compare.
-     - if difference before window start, mark and/or point, try and resync
-  - if modified, modified version should be kept in a separate buffer.
-    emacs behavior:
-        You want to modify a buffer whose disk file has changed
-        since you last read it in or saved it with this buffer.
-
-        If you say y to go ahead and modify this buffer,
-        you risk ruining the work of whoever rewrote the file.
-        If you say r to revert, the contents of the buffer are refreshed
-        from the file on disk.
-        If you say n, the change you started to make will be aborted.
-
-        Usually, you should type r to get the latest version of the
-        file, then make the change again.
-
-* kill eval result so it can be yanked where appropriate
 * integrate qscript
 * pass argval and argflags for most commands
 * add buffer commands and point update commands
