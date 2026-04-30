@@ -9774,8 +9774,6 @@ void do_delete_hidden_windows(EditState *s)
     }
 }
 
-#define MIN_WINDOW_SIZE 128
-
 EditState *qe_split_window(EditState *s, int side_by_side, int prop)
 {
     EditState *e;
@@ -9791,22 +9789,32 @@ EditState *qe_split_window(EditState *s, int side_by_side, int prop)
     w = s->x2 - s->x1;
     h = s->y2 - s->y1;
 
-    if (w * h < MIN_WINDOW_SIZE) {
-        put_error(s, "too small for splitting");
-        return NULL;
-    }
-
-    /* This will clone mode and mode data to the newly created window */
-    generic_save_window_data(s);
     if (side_by_side) {
+        if (w < 9) {
+            put_error(s, "can not split a %d columns window", w);
+            return NULL;
+        }
+
+        /* This will clone mode and mode data to the newly created window */
+        generic_save_window_data(s);
+
         w1 = (w * min_int(prop, 100) + 50) / 100;
         e = qe_new_window(s->b, s->x1 + w1, s->y1,
                           w - w1, h, WF_MODELINE | (s->flags & WF_RSEPARATOR));
         if (!e)
             return NULL;
+
         s->x2 = s->x1 + w1;
         s->flags |= WF_RSEPARATOR;
     } else {
+        if (h < 3) {
+            put_error(s, "can not split a %d lines window", h);
+            return NULL;
+        }
+
+        /* This will clone mode and mode data to the newly created window */
+        generic_save_window_data(s);
+
         h1 = (h * min_int(prop, 100) + 50) / 100;
         e = qe_new_window(s->b, s->x1, s->y1 + h1,
                           w, h - h1, WF_MODELINE | (s->flags & WF_RSEPARATOR));
