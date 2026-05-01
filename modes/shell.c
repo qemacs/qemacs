@@ -3380,6 +3380,7 @@ static void do_compile(EditState *s, const char *cmd)
     if (!b)
         return;
 
+    b->flags |= BF_READONLY;
     b->data_type_name = "compile";
     /* XXX: try to split window if necessary */
     switch_to_buffer(s, b);
