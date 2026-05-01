@@ -65,7 +65,7 @@ typedef struct ShellState {
     int scroll_top, scroll_bottom;  /* scroll region (top included, bottom excluded) */
     int pty_fd;
     int pid; /* -1 if not launched */
-    int exit_status;
+    int exit_status; /* -1 if not launched */
     unsigned int attr, fgcolor, bgcolor, reverse;
     int cur_offset; /* current offset at position x, y */
     int cur_offset_hack; /* the target position is in the middle of a wide glyph */
@@ -2635,6 +2635,7 @@ EditBuffer *qe_new_shell_buffer(QEmacsState *qs, EditBuffer *b0, EditState *e,
     s->b = b;
     s->pty_fd = -1;
     s->pid = -1;
+    s->exit_status = -1;
     s->caption = caption;
     s->shell_flags = shell_flags;
     s->cur_prompt = s->cur_offset = b->total_size;
