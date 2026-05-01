@@ -540,7 +540,7 @@ static inline int eb_prev(EditBuffer *b, int offset) {
     eb_prevc(b, offset, &offset);
     return offset;
 }
-static inline int eb_peekc(EditBuffer *b, int offset) {
+static inline char32_t eb_peekc(EditBuffer *b, int offset) {
     return eb_nextc(b, offset, &offset);
 }
 
