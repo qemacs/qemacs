@@ -2435,7 +2435,7 @@ static void shell_read_cb(void *opaque)
     }
     if (save_readonly) {
         b->modified = 0;
-        b->flags |= save_readonly;
+        b->flags |= BF_READONLY;
     }
 
     /* now we do some refresh (should just invalidate?) */
@@ -2527,7 +2527,7 @@ static void shell_pid_cb(void *opaque, int status)
 
         if (save_readonly) {
             s->b->modified = 0;
-            s->b->flags |= save_readonly;
+            s->b->flags |= BF_READONLY;
         }
     }
 
