@@ -65,6 +65,7 @@ typedef struct ShellState {
     int scroll_top, scroll_bottom;  /* scroll region (top included, bottom excluded) */
     int pty_fd;
     int pid; /* -1 if not launched */
+    int exit_status;
     unsigned int attr, fgcolor, bgcolor, reverse;
     int cur_offset; /* current offset at position x, y */
     int cur_offset_hack; /* the target position is in the middle of a wide glyph */
@@ -111,6 +112,8 @@ static char error_filename[MAX_FILENAME_SIZE];
 static void do_shell_refresh(EditState *e, int flags);
 static char *shell_get_curpath(EditBuffer *b, int offset,
                                char *buf, int buf_size);
+
+static void shell_close(ShellState *s);
 
 static void set_error_offset(EditBuffer *b, int offset)
 {
@@ -2381,8 +2384,10 @@ static void shell_read_cb(void *opaque)
         return;
 
     len = read(s->pty_fd, buf, sizeof(buf));
-    if (len <= 0)
+    if (len <= 0) {
+        shell_close(s);
         return;
+    }
 
     b = s->b;
     qs = s->base.qs;
@@ -2486,7 +2491,6 @@ static void shell_pid_cb(void *opaque, int status)
     EditBuffer *b;
     QEmacsState *qs;
     EditState *e;
-    char buf[1024];
 
     /* Extra check in case mode data was freed already.
      * It is not completely fool proof as the same address might have
@@ -2498,6 +2502,26 @@ static void shell_pid_cb(void *opaque, int status)
 
     b = s->b;
     qs = s->base.qs;
+    set_pid_handler(s->pid, NULL, NULL);
+    s->exit_status = status;
+    s->pid = -1;
+
+    /* remove shell input mode */
+    s->grab_keys = 0;
+    qe_ungrab_keys(qs);
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
+        if (e->b == b)
+            e->interactive = 0;
+    }
+}
+
+static void shell_close(ShellState *s)
+{
+    QEmacsState *qs = s->base.qs;
+    EditBuffer *b = s->b;
+    int status = s->exit_status;
+    char buf[1024];
+    EditState *e;
 
     *buf = '\0';
     if (s->caption) {
@@ -2531,32 +2555,26 @@ static void shell_pid_cb(void *opaque, int status)
         }
     }
 
-    set_pid_handler(s->pid, NULL, NULL);
-    s->pid = -1;
-    /* no need to leave the pty opened */
     if (s->pty_fd >= 0) {
         set_read_handler(s->pty_fd, NULL, NULL);
         close(s->pty_fd);
         s->pty_fd = -1;
     }
 
-    /* remove shell input mode */
-    s->grab_keys = 0;
-    qe_ungrab_keys(qs);
     for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e->b == b) {
-            e->interactive = 0;
+        if (e->b == s->b) {
             if (s->shell_flags & SF_AUTO_CODING)
                 do_set_auto_coding(e, 0);
             if (s->shell_flags & SF_AUTO_MODE)
                 qe_set_next_mode(e, 0, 0);
         }
     }
+
+    /* Free the shell data safely */
     if (!(s->shell_flags & SF_INTERACTIVE)) {
-        /* Must Unlink the shell data to avoid potential crash */
-        //shell_mode_free(b, s);  // called by qe_free_mode_data
         qe_free_mode_data(&s->base);
     }
+
     qe_display(qs);
 }
 
