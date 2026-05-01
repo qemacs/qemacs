@@ -861,6 +861,7 @@ static void forward_block(EditState *s, int dir)
     level = 0;
 
     if (dir < 0) {
+        char32_t c0 = eb_peekc(s->b, s->offset - 1);
         for (;;) {
             c = eb_prevc(s->b, offset, &offset);
             if (c == '\n') {
@@ -906,7 +907,7 @@ static void forward_block(EditState *s, int dir)
                             break;
                     }
                 }
-                if (eb_read_one_byte(s->b, s->offset - 1) == c) {
+                if (c0 == c) {
                     s->offset = offset;
                     goto done;
                 }
@@ -941,6 +942,7 @@ static void forward_block(EditState *s, int dir)
             }
         }
     } else {
+        char32_t c0 = eb_peekc(s->b, s->offset);
         for (;;) {
             c = eb_nextc(s->b, offset, &offset);
             if (c == '\n') {
@@ -990,7 +992,7 @@ static void forward_block(EditState *s, int dir)
                             pos++;
                         } else
                         if (c1 == c) {
-                            if (eb_read_one_byte(s->b, s->offset) == c) {
+                            if (c0 == c) {
                                 s->offset = offset;
                                 goto done;
                             }
