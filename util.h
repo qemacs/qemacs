@@ -405,6 +405,8 @@ int strsubst(char *buf, int buf_size, const char *from,
 int byte_quote(char *dest, int size, unsigned char c);
 int strquote(char *dest, int size, const char *str, int len);
 int strunquote(char *dest, int size, const char *str, int len);
+int qe_quote_filename(char *dest, int size, const char *str);
+int qe_unquote_filename(char *dest, int size, const char *str);
 
 /*---- Unicode string functions ----*/
 

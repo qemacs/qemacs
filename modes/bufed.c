@@ -127,6 +127,37 @@ static int bufed_sort_func(void *opaque, const void *p1, const void *p2)
     return (sort_mode & BUFED_SORT_DESCENDING) ? -res : res;
 }
 
+#define BUFED_NAME_WIDTH  20
+#define BUFED_NAME_TAIL   5
+
+static int bufed_put_buffer_name(EditBuffer *b, const char *name) {
+    /* Truncate the raw name before quoting so escape sequences are not
+       split in the displayed buffer list.  Escaped control bytes may
+       still expand the displayed text beyond BUFED_NAME_WIDTH. */
+    int len = strlen(name);
+
+    if (len > BUFED_NAME_WIDTH) {
+        enum { HEAD = BUFED_NAME_WIDTH - BUFED_NAME_TAIL - 3 };
+        char head[HEAD + 1];
+        char tail[BUFED_NAME_TAIL + 1];
+        char qhead[HEAD * 4 + 1];
+        char qtail[BUFED_NAME_TAIL * 4 + 1];
+
+        memcpy(head, name, HEAD);
+        head[HEAD] = '\0';
+        memcpy(tail, name + len - BUFED_NAME_TAIL, BUFED_NAME_TAIL);
+        tail[BUFED_NAME_TAIL] = '\0';
+        qe_quote_filename(qhead, sizeof(qhead), head);
+        qe_quote_filename(qtail, sizeof(qtail), tail);
+        return eb_printf(b, "%s...%s", qhead, qtail);
+    } else {
+        char qname[MAX_BUFFERNAME_SIZE * 4];
+
+        qe_quote_filename(qname, sizeof(qname), name);
+        return eb_printf(b, "%-*s", BUFED_NAME_WIDTH, qname);
+    }
+}
+
 static void build_bufed_list(EditState *s, BufedState *bs)
 {
     QEmacsState *qs = s->qs;
@@ -167,7 +198,7 @@ static void build_bufed_list(EditState *s, BufedState *bs)
     for (i = 0; i < bs->items.nb_items; i++) {
         char flags[4];
         char *flagp = flags;
-        int len, style0;
+        int style0;
 
         item = bs->items.items[i];
         b1 = qe_check_buffer(qs, (EditBuffer**)(void *)&item->opaque);
@@ -193,17 +224,10 @@ static void build_bufed_list(EditState *s, BufedState *bs)
         b->cur_style = style0;
         eb_printf(b, " %-2s", flags);
         b->cur_style = BUFED_STYLE_BUFNAME;
-        len = strlen(item->str);
-        /* simplistic column fitting, does not work for wide characters */
-#define COLWIDTH  20
-        if (len > COLWIDTH) {
-            eb_printf(b, "%.*s...%s",
-                      COLWIDTH - 5 - 3, item->str, item->str + len - 5);
-        } else {
-            eb_printf(b, "%-*s", COLWIDTH, item->str);
-        }
+        bufed_put_buffer_name(b, item->str);
         if (b1) {
             char path[MAX_FILENAME_SIZE];
+            char qpath[MAX_FILENAME_SIZE * 4];
             char mode_buf[64];
             const char *mode_name;
             buf_t outbuf, *out;
@@ -248,7 +272,8 @@ static void build_bufed_list(EditState *s, BufedState *bs)
             } else {
                 make_user_path(path, sizeof(path), b1->filename);
             }
-            eb_puts(b, path);
+            qe_quote_filename(qpath, sizeof(qpath), path);
+            eb_puts(b, qpath);
             b->cur_style = style0;
         }
         eb_putc(b, '\n');

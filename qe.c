@@ -3377,6 +3377,7 @@ static char *qe_get_mode_name(EditState *s, char *buf, int size, int full)
 void basic_mode_line(EditState *s, buf_t *out, int c1)
 {
     char buf[128];
+    char name[MAX_BUFFERNAME_SIZE * 4];
     const char *mode_name;
     int mod, state;
 
@@ -3393,10 +3394,11 @@ void basic_mode_line(EditState *s, buf_t *out, int c1)
     mode_name = qe_get_mode_name(s, buf, sizeof(buf), 1);
     /* Strip text mode name if another mode is also active */
     strstart(mode_name, "text ", &mode_name);
+    qe_quote_filename(name, sizeof(name), s->b->name);
 
     buf_printf(out, "%c%c:%c%c  %-20s  (%s)",
                c1, state, s->b->flags & BF_READONLY ? '%' : mod,
-               mod, s->b->name, mode_name);
+               mod, name, mode_name);
 }
 
 void text_mode_line(EditState *s, buf_t *out)
@@ -7353,12 +7355,15 @@ void file_complete(CompleteState *cp, CompleteFunc enumerate)
     find_file_close(&ffst);
 }
 
+static int quoted_completion_window_get_entry(EditState *s, char *dest, int size, int offset);
+
 static CompletionDef file_completion = {
     .name = "file",
     .enumerate = file_complete,
 #ifndef CONFIG_TINY
     .print_entry = file_print_entry,
 #endif
+    .get_entry = quoted_completion_window_get_entry,
     .flags = CF_FILENAME,
 };
 
@@ -7367,6 +7372,7 @@ static CompletionDef dir_completion = {
     .name = "dir",
     .enumerate = file_complete,
     .print_entry = file_print_entry,
+    .get_entry = quoted_completion_window_get_entry,
     .flags = CF_DIRNAME | CF_NO_FUZZY,
 };
 
@@ -7374,6 +7380,7 @@ static CompletionDef resource_completion = {
     .name = "resource",
     .enumerate = file_complete,
     .print_entry = file_print_entry,
+    .get_entry = quoted_completion_window_get_entry,
     .flags = CF_RESOURCE | CF_NO_FUZZY,
 };
 #endif
@@ -7397,16 +7404,16 @@ static int buffer_print_entry(CompleteState *cp, EditState *s, const char *name)
 
     if (b1) {
         b->cur_style = QE_STYLE_KEYWORD;
-        len = eb_puts(b, b1->name);
+        len = eb_puts_quoted_filename(b, b1->name);
         b->tab_width = max3_int(16, 2 + len, b->tab_width);
         len += eb_putc(b, '\t');
         if (*b1->filename) {
             b->cur_style = QE_STYLE_COMMENT;
-            len += eb_puts(b, b1->filename);
+            len += eb_puts_quoted_filename(b, b1->filename);
         }
         b->cur_style = QE_STYLE_DEFAULT;
     } else {
-        return eb_puts(b, name);
+        return eb_puts_quoted_filename(b, name);
     }
     return len;
 }
@@ -7415,6 +7422,7 @@ static CompletionDef buffer_completion = {
     .name = "buffer",
     .enumerate = buffer_complete,
     .print_entry = buffer_print_entry,
+    .get_entry = quoted_completion_window_get_entry,
 };
 
 static int default_completion_window_print_entry(CompleteState *cp, EditState *s, const char *name) {
@@ -7428,6 +7436,13 @@ static int default_completion_window_get_entry(EditState *s, char *dest, int siz
         len = p - dest;
     dest[len] = '\0';   /* strip the TAB or trailing newline if any */
     return len;
+}
+
+static int quoted_completion_window_get_entry(EditState *s, char *dest, int size, int offset) {
+    char buf[MAX_FILENAME_SIZE * 4 + 1];
+
+    default_completion_window_get_entry(s, buf, sizeof(buf), offset);
+    return qe_unquote_filename(dest, size, buf);
 }
 
 static int completion_sort_func(const void *p1, const void *p2)

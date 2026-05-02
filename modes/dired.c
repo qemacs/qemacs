@@ -870,7 +870,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
         b->cur_style = DIRED_STYLE_HEADER;
         eb_puts(b, "  Directory of ");
         b->cur_style = DIRED_STYLE_DIRECTORY;
-        eb_puts(b, ds->path);
+        eb_puts_quoted_filename(b, ds->path);
         b->cur_style = DIRED_STYLE_HEADER;
         eb_puts(b, "\n  ");
         if (ds->ndirs) {
@@ -939,7 +939,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
         else
             b->cur_style = DIRED_STYLE_FILENAME;
 
-        eb_puts(b, fname);
+        eb_puts_quoted_filename(b, fname);
 
         if (*fname != '/' || fname[1]) {
             int trailchar = get_trailchar(dip->mode);
@@ -949,7 +949,8 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
         }
         if (S_ISLNK(dip->mode)
         &&  getentryslink(buf, sizeof(buf), dip->fullname)) {
-            eb_printf(b, " -> %s", buf);
+            eb_puts(b, " -> ");
+            eb_puts_quoted_filename(b, buf);
         }
         b->cur_style = DIRED_STYLE_NORMAL;
         eb_putc(b, '\n');
@@ -1943,7 +1944,7 @@ int file_print_entry(CompleteState *cp, EditState *s, const char *name) {
 
     if (!stat(name, &st)) {
         b->cur_style = S_ISDIR(st.st_mode) ? DIRED_STYLE_DIRECTORY : DIRED_STYLE_FILENAME;
-        len = eb_puts(b, name);
+        len = eb_puts_quoted_filename(b, name);
         b->tab_width = max3_int(16, 2 + len, b->tab_width);
         b->cur_style = DIRED_STYLE_NORMAL;
         format_size(buf, sizeof(buf), dired_hflag, st.st_mode, st.st_dev, st.st_size);
@@ -1957,7 +1958,7 @@ int file_print_entry(CompleteState *cp, EditState *s, const char *name) {
         len += eb_printf(b, "  %-*s", gidlen, buf);
         len += eb_printf(b, "  %*d", linklen, (int)st.st_nlink);
     } else {
-        return eb_puts(b, name);
+        return eb_puts_quoted_filename(b, name);
     }
     return len;
 }

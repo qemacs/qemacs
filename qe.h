@@ -589,6 +589,7 @@ int eb_match_istr_utf8(EditBuffer *b, int offset, const char *str, int *offsetp)
 int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap) qe__attr_printf(2,0);
 int eb_printf(EditBuffer *b, const char *fmt, ...) qe__attr_printf(2,3);
 int eb_puts(EditBuffer *b, const char *s);
+int eb_puts_quoted_filename(EditBuffer *b, const char *s);
 int eb_putc(EditBuffer *b, char32_t c);
 
 void eb_line_pad(EditBuffer *b, int offset, int n);

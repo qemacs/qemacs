@@ -2275,6 +2275,114 @@ int strquote(char *dest, int size, const char *str, int len) {
     return out->pos;
 }
 
+int qe_quote_filename(char *dest, int size, const char *str) {
+    /*@API utils.string
+       Quote a filename or buffer name for display in UI text.
+       @argument `dest` a valid pointer to an array of bytes
+       @argument `size` the length of the destination array
+       @argument `str` a valid pointer to a filename or buffer name
+       @return the length of the converted string, not counting the null
+       terminator, possibly longer than the destination array length.
+       @note This uses ls -b style escapes so line- and tab-oriented UI
+       buffers remain parseable.  The stored filename/buffer name remains
+       unchanged.
+     */
+    buf_t outbuf, *out;
+    const unsigned char *p = (const unsigned char *)str;
+
+    out = buf_init(&outbuf, dest, size);
+    while (*p) {
+        unsigned char ch = *p++;
+
+        switch (ch) {
+        case '\n':
+            buf_puts(out, "\\n");
+            break;
+        case '\t':
+            buf_puts(out, "\\t");
+            break;
+        case '\r':
+            buf_puts(out, "\\r");
+            break;
+        case '\b':
+            buf_puts(out, "\\b");
+            break;
+        case '\f':
+            buf_puts(out, "\\f");
+            break;
+        case '\\':
+            buf_puts(out, "\\\\");
+            break;
+        default:
+            if (ch < 32 || ch == 127) {
+                buf_printf(out, "\\%03o", ch);
+            } else {
+                buf_put_byte(out, ch);
+            }
+            break;
+        }
+    }
+    return out->pos;
+}
+
+int qe_unquote_filename(char *dest, int size, const char *str) {
+    /*@API utils.string
+       Decode strings produced by qe_quote_filename().
+       @argument `dest` a valid pointer to an array of bytes
+       @argument `size` the length of the destination array
+       @argument `str` a valid pointer to a quoted filename or buffer name
+       @return the length of the converted string, not counting the null
+       terminator, possibly longer than the destination array length.
+       @note Unknown escape sequences are reduced to their escaped character,
+       matching the common behavior needed for ls -b style names.
+     */
+    buf_t outbuf, *out;
+    const unsigned char *p = (const unsigned char *)str;
+
+    out = buf_init(&outbuf, dest, size);
+    while (*p) {
+        unsigned char ch = *p++;
+
+        if (ch == '\\' && *p) {
+            ch = *p++;
+            switch (ch) {
+            case 'n':
+                ch = '\n';
+                break;
+            case 't':
+                ch = '\t';
+                break;
+            case 'r':
+                ch = '\r';
+                break;
+            case 'b':
+                ch = '\b';
+                break;
+            case 'f':
+                ch = '\f';
+                break;
+            case '\\':
+                break;
+            default:
+                if (ch >= '0' && ch <= '7') {
+                    int n = ch - '0';
+                    int i;
+
+                    for (i = 1; i < 3 && *p >= '0' && *p <= '7'; i++) {
+                        n = n * 8 + *p++ - '0';
+                    }
+                    ch = n & 255;
+                } else {
+                    buf_put_byte(out, '\\');
+                }
+                break;
+            }
+        }
+        buf_put_byte(out, ch);
+    }
+    return out->pos;
+}
+
 #if 0
 /* TODO */
 int strunquote(char *dest, int size, const char *str, int len)

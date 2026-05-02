@@ -2367,6 +2367,13 @@ int eb_puts(EditBuffer *b, const char *s) {
     return eb_insert_utf8_buf(b, b->offset, s, strlen(s));
 }
 
+int eb_puts_quoted_filename(EditBuffer *b, const char *s) {
+    char buf[MAX_FILENAME_SIZE * 4];
+
+    qe_quote_filename(buf, sizeof(buf), s);
+    return eb_puts(b, buf);
+}
+
 int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap) {
     char buf0[1024];
     char *buf;
