@@ -701,7 +701,7 @@ EditBuffer *qe_new_buffer(QEmacsState *qs, const char *name, int flags)
     EditBuffer *b;
     EditBuffer **pb;
 
-    if (flags & BC_REUSE) {
+    if (flags & (BC_REUSE | BC_CLEAR)) {
         b = qe_find_buffer_name(qs, name);
         if (b != NULL) {
             if (flags & BC_CLEAR)

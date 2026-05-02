@@ -1329,7 +1329,7 @@ static void do_c_list_conditionals(EditState *s)
     int offset, offset1;
     EditBuffer *b;
 
-    b = qe_new_buffer(s->qs, "Preprocessor conditionals", BC_REUSE | BC_CLEAR | BF_UTF8);
+    b = qe_new_buffer(s->qs, "Preprocessor conditionals", BC_CLEAR | BF_UTF8);
     if (!b)
         return;
 

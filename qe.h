@@ -380,7 +380,7 @@ typedef struct EditBufferDataType {
 #define BF_SHELL    0x20000  /* buffer is a shell buffer */
 /* buffer creation flags */
 #define BC_REUSE   0x100000  /* reuse existing buffer with same name */
-#define BC_CLEAR   0x200000  /* erase found buffer with same name */
+#define BC_CLEAR   0x200000  /* reuse existing buffer and clear it */
 
 struct EditBuffer {
     OWNED Page *page_table;
