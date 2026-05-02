@@ -10058,7 +10058,7 @@ void do_save_session(EditState *s, int popup)
     EditBuffer *b;
     time_t now;
 
-    b = qe_new_buffer(s->qs, "*session*", BC_REUSE | BC_CLEAR | BF_UTF8);
+    b = qe_new_buffer(s->qs, "*session*", BC_CLEAR | BF_UTF8);
     if (!b)
         return;
 
@@ -10125,7 +10125,7 @@ void do_describe_key_briefly(EditState *s, const char *keystr, int argval) {
 
 EditBuffer *new_help_buffer(EditState *s)
 {
-    return qe_new_buffer(s->qs, "*Help*", BC_REUSE | BC_CLEAR | BF_SYSTEM | BF_UTF8 | BF_STYLE1);
+    return qe_new_buffer(s->qs, "*Help*", BC_CLEAR | BF_SYSTEM | BF_UTF8 | BF_STYLE1);
 }
 
 void do_help_for_help(EditState *s)

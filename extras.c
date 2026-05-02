@@ -1392,7 +1392,7 @@ static void do_about_qemacs(EditState *s)
     const CmdDef *d;
     int start, stop, i, j;
 
-    b = qe_new_buffer(qs, "*About QEmacs*", BC_REUSE | BC_CLEAR | BF_UTF8);
+    b = qe_new_buffer(qs, "*About QEmacs*", BC_CLEAR | BF_UTF8);
     if (!b)
         return;
 
@@ -2634,8 +2634,7 @@ static void do_list_colors(EditState *s, int argval) {
     char buf[32];
     int i;
 
-    b = qe_new_buffer(s->qs, "*Colors*",
-                      BC_REUSE | BC_CLEAR | BF_SYSTEM | BF_UTF8 | BF_STYLE8);
+    b = qe_new_buffer(s->qs, "*Colors*", BC_CLEAR | BF_SYSTEM | BF_UTF8 | BF_STYLE8);
     if (!b)
         return;
 

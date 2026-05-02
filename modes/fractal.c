@@ -1228,7 +1228,7 @@ static void do_mandelbrot_test(EditState *s, int argval) {
     }
 
     // XXX: should handle multiple Mandelbrot sets for comparison
-    b = qe_new_buffer(qs, "*Mandelbrot*", BC_REUSE | BC_CLEAR | BF_UTF8 | BF_STYLE4);
+    b = qe_new_buffer(qs, "*Mandelbrot*", BC_CLEAR | BF_UTF8 | BF_STYLE4);
     if (!b)
         return;
 

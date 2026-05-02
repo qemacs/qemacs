@@ -1680,7 +1680,7 @@ void do_dired_path(EditState *s, const char *filename)
             goto new_window;
         }
     }
-    b = qe_new_buffer(qs, "*dired*", BC_REUSE | BC_CLEAR | BF_READONLY | BF_UTF8);
+    b = qe_new_buffer(qs, "*dired*", BC_CLEAR | BF_READONLY | BF_UTF8);
     if (!b)
         return;
 
