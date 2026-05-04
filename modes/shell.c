@@ -2542,10 +2542,10 @@ static void shell_close(ShellState *s)
         else
             status = -1;
         if (status == 0) {
-            snprintf(buf, sizeof(buf), "\n%s finished at %s\n",
+            snprintf(buf, sizeof(buf), "\n%s finished at %s",
                      s->caption, time_str);
         } else {
-            snprintf(buf, sizeof(buf), "\n%s exited abnormally with code %d at %s\n",
+            snprintf(buf, sizeof(buf), "\n%s exited abnormally with code %d at %s",
                      s->caption, status, time_str);
         }
     }
