@@ -2563,7 +2563,7 @@ static void shell_close(ShellState *s)
     }
     {
         /* Flush output to buffer, bypassing readonly flag */
-        int save_readonly = s->b->flags & BF_READONLY;
+        int save_readonly = s->b->flags & BF_READONLY || s->shell_flags & SF_INTERACTIVE;
         s->b->flags &= ~BF_READONLY;
 
         eb_write(b, b->total_size, buf, strlen(buf));
@@ -2586,6 +2586,8 @@ static void shell_close(ShellState *s)
                 do_set_auto_coding(e, 0);
             if (s->shell_flags & SF_AUTO_MODE)
                 qe_set_next_mode(e, 0, 0);
+            if (s->shell_flags & SF_INTERACTIVE)
+                edit_set_mode(e, &pager_mode);
         }
     }
 
@@ -2741,6 +2743,7 @@ static void do_shell(EditState *e, int argval)
                 if ((s->shell_flags & SF_INTERACTIVE) && !s->grab_keys) {
                     e->offset = s->cur_offset;
                     e->interactive = 1;
+                    e->b->flags &= ~BF_READONLY;
                 }
                 return;
             }
@@ -2748,6 +2751,10 @@ static void do_shell(EditState *e, int argval)
             e->offset = b->total_size;
             /* restart the shell in the same directory */
             get_default_path(e->b, e->offset, curpath, sizeof curpath);
+            /* set mode back to shell mode */
+            edit_set_mode(e, &shell_mode);
+            /* make sure readonly is not set */
+            b->flags &= ~BF_READONLY;
         }
     }
 
@@ -2761,10 +2768,9 @@ static void do_shell(EditState *e, int argval)
     switch_to_buffer(e, b);
     /* force interactive mode if restarting */
     shell_mode.mode_init(e, b, 0);
-    // XXX: should update the terminal size and notify the process
-    //do_shell_refresh(e, 0);
+    do_shell_refresh(e, SR_UPDATE_SIZE | SR_SILENT);
     set_error_offset(b, 0);
-    put_status(e, "Press C-o to toggle between shell/edit mode");
+    put_status(e, "Press C-o to toggle between shell/pager mode");
 }
 
 static inline EditState *shell_target_window(EditState *e, EditBuffer *b)
@@ -2850,7 +2856,7 @@ static void do_ssh(EditState *s, const char *arg)
     b->default_mode = &shell_mode;
     switch_to_buffer(s, b);
 
-    put_status(s, "Press C-o to toggle between shell/edit mode");
+    put_status(s, "Press C-o to toggle between shell/pager mode");
 }
 
 static void shell_move_left_right(EditState *e, int dir)
@@ -2883,9 +2889,6 @@ static void shell_move_up_down(EditState *e, int dir)
         qe_term_write(s, dir > 0 ? s->kcud1 : s->kcuu1, -1);
     } else {
         text_move_up_down(e, dir);
-        // XXX: what if beyond?
-        if (s && (s->shell_flags & SF_INTERACTIVE) && !s->grab_keys)
-            e->interactive = (e->offset == s->cur_offset);
     }
 }
 
@@ -2899,9 +2902,6 @@ static void shell_previous_next(EditState *e, int dir)
     } else {
         /* hack: M-p silently converted to C-u C-p */
         text_move_up_down(e, dir * 4);
-        // XXX: what if beyond?
-        if (s && (s->shell_flags & SF_INTERACTIVE) && !s->grab_keys)
-            e->interactive = (e->offset == s->cur_offset);
     }
 }
 
@@ -2913,30 +2913,19 @@ static void shell_exchange_point_and_mark(EditState *e)
         qe_term_write(s, "\030\030", 2);  /* C-x C-x */
     } else {
         do_exchange_point_and_mark(e);
-        // XXX: what if beyond?
-        if (s && (s->shell_flags & SF_INTERACTIVE) && !s->grab_keys)
-            e->interactive = (e->offset == s->cur_offset);
     }
 }
 
 static void shell_scroll_up_down(EditState *e, int dir)
 {
-    ShellState *s = shell_get_state(e, 1);
-
     e->interactive = 0;
+    e->b->flags |= BF_READONLY;
     text_scroll_up_down(e, dir);
-    // XXX: what if beyond?
-    if (s && (s->shell_flags & SF_INTERACTIVE) && !s->grab_keys)
-        e->interactive = (e->offset == s->cur_offset);
 }
 
 static void shell_move_bol(EditState *e)
 {
     ShellState *s = shell_get_state(e, 1);
-
-    /* exit shell interactive mode on home / ^A at start of shell input */
-    if (!s || (e->offset == s->cur_prompt && !s->grab_keys))
-        e->interactive = 0;
 
     if (s && e->interactive) {
         qe_term_write(s, "\001", 1); /* Control-A */
@@ -2953,21 +2942,13 @@ static void shell_move_eol(EditState *e)
         qe_term_write(s, "\005", 1); /* Control-E */
     } else {
         text_move_eol(e);
-        /* XXX: restore shell interactive mode on end / ^E */
-        if (s && (s->shell_flags & SF_INTERACTIVE) && !s->grab_keys
-        &&  e->offset >= s->cur_offset) {
-            e->interactive = 1;
-            if (e->offset > s->cur_offset)
-                qe_term_write(s, "\005", 1); /* Control-E */
-        }
     }
 }
 
 static void shell_move_bof(EditState *e)
 {
-    /* Exit shell interactive mode on home-buffer / M-< */
-    e->interactive = 0;
-    text_move_bof(e);
+    if (e->interactive == 0)
+        text_move_bof(e);
 }
 
 static void shell_move_eof(EditState *e)
@@ -2978,13 +2959,6 @@ static void shell_move_eof(EditState *e)
         qe_term_write(s, "\005", 1); /* Control-E */
     } else {
         text_move_eof(e);
-        /* Restore shell interactive mode on end-buffer / M-> */
-        if (s && (s->shell_flags & SF_INTERACTIVE) && !s->grab_keys
-        &&  e->offset >= s->cur_offset) {
-            e->interactive = 1;
-            if (e->offset != s->cur_offset)
-                qe_term_write(s, "\005", 1); /* Control-E */
-        }
     }
 }
 
@@ -3311,21 +3285,17 @@ static void do_shell_toggle_input(EditState *e)
     if ((s = shell_get_state(e, 1)) != NULL) {
         if (e->interactive) {
             e->interactive = 0;
+            e->b->flags |= BF_READONLY;
             return;
         }
-        if ((s->shell_flags & SF_INTERACTIVE) && e->offset >= e->b->total_size) {
+        if ((s->shell_flags & SF_INTERACTIVE)) {
             e->interactive = 1;
+            e->b->flags &= ~BF_READONLY;
+            e->offset = s->cur_offset;
             if (s->grab_keys)
                 qe_grab_keys(s->base.qs, shell_key, s);
-#if 0
-            if (e->interactive) {
-                qe_term_update_cursor(s);
-            }
-#endif
-            return;
         }
     }
-    do_open_line(e);
 }
 
 /* get current directory from prompt on current line */
@@ -3992,8 +3962,10 @@ static int shell_mode_init(EditState *e, EditBuffer *b, int flags)
         /* XXX: should come from mode.default_wrap */
         e->wrap = WRAP_TERM;
         e->wrap_cols = s->cols;
-        if ((s->shell_flags & SF_INTERACTIVE) && !s->grab_keys)
+        if ((s->shell_flags & SF_INTERACTIVE) && !s->grab_keys) {
             e->interactive = 1;
+            e->b->flags &= ~BF_READONLY;
+        }
     }
     return 0;
 }
