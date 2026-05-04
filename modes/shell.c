@@ -107,10 +107,18 @@ typedef struct ShellError {
     char filename[MAX_FILENAME_SIZE];
 } ShellError;
 
+typedef struct ShellKillContext {
+    ShellState *s;
+    EditBuffer *b;
+    EditState *e;
+    const char *cmd;
+    void (*callback)(EditState*, const char*);
+} ShellKillContext;
+
 static ShellError error_state = {
-    .offset = -1,
+    .offset   = -1,
     .line_num = -1,
-    .col_num = -1,
+    .col_num  = -1,
 };
 
 #define SR_UPDATE_SIZE  1
@@ -2459,6 +2467,9 @@ static void shell_mode_free(EditBuffer *b, void *state)
     ShellState *s = state;
     int tries = 5, sig, rc, status;
 
+    if (s == NULL)
+        return;
+
     eb_free_callback(b, eb_offset_callback, &s->cur_offset);
     eb_free_callback(b, eb_offset_callback, &s->cur_prompt);
     eb_free_callback(b, eb_offset_callback, &s->alternate_screen_top);
@@ -3378,16 +3389,70 @@ static char *shell_get_default_path(EditBuffer *b, int offset,
     return shell_get_curpath(b, offset, buf, buf_size);
 }
 
+static void shell_kill_process_confirm_cb(void *opaque, char *reply, CompletionDef *completion)
+{
+    ShellKillContext *sc = opaque;
+    int yes_replied;
+
+    if (reply) {
+        yes_replied = strequal(reply, "yes");
+        qe_free(&reply);
+        if (!yes_replied)
+            goto end;
+        shell_mode_free(sc->b, sc->s);
+        sc->callback(sc->e, sc->cmd);
+    }
+
+end:
+    qe_free(&sc->cmd);
+    qe_free(&sc);
+}
+
+static int shell_check_active_process(QEmacsState *qs, const char *bufname,
+                                      void (*cb)(EditState*, const char*),
+                                      EditState *e, const char *cmd)
+{
+    EditBuffer *b;
+    char buf[256];
+
+    b = qe_find_buffer_name(qs, bufname);
+    if (b == NULL)
+        return 0;
+
+    ShellState *s = qe_get_buffer_mode_data(b, &shell_mode, NULL);
+    if (s == NULL || s->pid < 0)
+        return 0;
+
+    ShellKillContext *sc = qe_mallocz(ShellKillContext);
+    if (!sc)
+        return 0;
+    sc->s = s;
+    sc->e = e;
+    sc->b = b;
+    sc->callback = cb;
+    sc->cmd = qe_strdup(cmd);
+    snprintf(buf, sizeof(buf),
+             "A %s process is running; kill it? (yes or no) ",
+             s->caption ? s->caption : "shell");
+    minibuffer_edit(e, NULL, buf, NULL, NULL,
+                    shell_kill_process_confirm_cb, sc);
+    return 1;
+}
+
 static void do_shell_command(EditState *e, const char *cmd)
 {
     char curpath[MAX_FILENAME_SIZE];
     QEmacsState *qs = e->qs;
     EditBuffer *b;
+    const char *bufname = "*shell command output*";
 
     get_default_path(e->b, e->offset, curpath, sizeof curpath);
 
+    if (shell_check_active_process(qs, bufname, do_shell_command, e, cmd))
+        return;
+
     /* create new buffer */
-    b = qe_new_shell_buffer(qs, NULL, e, "*shell command output*", NULL,
+    b = qe_new_shell_buffer(qs, NULL, e, bufname, NULL,
                             curpath, cmd, SF_COLOR | SF_INFINITE |
                             SF_REUSE_BUFFER | SF_ERASE_BUFFER);
     if (!b)
@@ -3403,6 +3468,7 @@ static void do_compile(EditState *s, const char *cmd)
     char curpath[MAX_FILENAME_SIZE];
     QEmacsState *qs = s->qs;
     EditBuffer *b;
+    const char *bufname = "*compilation*";
 
     if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
@@ -3418,8 +3484,11 @@ static void do_compile(EditState *s, const char *cmd)
     if (!cmd || !*cmd)
         cmd = "make";
 
+    if (shell_check_active_process(qs, bufname, do_compile, s, cmd))
+        return;
+
     /* create new buffer */
-    b = qe_new_shell_buffer(qs, NULL, s, "*compilation*", "Compilation",
+    b = qe_new_shell_buffer(qs, NULL, s, bufname, "Compilation",
                             curpath, cmd, SF_COLOR | SF_INFINITE |
                             SF_REUSE_BUFFER | SF_ERASE_BUFFER);
     if (!b)
@@ -3904,7 +3973,7 @@ static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     ShellState *s = qe_get_buffer_mode_data(p->b, &shell_mode, NULL);
 
-    if (s && ((s->shell_flags & SF_INTERACTIVE) || s->pid >= 0))
+    if (s && s->pid >= 0)
         return 100;
 
     return 0;
