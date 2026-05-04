@@ -2755,6 +2755,26 @@ static void do_shell(EditState *e, int argval)
     put_status(e, "Press C-o to toggle between shell/edit mode");
 }
 
+static inline EditState *shell_target_window(EditState *e, EditBuffer *b)
+{
+    EditState *e1;
+    ShellState *s = qe_get_buffer_mode_data(b, &shell_mode, NULL);
+
+    if (s && !(s->shell_flags & SF_INTERACTIVE)) {
+        e1 = eb_find_window(b, NULL);
+        if (e1 != NULL)
+            goto found;
+    }
+
+    e1 = qe_split_window(e, SW_STACKED, 50);
+    if (e1 ==  NULL)
+        e1 = e;
+
+found:
+    switch_to_buffer(e1, b);
+    return e1;
+}
+
 static void do_man(EditState *s, const char *arg)
 {
     char bufname[32];
@@ -2785,7 +2805,7 @@ static void do_man(EditState *s, const char *arg)
 
     b->data_type_name = "man";
     b->flags |= BF_READONLY;
-    switch_to_buffer(s, b);
+    s = shell_target_window(s, b);
     edit_set_mode(s, &pager_mode);
 }
 
@@ -3373,8 +3393,7 @@ static void do_shell_command(EditState *e, const char *cmd)
     if (!b)
         return;
 
-    /* XXX: try to split window if necessary */
-    switch_to_buffer(e, b);
+    e = shell_target_window(e, b);
     // FIXME: if command prompts for input, the buffer should use shell_mode
     edit_set_mode(e, &pager_mode);
 }
@@ -3408,8 +3427,7 @@ static void do_compile(EditState *s, const char *cmd)
 
     b->flags |= BF_READONLY;
     b->data_type_name = "compile";
-    /* XXX: try to split window if necessary */
-    switch_to_buffer(s, b);
+    s = shell_target_window(s, b);
     edit_set_mode(s, &pager_mode);
     set_error_offset(b, 0);
 }
