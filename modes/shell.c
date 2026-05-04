@@ -99,12 +99,19 @@ typedef struct ShellState {
     char curpath[MAX_FILENAME_SIZE]; /* should keep a list with validity ranges */
 } ShellState;
 
-/* CG: these variables should be encapsulated in a global structure */
-static char error_buffer[MAX_BUFFERNAME_SIZE];
-static int error_offset = -1;
-static int error_line_num = -1;
-static int error_col_num = -1;
-static char error_filename[MAX_FILENAME_SIZE];
+typedef struct ShellError {
+    int offset;
+    int line_num;
+    int col_num;
+    char buffer[MAX_BUFFERNAME_SIZE];
+    char filename[MAX_FILENAME_SIZE];
+} ShellError;
+
+static ShellError error_state = {
+    .offset = -1,
+    .line_num = -1,
+    .col_num = -1,
+};
 
 #define SR_UPDATE_SIZE  1
 #define SR_REFRESH      2
@@ -117,10 +124,10 @@ static void shell_close(ShellState *s);
 
 static void set_error_offset(EditBuffer *b, int offset)
 {
-    pstrcpy(error_buffer, sizeof(error_buffer), b ? b->name : "");
-    error_offset = offset - 1;
-    error_line_num = error_col_num = -1;
-    *error_filename = '\0';
+    pstrcpy(error_state.buffer, sizeof(error_state.buffer), b ? b->name : "");
+    error_state.offset = offset - 1;
+    error_state.line_num = error_state.col_num = -1;
+    *error_state.filename = '\0';
 }
 
 #define PTYCHAR1 "pqrstuvwxyzabcde"
@@ -2707,8 +2714,8 @@ static void do_shell(EditState *e, int argval)
             b = e->b;
         } else {
             /* Find the last used shell buffer, if any */
-            if (strstart(error_buffer, "*shell", NULL)) {
-                b = try_show_buffer(&e, error_buffer);
+            if (strstart(error_state.buffer, "*shell", NULL)) {
+                b = try_show_buffer(&e, error_state.buffer);
             }
             if (b == NULL) {
                 b = try_show_buffer(&e, "*shell*");
@@ -3432,7 +3439,7 @@ static void do_next_error(EditState *s, int arg, int dir)
      * in buffer least recently used order
      */
 
-    if ((b = qe_find_buffer_name(qs, error_buffer)) == NULL) {
+    if ((b = qe_find_buffer_name(qs, error_state.buffer)) == NULL) {
         if ((b = qe_find_buffer_name(qs, "*compilation*")) == NULL
         &&  (b = qe_find_buffer_name(qs, "*shell*")) == NULL
         &&  (b = qe_find_buffer_name(qs, "*errors*")) == NULL) {
@@ -3443,7 +3450,7 @@ static void do_next_error(EditState *s, int arg, int dir)
     }
 
     /* find next/prev error */
-    offset = error_offset;
+    offset = error_state.offset;
 
     /* CG: should use higher level parsing */
     for (;;) {
@@ -3511,23 +3518,23 @@ static void do_next_error(EditState *s, int arg, int dir)
         len = eb_fgets(b, error_message, sizeof(error_message), offset, &offset);
         error_message[len] = '\0';   /* strip the trailing newline if any */
         if (line_num >= 1) {
-            if (line_num != error_line_num
-            ||  col_num != error_col_num
-            ||  !strequal(fullpath, error_filename)) {
-                error_line_num = line_num;
-                error_col_num = col_num;
-                pstrcpy(error_filename, sizeof(error_filename), fullpath);
+            if (line_num != error_state.line_num
+            ||  col_num != error_state.col_num
+            ||  !strequal(fullpath, error_state.filename)) {
+                error_state.line_num = line_num;
+                error_state.col_num = col_num;
+                pstrcpy(error_state.filename, sizeof(error_state.filename), fullpath);
                 break;
             }
         }
       next_line:
         offset = found_offset;
     }
-    error_offset = found_offset;
+    error_state.offset = found_offset;
     /* update offsets */
     for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->b == b) {
-            e->offset = error_offset;
+            e->offset = error_state.offset;
         }
     }
 
