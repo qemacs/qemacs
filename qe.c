@@ -8569,7 +8569,7 @@ void do_kill_buffer(EditState *s, const char *bufname, int force)
             QEModeData *md = qe_get_buffer_mode_data(b, m, NULL);
             snprintf(buf, sizeof(buf),
                      "A %s process is running; kill it? (yes or no) ",
-                     s->caption  ? s->caption : "shell");
+                     s->caption ? s->caption : "shell");
             minibuffer_edit(s, NULL, buf, NULL, NULL,
                             kill_process_confirm_cb, md);
         } else {
