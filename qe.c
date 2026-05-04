@@ -8534,25 +8534,55 @@ static void kill_buffer_confirm_cb(void *opaque, char *reply, CompletionDef *com
     qe_kill_buffer(b->qs, b);
 }
 
+void kill_process_confirm_cb(void *opaque, char *reply, CompletionDef *completion)
+{
+    QEModeData *md = opaque;
+    int yes_replied;
+
+    if (!reply)
+        return;
+    yes_replied = strequal(reply, "yes");
+    qe_free(&reply);
+    if (!yes_replied)
+        return;
+
+    md->mode->mode_free(md->b, md);
+    qe_kill_buffer(md->qs, md->b);
+}
+
 void do_kill_buffer(EditState *s, const char *bufname, int force)
 {
     QEmacsState *qs = s->qs;
     char buf[1024];
     EditBuffer *b;
+    ModeDef *m;
 
     b = qe_find_buffer_name(qs, bufname);
     if (!b) {
         put_error(s, "No buffer %s", bufname);
     } else {
-        /* if modified and associated to a filename, then ask */
-        if (!force && b->modified && b->filename[0] != '\0') {
-            qe_stop_macro(qs);
+        ModeProbeData probe_data;
+
+        probe_data.b = b;
+        m = qe_find_mode(qs, "shell", 0);
+        if (m && m->mode_probe(m, &probe_data)) {
+            QEModeData *md = qe_get_buffer_mode_data(b, m, NULL);
             snprintf(buf, sizeof(buf),
-                     "Buffer %s modified; kill anyway? (yes or no) ", bufname);
+                     "A %s process is running; kill it? (yes or no) ",
+                     s->caption  ? s->caption : "shell");
             minibuffer_edit(s, NULL, buf, NULL, NULL,
-                            kill_buffer_confirm_cb, b);
+                            kill_process_confirm_cb, md);
         } else {
-            qe_kill_buffer(qs, b);
+            /* if modified and associated to a filename, then ask */
+            if (!force && b->modified && b->filename[0] != '\0') {
+                qe_stop_macro(qs);
+                snprintf(buf, sizeof(buf),
+                         "Buffer %s modified; kill anyway? (yes or no) ", bufname);
+                minibuffer_edit(s, NULL, buf, NULL, NULL,
+                                kill_buffer_confirm_cb, b);
+            } else {
+                qe_kill_buffer(qs, b);
+            }
         }
     }
 }
