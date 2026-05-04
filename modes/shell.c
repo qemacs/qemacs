@@ -2400,7 +2400,8 @@ static void shell_read_cb(void *opaque)
 
     len = read(s->pty_fd, buf, sizeof(buf));
     if (len <= 0) {
-        shell_close(s);
+        if (s->pid == -1)
+            shell_close(s);
         return;
     }
 
