@@ -3879,7 +3879,7 @@ static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     ShellState *s = qe_get_buffer_mode_data(p->b, &shell_mode, NULL);
 
-    if (s && s->shell_flags & SF_INTERACTIVE)
+    if (s && ((s->shell_flags & SF_INTERACTIVE) || s->pid >= 0))
         return 100;
 
     return 0;
