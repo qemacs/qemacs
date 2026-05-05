@@ -2770,7 +2770,7 @@ static void do_shell(EditState *e, int argval)
     shell_mode.mode_init(e, b, 0);
     do_shell_refresh(e, SR_UPDATE_SIZE | SR_SILENT);
     set_error_offset(b, 0);
-    put_status(e, "Press C-o to toggle between shell/pager mode");
+    put_status(e, "Press C-o to toggle between shell input and buffer navigation");
 }
 
 static inline EditState *shell_target_window(EditState *e, EditBuffer *b)
@@ -2856,7 +2856,7 @@ static void do_ssh(EditState *s, const char *arg)
     b->default_mode = &shell_mode;
     switch_to_buffer(s, b);
 
-    put_status(s, "Press C-o to toggle between shell/pager mode");
+    put_status(s, "Press C-o to toggle between shell input and buffer navigation");
 }
 
 static void shell_move_left_right(EditState *e, int dir)
@@ -3452,7 +3452,7 @@ static void do_interactive_shell_command(EditState *e, const char *cmd)
     switch_to_buffer(e, b);
     shell_mode.mode_init(e, b, 0);
     set_error_offset(b, 0);
-    put_status(e, "Press C-o to toggle between shell/edit mode");
+    put_status(e, "Press C-o to toggle between shell input and buffer navigation");
 }
 
 static void do_compile(EditState *s, const char *cmd)
