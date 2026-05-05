@@ -3281,19 +3281,22 @@ static void do_shell_refresh(EditState *e, int flags)
 static void do_shell_toggle_input(EditState *e)
 {
     ShellState *s;
+    QEmacsState *qs = e->qs;
+    EditState *e1;
+    int interactive = !(e->interactive);
 
     if ((s = shell_get_state(e, 1)) != NULL) {
         if (e->interactive) {
-            e->interactive = 0;
             e->b->flags |= BF_READONLY;
-            return;
-        }
-        if ((s->shell_flags & SF_INTERACTIVE)) {
-            e->interactive = 1;
+        } else if (s->shell_flags & SF_INTERACTIVE) {
             e->b->flags &= ~BF_READONLY;
             e->offset = s->cur_offset;
             if (s->grab_keys)
                 qe_grab_keys(s->base.qs, shell_key, s);
+        }
+        for (e1 = qs->first_window; e1 != NULL; e1 = e1->next_window) {
+            if (e1->b == e->b)
+                e1->interactive = interactive;
         }
     }
 }
