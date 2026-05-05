@@ -1,7 +1,7 @@
 /*
  * QEmacs, extra commands non full version
  *
- * Copyright (c) 2000-2025 Charlie Gordon.
+ * Copyright (c) 2000-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -443,7 +443,7 @@ static void do_adjust_window(EditState *s, int argval, int flags)
     if (!qs->first_transient_key) {
         put_status(s, "Adjusting window, repeat with ^, }, {, v");
         qe_register_transient_binding(qs, "enlarge-window", "^, up");
-        qe_register_transient_binding(qs, "shrink-window", "v, down");
+        qe_register_transient_binding(qs, "shrink-window", "v, V, down");
         qe_register_transient_binding(qs, "enlarge-window-horizontally", "}, right");
         qe_register_transient_binding(qs, "shrink-window-horizontally", "{, left");
     }
@@ -479,13 +479,15 @@ static void do_adjust_window(EditState *s, int argval, int flags)
         if (s == e || !(e->flags & (WF_POPUP | WF_MINIBUF))) {
             if (e->x1 == x)
                 e->x1 += delta;
-            if (e->x2 == x)
+            else if (e->x2 == x)
                 e->x2 += delta;
-            if (e->y1 == y)
+            else if (e->y1 == y)
                 e->y1 += delta;
-            if (e->y2 == y)
+            else if (e->y2 == y)
                 e->y2 += delta;
-            update_split_ratio(e);
+            else
+                continue;
+            compute_virtual_window_size(e);
         }
     }
     qs->complete_refresh = 1;
@@ -1879,6 +1881,7 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d, %d\n", w, "xleft, ytop", s->xleft, s->ytop);
     eb_printf(b1, "%*s: %d, %d\n", w, "width, height", s->width, s->height);
     eb_printf(b1, "%*s: %d, %d, %d, %d\n", w, "x1, y1, x2, y2", s->x1, s->y1, s->x2, s->y2);
+    eb_printf(b1, "%*s: %d, %d, %d, %d\n", w, "xx1, yy1, xx2, yy2", s->xx1, s->yy1, s->xx2, s->yy2);
     eb_printf(b1, "%*s: %#x%s%s%s%s%s%s%s\n", w, "flags", (unsigned)s->flags,
               (s->flags & WF_POPUP) ? " POPUP" : "",
               (s->flags & WF_MODELINE) ? " MODELINE" : "",
@@ -3136,7 +3139,7 @@ static const CmdDef extra_commands[] = {
     CMD3( "enlarge-window", "C-x ^",
           "Enlarge window vertically",
           do_adjust_window, ESii, "p" "v", QE_AW_ENLARGE | QE_AW_VERTICAL)
-    CMD3( "shrink-window", "C-x v",
+    CMD3( "shrink-window", "C-x v, C-x V",
           "Shrink window vertically",
           do_adjust_window, ESii, "p" "v", QE_AW_SHRINK | QE_AW_VERTICAL)
     CMD3( "enlarge-window-horizontally", "C-x }",

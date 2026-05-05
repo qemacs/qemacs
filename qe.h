@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2000-2025 Charlie Gordon.
+ * Copyright (c) 2000-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1492,6 +1492,7 @@ EditState *qe_find_target_window(EditState *s, int activate);
 void do_find_window(EditState *s, int key);
 EditState *get_previous_window(EditState *s, int mask, int val);
 EditState *get_next_window(EditState *s, int mask, int val);
+void compute_virtual_window_size(EditState *s);
 void compute_client_area(EditState *s);
 
 /* window handling */
@@ -1504,9 +1505,6 @@ void qe_kill_buffer(QEmacsState *qs, EditBuffer *b);
 int get_glyph_width(QEditScreen *screen, EditState *s, QETermStyle style, char32_t c);
 int get_line_height(QEditScreen *screen, EditState *s, QETermStyle style);
 void do_refresh(EditState *s);
-void update_split_ratio(EditState *s);
-void update_all_split_ratios(QEmacsState *qs);
-void restore_coordinate_from_ratio(EditState *s);
 // should take direction argument
 void do_other_window(EditState *s);
 void do_previous_window(EditState *s);

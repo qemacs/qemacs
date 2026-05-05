@@ -7229,6 +7229,7 @@ EditState *qe_new_window(EditBuffer *b,
     s->x2 = x1 + width;
     s->y2 = y1 + height;
     s->flags = flags;
+    compute_virtual_window_size(s);
     compute_client_area(s);
 
     if (flags & WF_POPUP) {
@@ -8360,6 +8361,8 @@ EditState *insert_window_left(EditBuffer *b, int width, int flags)
         } else
         if (e->x1 < width) {
             e->x1 = width;
+            compute_virtual_window_size(e);
+            compute_client_area(e);
         }
     }
 
@@ -9508,6 +9511,10 @@ void do_refresh(EditState *s1)
                 e->y1 = content_height;
                 e->x2 = width;
                 e->y2 = height;
+                e->xx1 = 0;
+                e->xx2 = UNIT_SIZE;
+                e->yy1 = UNIT_SIZE;
+                e->yy2 = UNIT_SIZE + 1;
             } else
             if (qs->height == 0 || qs->width == 0 || qs->content_height == 0) {
                 /* needed only to init the window size for the first time */
@@ -9515,8 +9522,18 @@ void do_refresh(EditState *s1)
                 e->y1 = 0;
                 e->y2 = content_height;
                 e->x2 = width;
+                e->xx1 = e->yy1 = 0;
+                e->xx2 = e->yy2 = UNIT_SIZE;
             } else {
-                restore_coordinate_from_ratio(e);
+                /* update coordinates from virtual window size */
+                if (width != qs->width) {
+                    e->x1 = (e->xx1 * width + UNIT_SIZE / 2) / UNIT_SIZE;
+                    e->x2 = (e->xx2 * width + UNIT_SIZE / 2) / UNIT_SIZE;
+                }
+                if (content_height != qs->content_height) {
+                    e->y1 = (e->yy1 * content_height + UNIT_SIZE / 2) / UNIT_SIZE;
+                    e->y2 = (e->yy2 * content_height + UNIT_SIZE / 2) / UNIT_SIZE;
+                }
             }
         }
 
@@ -9700,6 +9717,7 @@ void do_delete_window(EditState *s, int force)
                 } else {
                     continue;
                 }
+                compute_virtual_window_size(e);
                 compute_client_area(e1 = e);
             }
             if (x1 == x2 || y1 == y2)
@@ -9742,11 +9760,12 @@ void do_delete_other_windows(EditState *s, int all)
         edit_close(&s);
     } else {
         /* resize to whole screen */
-        s->y1 = 0;
         s->x1 = 0;
+        s->y1 = 0;
         s->x2 = qs->width;
         s->y2 = qs->height - qs->status_height;
         s->flags &= ~(WF_RSEPARATOR);
+        compute_virtual_window_size(s);
         compute_client_area(s);
         do_refresh(s);
     }
@@ -9772,38 +9791,19 @@ void do_delete_hidden_windows(EditState *s)
     }
 }
 
-void update_split_ratio(EditState *s)
+void compute_virtual_window_size(EditState *s)
 {
     int total_w = s->screen->width;
-    int total_h = s->screen->height;
+    int total_h = s->qs->content_height;
 
-    s->xx1 = s->x1 * UNIT_SIZE / total_w;
-    s->xx2 = s->x2 * UNIT_SIZE / total_w;
-
-    s->yy1 = s->y1 * UNIT_SIZE / total_h;
-    s->yy2 = s->y2 * UNIT_SIZE / total_h;
-}
-
-void update_all_split_ratios(QEmacsState *qs)
-{
-    EditState *e;
-    for (e = qs->first_window; e; e = e->next_window) {
-        if (e->flags & WF_MINIBUF)
-            continue;
-        update_split_ratio(e);
+    if (total_w) {
+        s->xx1 = (s->x1 * UNIT_SIZE + total_w / 2) / total_w;
+        s->xx2 = (s->x2 * UNIT_SIZE + total_w / 2) / total_w;
     }
-}
-
-void restore_coordinate_from_ratio(EditState *s)
-{
-    int total_w = s->screen->width;
-    int total_h = s->screen->height;
-
-    s->x1 = s->xx1 * total_w / UNIT_SIZE;
-    s->x2 = s->xx2 * total_w / UNIT_SIZE;
-
-    s->y1 = s->yy1 * total_h / UNIT_SIZE;
-    s->y2 = s->yy2 * total_h / UNIT_SIZE;
+    if (total_h) {
+        s->yy1 = (s->y1 * UNIT_SIZE + total_h / 2) / total_h;
+        s->yy2 = (s->y2 * UNIT_SIZE + total_h / 2) / total_h;
+    }
 }
 
 EditState *qe_split_window(EditState *s, int side_by_side, int prop)
@@ -9822,8 +9822,8 @@ EditState *qe_split_window(EditState *s, int side_by_side, int prop)
     h = s->y2 - s->y1;
 
     if (side_by_side) {
-        if (w < 9) {
-            put_error(s, "can not split a %d columns window", w);
+        if (s->cols < 9) {
+            put_error(s, "Cannot split a window with %d columns, need at least 9", s->cols);
             return NULL;
         }
 
@@ -9839,8 +9839,8 @@ EditState *qe_split_window(EditState *s, int side_by_side, int prop)
         s->x2 = s->x1 + w1;
         s->flags |= WF_RSEPARATOR;
     } else {
-        if (h < 3) {
-            put_error(s, "can not split a %d lines window", h);
+        if (s->rows < 4) {
+            put_error(s, "Cannot split a window with %d rows, need at least 4", s->rows);
             return NULL;
         }
 
@@ -9854,13 +9854,11 @@ EditState *qe_split_window(EditState *s, int side_by_side, int prop)
             return NULL;
         s->y2 = s->y1 + h1;
     }
+    compute_virtual_window_size(s);
     compute_client_area(s);
 
     /* reposition new window in window list just after s */
     edit_attach(e, s->next_window);
-
-    update_split_ratio(s);
-    update_split_ratio(e);
 
     do_refresh(s);
     return e;
@@ -10237,11 +10235,13 @@ int window_resize(EditState *s, int target_w, int target_h)
                 e->x1 += delta_x;
             else if (e->x2 == s->x2)
                 e->x2 += delta_x;
+            compute_virtual_window_size(e);
             compute_client_area(e);
         }
     }
     s->x2 += delta_x;
     s->y2 += delta_y;
+    compute_virtual_window_size(s);
     compute_client_area(s);
     return 1;
 }
@@ -10540,7 +10540,7 @@ static void handle_mouse_motion(EditState *e, QEEvent *ev) {
                 qs->motion_y = mouse_y;
             }
             if (changed) {
-                update_split_ratio(e);
+                compute_virtual_window_size(e);
                 compute_client_area(e);
                 //do_refresh(qs->first_window);
                 qs->complete_refresh = 1;
@@ -10549,11 +10549,10 @@ static void handle_mouse_motion(EditState *e, QEEvent *ev) {
         }
         break;
     case MOTION_MODELINE:
-        /* adjust window heighy and retile other windows */
+        /* adjust window height and retile other windows */
         if ((mouse_y / scale) != (qs->motion_y / scale)) {
             qs->motion_y = mouse_y;
             window_resize(e, e->x2 - e->x1, qs->motion_y - e->y1);
-            update_all_split_ratios(qs);
             do_refresh(qs->first_window);
             qe_display(qs);
         }
@@ -10563,7 +10562,6 @@ static void handle_mouse_motion(EditState *e, QEEvent *ev) {
         if ((mouse_x / scale) != (qs->motion_x / scale)) {
             qs->motion_x = mouse_x;
             window_resize(e, qs->motion_x - e->x1, e->y2 - e->y1);
-            update_all_split_ratios(qs);
             do_refresh(qs->first_window);
             qe_display(qs);
         }
