@@ -3429,9 +3429,30 @@ static void do_shell_command(EditState *e, const char *cmd)
     if (!b)
         return;
 
+    b->flags |= BF_READONLY;
     e = shell_target_window(e, b);
-    // FIXME: if command prompts for input, the buffer should use shell_mode
     edit_set_mode(e, &pager_mode);
+}
+
+static void do_interactive_shell_command(EditState *e, const char *cmd)
+{
+    char curpath[MAX_FILENAME_SIZE];
+    QEmacsState *qs = e->qs;
+    EditBuffer *b;
+
+    get_default_path(e->b, e->offset, curpath, sizeof curpath);
+
+    /* create new buffer */
+    b = qe_new_shell_buffer(qs, NULL, e, "*interactive shell command*", NULL,
+                            curpath, cmd, SF_COLOR | SF_INFINITE | SF_INTERACTIVE);
+    if (!b)
+        return;
+
+    b->default_mode = &shell_mode;
+    switch_to_buffer(e, b);
+    shell_mode.mode_init(e, b, 0);
+    set_error_offset(b, 0);
+    put_status(e, "Press C-o to toggle between shell/edit mode");
 }
 
 static void do_compile(EditState *s, const char *cmd)
@@ -3916,6 +3937,10 @@ static const CmdDef shell_global_commands[] = {
           "Run a shell command and display a new buffer with its collected output",
           do_shell_command, ESs,
           "s{Shell command: }|shell-command|")
+    CMD2( "interactive-shell-command", "",
+          "Run a shell command interactively and display a new buffer with its collected output",
+          do_interactive_shell_command, ESs,
+          "s{Interactive shell command: }|interactive-shell-command|")
     CMD2( "ssh", "",
           "Start a shell buffer with a new remote shell connection",
           do_ssh, ESs,
