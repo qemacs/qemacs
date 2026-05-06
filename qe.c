@@ -8534,7 +8534,7 @@ static void kill_buffer_confirm_cb(void *opaque, char *reply, CompletionDef *com
     qe_kill_buffer(b->qs, b);
 }
 
-void kill_process_confirm_cb(void *opaque, char *reply, CompletionDef *completion)
+static void kill_process_confirm_cb(void *opaque, char *reply, CompletionDef *completion)
 {
     QEModeData *md = opaque;
     int yes_replied;
