@@ -51,6 +51,10 @@ static VarDef var_table[] = {
            "Set if this window is displayed in full screen (without borders)." )
     S_VAR( "flag-split-window-change-focus", flag_split_window_change_focus, VAR_NUMBER, VAR_RW_SAVE,
            "Set if `split-window` should set focus to the new window." )
+    S_VAR( "shell-buffer-read-only", shell_buffer_read_only, VAR_NUMBER, VAR_RW_SAVE,
+           "Set if shell buffers should become read-only." )
+    S_VAR( "shell-mode-auto-interactive", shell_mode_auto_interactive, VAR_NUMBER, VAR_RW_SAVE,
+           "Set if moving to end of buffer switches to interactive mode." )
     // XXX: need set_value function to perform side effect
     S_VAR( "backspace-is-control-h", backspace_is_control_h, VAR_NUMBER, VAR_RW_SAVE,
            "Set if the Delete key sends a control-H." )
