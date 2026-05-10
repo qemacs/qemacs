@@ -34,8 +34,6 @@ static char const python_keywords[] = {
     "|"
 };
 
-// XXX: should add RapydScript keywords:
-//    new, undefined, this, to, til, get, set, super
 // XXX: colorize annotations
 // XXX: parse unicode identifiers
 
@@ -44,9 +42,10 @@ enum {
     IN_PYTHON_STRING       = 0x40,
     IN_PYTHON_STRING2      = 0x20,
     IN_PYTHON_LONG_STRING  = 0x10,
-    IN_PYTHON_LONG_STRING2 = 0x08,
-    IN_PYTHON_RAW_STRING   = 0x04,
-    IN_PYTHON_REGEX1       = 0x02,
+    IN_PYTHON_RAW_STRING   = 0x08,
+    IN_PYTHON_TEMPLATE_STRING = 0x04,
+    IN_PYTHON_TEMPLATE_EXPR = 0x02,
+    //IN_PYTHON_REGEX1       = 0x01,
 };
 
 enum {
@@ -55,6 +54,7 @@ enum {
     PYTHON_STYLE_STRING =   QE_STYLE_STRING,
     PYTHON_STYLE_NUMBER =   QE_STYLE_NUMBER,
     PYTHON_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
+    PYTHON_STYLE_TYPE =     QE_STYLE_TYPE,
     PYTHON_STYLE_FUNCTION = QE_STYLE_FUNCTION,
     PYTHON_STYLE_REGEX    = QE_STYLE_STRING,
     PYTHON_STYLE_ANNOTATION = QE_STYLE_PREPROCESS,
@@ -77,21 +77,9 @@ static void python_colorize_line(QEColorizeContext *cp,
     int state = cp->colorize_state;
     char kbuf[64];
 
-    if (state & IN_PYTHON_STRING) {
-        sep = '\'';
+    if ((state & IN_PYTHON_STRING)
+    &&  !(state & IN_PYTHON_TEMPLATE_EXPR)) {
         goto parse_string;
-    }
-    if (state & IN_PYTHON_STRING2) {
-        sep = '\"';
-        goto parse_string;
-    }
-    if (state & IN_PYTHON_LONG_STRING) {
-        sep = '\'';
-        goto parse_long_string;
-    }
-    if (state & IN_PYTHON_LONG_STRING2) {
-        sep = '\"';
-        goto parse_long_string;
     }
 
     tag = !qe_isblank(str[i]);
@@ -116,39 +104,33 @@ static void python_colorize_line(QEColorizeContext *cp,
             i--;
         has_quote:
             sep = str[i++];
+            state |= IN_PYTHON_STRING;
+            if (sep == '\"') state |= IN_PYTHON_STRING2;
             if (str[i] == sep && str[i + 1] == sep) {
-                /* long string */
-                state = (sep == '\"') ? IN_PYTHON_LONG_STRING2 :
-                        IN_PYTHON_LONG_STRING;
+                state |= IN_PYTHON_LONG_STRING;
                 i += 2;
-            parse_long_string:
-                while (i < n) {
-                    c = str[i++];
-                    if (!(state & IN_PYTHON_RAW_STRING) && c == '\\') {
-                        if (i < n) {
-                            i += 1;
-                        }
-                    } else
-                    if (c == sep && str[i] == sep && str[i + 1] == sep) {
+            }
+        parse_string:
+            sep = (state & IN_PYTHON_STRING2) ? '\"' : '\'';
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\' && !(state & IN_PYTHON_RAW_STRING)) {
+                    if (i < n) {
+                        i += 1;
+                    }
+                } else
+                if (c == '{' && (state & IN_PYTHON_TEMPLATE_STRING)) {
+                    state |= IN_PYTHON_TEMPLATE_EXPR;
+                    break;
+                } else
+                if (c == sep) {
+                    if (state & IN_PYTHON_LONG_STRING) {
+                        if (str[i] != sep || str[i + 1] != sep)
+                            continue;
                         i += 2;
-                        state = 0;
-                        break;
                     }
-                }
-            } else {
-                state = (sep == '\"') ? IN_PYTHON_STRING2 : IN_PYTHON_STRING;
-            parse_string:
-                while (i < n) {
-                    c = str[i++];
-                    if (!(state & IN_PYTHON_RAW_STRING) && c == '\\') {
-                        if (i < n) {
-                            i += 1;
-                        }
-                    } else
-                    if (c == sep) {
-                        state = 0;
-                        break;
-                    }
+                    state = 0;
+                    break;
                 }
             }
             style = PYTHON_STYLE_STRING;
@@ -228,6 +210,22 @@ static void python_colorize_line(QEColorizeContext *cp,
             }
             goto has_alpha;
 
+        case 't':
+            if (mode_flags == PYTHON_MOJO
+            &&  (str[i] == '\'' || str[i] == '\"')) {
+                state |= IN_PYTHON_TEMPLATE_STRING;
+                goto has_quote;
+            }
+            goto has_alpha;
+
+        case '}':
+            if (state & IN_PYTHON_TEMPLATE_EXPR) {
+                state &= ~IN_PYTHON_TEMPLATE_EXPR;
+                if (state & IN_PYTHON_STRING)
+                    goto parse_string;
+            }
+            continue;
+
         case '(':
         case '{':
             tag = 0;
@@ -286,6 +284,11 @@ static void python_colorize_line(QEColorizeContext *cp,
                     style = PYTHON_STYLE_KEYWORD;
                     break;
                 }
+                if ((syn->types && strfind(syn->types, kbuf))
+                ||  (mode_flags == PYTHON_MOJO && qe_isupper(*kbuf) && start && str[start - 1] != '.')) {
+                    style = PYTHON_STYLE_TYPE;
+                    break;
+                }
                 if (check_fcall(str, i)) {
                     style = PYTHON_STYLE_FUNCTION;
                     if (tag) {
@@ -327,11 +330,21 @@ static ModeDef python_mode = {
 
 /*---- Rapidscrypt: a Python-like syntax ----*/
 
+static char const rapydscript_keywords[] = {
+    "|False|None|True|and|as|assert|break|class|continue"
+    "|def|del|elif|else|except|finally|for|from|global"
+    "|if|import|in|is|lambda|nonlocal|not|or|pass|raise"
+    "|return|try|while|with|yield"
+    // Rapydscript keywords
+    "|new|undefined|this|to|til|get|set|super"
+    "|"
+};
+
 static ModeDef rapydscript_mode = {
     .name = "RapydScript",
     .extensions = "pyj",
     .shell_handlers = "rapydscript",
-    .keywords = python_keywords,
+    .keywords = rapydscript_keywords,
     .colorize_func = python_colorize_line,
     .colorize_flags = PYTHON_RAPYDSCRIPT,
 };
@@ -375,21 +388,20 @@ static char const mojo_keywords[] = {
     "|False|None|True"
     "|as|assert|break|continue|del|global"
     "|lambda|nonlocal|pass|return|with|yield"
-    // Mojo specific: fn, struct, trait
-    "|class|def|fn|struct|trait"
-    // Mojo specific: inout, owned, borrowed, raises
-    "|inout|owned|borrowed|raises"
+    "|class|def"
+    "|fn|struct|trait"          // Mojo specific
+    "|inout|out|owned|borrowed|raises"  // Mojo specific
     "|elif|else|if|for|while"
-    // operators
     "|and|in|is|not|or"
     "|except|finally|raise|try"
     "|from|import|alias"
     "|async|await"
-    // Mojo specific: var, let
-    "|var|let|comptime"
+    "|var|let|mut|ref|comptime" // Mojo specific
     "|"
 };
 
+#if 0
+// Useless as we colorize all capitalized words
 static char const mojo_types[] = {
     "Bool"
     "|Int|UInt|Int8|UInt8|Int16|UInt16|Int32|UInt32|Int64|UInt64"
@@ -402,12 +414,13 @@ static char const mojo_types[] = {
     "|String|StaticString|StringSlice|TString"
     "|Tuple|List|Dict|Set|Optional|Variant"
 };
+#endif
 
 static ModeDef mojo_mode = {
     .name = "Mojo",
     .extensions = "mojo|🔥",
     .keywords = mojo_keywords,
-    .types = mojo_types,
+    //.types = mojo_types,
     .colorize_func = python_colorize_line,
     .colorize_flags = PYTHON_MOJO,
 };
