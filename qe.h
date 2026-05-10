@@ -1094,6 +1094,8 @@ struct QEmacsState {
     int default_fill_column;    /* DEFAULT_FILL_COLUMN */
     EOLType default_eol_type;  /* EOL_UNIX */
     int flag_split_window_change_focus;
+    int shell_buffer_read_only;
+    int shell_mode_auto_interactive;
     int emulation_flags;
     int backspace_is_control_h;
     int backup_inhibited;  /* prevent qemacs from backing up files */

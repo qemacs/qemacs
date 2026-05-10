@@ -514,7 +514,7 @@ static const char * const epsilon_bindings[] = {
     "C-y", "isearch-yank-kill", "isearch",
     "M-y", "isearch-yank-line", "isearch",
     "C-\\", "call-last-kbd-macro", NULL,
-    "C-x C-l", "compare-windows", NULL,
+    "C-x C-l", "compare-files", NULL,
     "C-x RET", "shell", NULL,
     "C-x d", "delete-window", NULL,
     "M-SPC", "set-mark-command", NULL,
@@ -563,7 +563,7 @@ static void qe_register_emulation_bindings(QEmacsState *qs, const char * const *
             lp = &mode->first_key;
         }
         qe_unregister_bindings(lp, pp[i]);
-        if (pp[i])
+        if (pp[i + 1])
             qe_register_bindings(qs, lp, pp[i + 1], pp[i]);
     }
 }
@@ -11855,6 +11855,7 @@ static int qe_init(void *opaque)
     qs->hilite_region = 1;
     qs->line_number_mode = 1;
     qs->column_number_mode = 1;
+    qs->shell_mode_auto_interactive = 1;
 
     qs->default_tab_width = DEFAULT_TAB_WIDTH;
     qs->default_fill_column = DEFAULT_FILL_COLUMN;

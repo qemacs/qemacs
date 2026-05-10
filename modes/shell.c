@@ -2,7 +2,7 @@
  * Shell mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2024 Charlie Gordon.
+ * Copyright (c) 2002-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -80,6 +80,7 @@ typedef struct ShellState {
     int shifted;
     int cset, charset[2];
     int grab_keys;      // XXX: should detect raw mode instead of relying on alternate_screen
+    int last_key_grabbed;
     unsigned char term_buf[256];
     int term_len, term_pos;
     int utf8_len;
@@ -1331,11 +1332,13 @@ static void shell_key(void *opaque, int key)
     if (!s || s->base.mode != &shell_mode)
         return;
 
-    if (key == KEY_CTRL('o')) {
+    if (key == KEY_CTRL('o') && s->last_key_grabbed == KEY_CTRL(' ')) {
         qe_ungrab_keys(s->base.qs);
         qe_unget_key(s->base.qs, key);
+        s->last_key_grabbed = key;
         return;
     }
+    s->last_key_grabbed = key;
     p = buf;
     len = -1;
     switch (key) {
@@ -2563,7 +2566,7 @@ static void shell_close(ShellState *s)
     }
     {
         /* Flush output to buffer, bypassing readonly flag */
-        int save_readonly = s->b->flags & BF_READONLY || s->shell_flags & SF_INTERACTIVE;
+        int save_readonly = s->b->flags & BF_READONLY;
         s->b->flags &= ~BF_READONLY;
 
         eb_write(b, b->total_size, buf, strlen(buf));
@@ -2586,8 +2589,10 @@ static void shell_close(ShellState *s)
                 do_set_auto_coding(e, 0);
             if (s->shell_flags & SF_AUTO_MODE)
                 qe_set_next_mode(e, 0, 0);
-            if (s->shell_flags & SF_INTERACTIVE)
-                edit_set_mode(e, &pager_mode);
+            if (qs->shell_buffer_read_only) {
+                if (s->shell_flags & SF_INTERACTIVE)
+                    edit_set_mode(e, &pager_mode);
+            }
         }
     }
 
@@ -2751,10 +2756,12 @@ static void do_shell(EditState *e, int argval)
             e->offset = b->total_size;
             /* restart the shell in the same directory */
             get_default_path(e->b, e->offset, curpath, sizeof curpath);
-            /* set mode back to shell mode */
-            edit_set_mode(e, &shell_mode);
-            /* make sure readonly is not set */
-            b->flags &= ~BF_READONLY;
+            if (e->qs->shell_buffer_read_only) {
+                /* set mode back to shell mode */
+                edit_set_mode(e, &shell_mode);
+                /* make sure readonly is not set */
+                b->flags &= ~BF_READONLY;
+            }
         }
     }
 
@@ -2881,6 +2888,23 @@ static void shell_move_word_left_right(EditState *e, int dir)
     }
 }
 
+static void shell_maybe_toggle_interactive(EditState *e)
+{
+    ShellState *s = shell_get_state(e, 1);
+
+    /* optionally restore shell interactive mode if point is at end */
+    if (!e->interactive && !e->region_style
+    &&  e->qs->shell_mode_auto_interactive
+    &&  s && (s->shell_flags & SF_INTERACTIVE) && !s->grab_keys) {
+        if (e->offset >= e->b->total_size && e->offset >= s->cur_offset) {
+            e->interactive = 1;
+            e->b->flags &= ~BF_READONLY;
+            if (e->offset > s->cur_offset)
+                qe_term_write(s, "\005", 1); /* Control-E */
+        }
+    }
+}
+
 static void shell_move_up_down(EditState *e, int dir)
 {
     ShellState *s = shell_get_state(e, 1);
@@ -2889,6 +2913,7 @@ static void shell_move_up_down(EditState *e, int dir)
         qe_term_write(s, dir > 0 ? s->kcud1 : s->kcuu1, -1);
     } else {
         text_move_up_down(e, dir);
+        shell_maybe_toggle_interactive(e);
     }
 }
 
@@ -2902,6 +2927,7 @@ static void shell_previous_next(EditState *e, int dir)
     } else {
         /* hack: M-p silently converted to C-u C-p */
         text_move_up_down(e, dir * 4);
+        shell_maybe_toggle_interactive(e);
     }
 }
 
@@ -2913,19 +2939,28 @@ static void shell_exchange_point_and_mark(EditState *e)
         qe_term_write(s, "\030\030", 2);  /* C-x C-x */
     } else {
         do_exchange_point_and_mark(e);
+        shell_maybe_toggle_interactive(e);
     }
 }
 
 static void shell_scroll_up_down(EditState *e, int dir)
 {
     e->interactive = 0;
-    e->b->flags |= BF_READONLY;
+    if (e->qs->shell_buffer_read_only)
+        e->b->flags |= BF_READONLY;
     text_scroll_up_down(e, dir);
+    shell_maybe_toggle_interactive(e);
 }
 
 static void shell_move_bol(EditState *e)
 {
     ShellState *s = shell_get_state(e, 1);
+
+    if (e->qs->shell_mode_auto_interactive) {
+        /* exit shell interactive mode on home / ^A at start of shell input */
+        if (!s || (e->offset == s->cur_prompt && !s->grab_keys))
+            e->interactive = 0;
+    }
 
     if (s && e->interactive) {
         qe_term_write(s, "\001", 1); /* Control-A */
@@ -2942,13 +2977,25 @@ static void shell_move_eol(EditState *e)
         qe_term_write(s, "\005", 1); /* Control-E */
     } else {
         text_move_eol(e);
+        shell_maybe_toggle_interactive(e);
     }
 }
 
 static void shell_move_bof(EditState *e)
 {
-    if (e->interactive == 0)
+    ShellState *s = shell_get_state(e, 1);
+
+    if (s && e->interactive) {
+        if (e->qs->shell_mode_auto_interactive) {
+            /* Exit shell interactive mode on home-buffer / M-< */
+            e->interactive = 0;
+            text_move_bof(e);
+        } else {
+            qe_term_write(s, "\001", 1); /* Control-A */
+        }
+    } else {
         text_move_bof(e);
+    }
 }
 
 static void shell_move_eof(EditState *e)
@@ -2959,6 +3006,7 @@ static void shell_move_eof(EditState *e)
         qe_term_write(s, "\005", 1); /* Control-E */
     } else {
         text_move_eof(e);
+        shell_maybe_toggle_interactive(e);
     }
 }
 
@@ -3283,21 +3331,37 @@ static void do_shell_toggle_input(EditState *e)
     ShellState *s;
     QEmacsState *qs = e->qs;
     EditState *e1;
-    int interactive = !(e->interactive);
 
     if ((s = shell_get_state(e, 1)) != NULL) {
         if (e->interactive) {
-            e->b->flags |= BF_READONLY;
-        } else if (s->shell_flags & SF_INTERACTIVE) {
-            e->b->flags &= ~BF_READONLY;
-            e->offset = s->cur_offset;
-            if (s->grab_keys)
-                qe_grab_keys(s->base.qs, shell_key, s);
+            e->interactive = 0;
+            if (qs->shell_buffer_read_only) {
+                e->b->flags |= BF_READONLY;
+                for (e1 = qs->first_window; e1 != NULL; e1 = e1->next_window) {
+                    if (e1->b == e->b)
+                        e1->interactive = 0;
+                }
+            }
+            return;
+        } else {
+            if (s->shell_flags & SF_INTERACTIVE) {
+                e->b->flags &= ~BF_READONLY;
+                e->interactive = 1;
+                e->offset = s->cur_offset;
+                if (s->grab_keys)
+                    qe_grab_keys(s->base.qs, shell_key, s);
+                if (qs->shell_buffer_read_only) {
+                    for (e1 = qs->first_window; e1 != NULL; e1 = e1->next_window) {
+                        if (e1->b == e->b) {
+                            if (e->offset == s->cur_offset)
+                                e->interactive = 1;
+                        }
+                    }
+                }
+            }
         }
-        for (e1 = qs->first_window; e1 != NULL; e1 = e1->next_window) {
-            if (e1->b == e->b)
-                e1->interactive = interactive;
-        }
+    } else {
+        do_open_line(e);
     }
 }
 
@@ -3861,7 +3925,7 @@ void shell_colorize_line(QEColorizeContext *cp,
 
 /* shell mode specific commands */
 static const CmdDef shell_commands[] = {
-    CMD0( "shell-toggle-input", "C-o",
+    CMD0( "shell-toggle-input", "C-o, C-c C-o",
           "Toggle between shell input and buffer navigation",
           do_shell_toggle_input)
     /* XXX: should have shell-execute-line on M-RET */
@@ -3987,7 +4051,6 @@ static int shell_mode_init(EditState *e, EditBuffer *b, int flags)
             return -1;
 
         e->b->tab_width = 8;
-        /* XXX: should come from mode.default_wrap */
         e->wrap = WRAP_TERM;
         e->wrap_cols = s->cols;
         if ((s->shell_flags & SF_INTERACTIVE) && !s->grab_keys) {
