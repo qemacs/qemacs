@@ -64,6 +64,7 @@ enum {  // Python flavors
     PYTHON_PYTHON = 0,
     PYTHON_RAPYDSCRIPT,
     PYTHON_BAZEL,
+    PYTHON_MOJO,
 };
 
 static void python_colorize_line(QEColorizeContext *cp,
@@ -324,6 +325,8 @@ static ModeDef python_mode = {
     .colorize_flags = PYTHON_PYTHON,
 };
 
+/*---- Rapidscrypt: a Python-like syntax ----*/
+
 static ModeDef rapydscript_mode = {
     .name = "RapydScript",
     .extensions = "pyj",
@@ -332,6 +335,8 @@ static ModeDef rapydscript_mode = {
     .colorize_func = python_colorize_line,
     .colorize_flags = PYTHON_RAPYDSCRIPT,
 };
+
+/*---- Bazel mode: a build system with a Python-like syntax ----*/
 
 static int bazel_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
@@ -363,11 +368,58 @@ static ModeDef bazel_mode = {
     .colorize_flags = PYTHON_BAZEL,
 };
 
+/*---- Mojo: a high performace language with a Python like syntax ----*/
+
+static char const mojo_keywords[] = {
+    // Python keywords
+    "|False|None|True"
+    "|as|assert|break|continue|del|global"
+    "|lambda|nonlocal|pass|return|with|yield"
+    // Mojo specific: fn, struct, trait
+    "|class|def|fn|struct|trait"
+    // Mojo specific: inout, owned, borrowed, raises
+    "|inout|owned|borrowed|raises"
+    "|elif|else|if|for|while"
+    // operators
+    "|and|in|is|not|or"
+    "|except|finally|raise|try"
+    "|from|import|alias"
+    "|async|await"
+    // Mojo specific: var, let
+    "|var|let|comptime"
+    "|"
+};
+
+static char const mojo_types[] = {
+    "Bool"
+    "|Int|UInt|Int8|UInt8|Int16|UInt16|Int32|UInt32|Int64|UInt64"
+    "|Int128|UInt128|Int256|UInt256"
+    "|Float16|Float32|Float64|BFloat16"
+    // should also support Float4_e2m1fn, Float8_e5m2, Float8_e5m2fnuz,
+    //   Float8_e4m3fn, Float8_e4m3fnuz...
+    "|SIMD|DType|Scalar"
+    "|IntLiteral|FloatLiteral"
+    "|String|StaticString|StringSlice|TString"
+    "|Tuple|List|Dict|Set|Optional|Variant"
+};
+
+static ModeDef mojo_mode = {
+    .name = "Mojo",
+    .extensions = "mojo|🔥",
+    .keywords = mojo_keywords,
+    .types = mojo_types,
+    .colorize_func = python_colorize_line,
+    .colorize_flags = PYTHON_MOJO,
+};
+
+/*---- loading functions ----*/
+
 static int python_init(QEmacsState *qs)
 {
     qe_register_mode(qs, &python_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &rapydscript_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &bazel_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &mojo_mode, MODEF_SYNTAX);
     return 0;
 }
 
