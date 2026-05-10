@@ -911,6 +911,14 @@ static ModeDef mkd_mode = {
     .colorize_func = mkd_colorize_line,
 };
 
+static ModeDef mdx_mode = {
+    .name = "MDX",
+    .extensions = "mdx",
+    .mode_init = mkd_mode_init,
+    // XXX: should handle JSX and React fragments
+    .colorize_func = mkd_colorize_line,
+};
+
 static int litcoffee_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
@@ -935,6 +943,8 @@ static int mkd_init(QEmacsState *qs)
 {
     qe_register_mode(qs, &mkd_mode, MODEF_SYNTAX);
     qe_register_commands(qs, &mkd_mode, mkd_commands, countof(mkd_commands));
+    qe_register_mode(qs, &mdx_mode, MODEF_SYNTAX);
+    qe_register_commands(qs, &mdx_mode, mkd_commands, countof(mkd_commands));
     qe_register_mode(qs, &litcoffee_mode, MODEF_SYNTAX);
     qe_register_commands(qs, &litcoffee_mode, mkd_commands, countof(mkd_commands));
 
