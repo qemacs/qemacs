@@ -1,4 +1,4 @@
-<!-- TODO list for qemacs -- Author: Charlie Gordon -- Updated: 2025-02-10 -->
+<!-- TODO list for qemacs -- Author: Charlie Gordon -- Updated: 2025-05-17 -->
 
 # QEmacs TODO list
 
@@ -672,7 +672,6 @@ insert_window_left()  deletes some left-most windows
 
 ### Shell mode
 
-* fix `man` command on linux: the man process should be given the expected input
 * parse the list of errors and register line/column positions so buffer can be modified
     using this array, implement skip to the errors in the next file with `C-u C-x C-n`
 * [BUG] ^C does not work on OpenBSD
@@ -683,12 +682,9 @@ insert_window_left()  deletes some left-most windows
 * `C-c C-c` should abort make process and other shell buffers
 * support `:` as alternate escape sequence argument separator
 * `start-shell` should kill popup window
-* `A-x kill-buffer RET` -> hang
-* turn on interactive mode on commands that move the cursor to EOB
 * use auxiliary buffer to make process input asynchronous
 * give commands a chance to execute for macros to behave correctly
 * `A-y` at process prompt
-* fix very long lines in shell buffer (not finished)
 * fix screen size notifications, `SIGWINCH` signals and ioctl
 * fix terminal size inside shell window ?
 * other buffer modification functions in shell input region
@@ -701,9 +697,6 @@ insert_window_left()  deletes some left-most windows
   key sequence to allow typing special keys into shell process
 * cmdline arg to force lines and columns to test shell.
 * toggling interactive shell mode is not automatic enough
-* use target window for man and similar commands
-* fix infinite scroll for man command
-* man output bug on linux
 * man pager -> more bindings, such as `RET` -> `push-button` (jump to map page)
 * cross link man pages
 * accented letter input in shell mode
