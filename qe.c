@@ -4681,42 +4681,6 @@ static int bidir_compute_attributes(BidirTypeLink *list_tab, int max_size,
 /* NOTE: only one colorization mode can be selected at a time for a
    buffer */
 
-static int get_staticly_colorized_line(QEColorizeContext *cp,
-                                       int offset, int *offset_ptr, int line_num)
-{
-    EditBuffer *b = cp->b;
-    int start_offset = offset, end_offset;
-    int len = 0;
-
-    for (;;) {
-        int next;
-        QETermStyle style = eb_get_style(b, offset);
-        char32_t c = eb_nextc(b, offset, &next);
-        if (len + 1 >= cp->buf_size) {
-            int new_size = min_int(eb_get_line_length(b, start_offset, &end_offset) + 1,
-                                   MAX_COLORED_LINE_SIZE);
-            if (cp->buf_size == new_size || !cp_reallocate(cp, new_size)) {
-                offset = end_offset;
-                cp->sbuf[len] = style;
-                cp->buf[len] = '\0';
-                break;
-            }
-        }
-        cp->sbuf[len] = style;
-        cp->buf[len++] = c;
-        offset = next;
-        if (c == '\n') {
-            /* end of line: offset points to the beginning of the next line */
-            /* adjust return value for easy stripping and truncation test */
-            cp->buf[len--] = '\0';
-            break;
-        }
-    }
-    if (offset_ptr)
-        *offset_ptr = offset;
-    return len;
-}
-
 void cp_colorize_line(QEColorizeContext *cp,
                       const char32_t *buf, int i, int n,
                       QETermStyle *sbuf, ModeDef *syn)
@@ -4780,7 +4744,40 @@ int cp_reallocate(QEColorizeContext *cp, int new_size) {
             return 0;
     }
     cp->buf_size = new_size;
+    cp->reallocated = 1;
     return 1;
+}
+
+// read a full line of codepoints from the context buffer, rellocate if needed
+// return the number of codepoints stored into `cp->buf`
+// `cp->truncated` is set iif line truncation occurs
+// `offset_ptr` is updated with the offset of the beginning of the next line
+int cp_get_line(QEColorizeContext *cp, int offset, int *offset_ptr) {
+    int len = eb_get_line(cp->b, cp->buf, cp->buf_size, offset, offset_ptr);
+    cp->truncated = 0;
+    if (cp->buf[len] != '\n') {
+        /* line was truncated */
+        int line_len = eb_get_line_length(cp->b, offset, offset_ptr);
+        int new_size = min_int(line_len + 2, MAX_COLORED_LINE_SIZE);
+        if (cp_reallocate(cp, new_size)) {
+            len = eb_get_line(cp->b, cp->buf, cp->buf_size, offset, NULL);
+        }
+        cp->truncated = len < line_len;
+    }
+    cp->buf[len] = '\0';
+    return len;
+}
+
+static int get_staticly_colorized_line(QEColorizeContext *cp,
+                                       int offset, int *offset_ptr)
+{
+    int len = cp_get_line(cp, offset, offset_ptr);
+    int i;
+    for (i = 0; i < len; i++) {
+        cp->sbuf[i] = eb_get_style(cp->b, offset);
+        offset = eb_next(cp->b, offset);
+    }
+    return len;
 }
 
 #ifndef CONFIG_TINY
@@ -4834,17 +4831,7 @@ static int syntax_get_colorized_line(QEColorizeContext *cp,
 
         for (line = s->colorize_nb_valid_lines; line <= line_num; line++) {
             cp->offset = offset;
-            len = eb_get_line(b, cp->buf, cp->buf_size, cp->offset, &offset);
-            if (cp->buf[len] != '\n') {
-                /* line was truncated */
-                int new_size = min_int(eb_get_line_length(b, cp->offset, &offset) + 1,
-                                       MAX_COLORED_LINE_SIZE);
-                if (cp_reallocate(cp, new_size)) {
-                    len = eb_get_line(s->b, cp->buf, cp->buf_size, cp->offset, NULL);
-                }
-            }
-            cp->buf[len] = '\0';
-
+            len = cp_get_line(cp, offset, &offset);
             /* skip byte order mark if present */
             bom = (cp->buf[0] == 0xFEFF);
             if (bom) {
@@ -4859,16 +4846,7 @@ static int syntax_get_colorized_line(QEColorizeContext *cp,
     cp->colorize_state = s->colorize_states[line_num];
     cp->state_only = 0;
     cp->offset = offset;
-    len = eb_get_line(b, cp->buf, cp->buf_size, offset, offsetp);
-    if (cp->buf[len] != '\n') {
-        /* line was truncated */
-        int new_size = min_int(eb_get_line_length(b, offset, offsetp) + 1,
-                               MAX_COLORED_LINE_SIZE);
-        if (cp_reallocate(cp, new_size)) {
-            len = eb_get_line(s->b, cp->buf, cp->buf_size, offset, NULL);
-        }
-    }
-    cp->buf[len] = '\0';
+    len = cp_get_line(cp, offset, offsetp);
     if (s->offset >= offset && s->offset < *offsetp + (s->offset == s->b->total_size)) {
         /* compute position of first codepoint before the cursor */
         int offset1 = offset;
@@ -4952,30 +4930,18 @@ void set_colorize_mode(EditState *s, ModeDef *colorize_mode)
 int get_colorized_line(QEColorizeContext *cp,
                        int offset, int *offsetp, int line_num)
 {
-    EditState *s = cp->s;
     int len;
 
 #ifndef CONFIG_TINY
-    if (s->colorize_mode) {
+    if (cp->s->colorize_mode) {
         len = syntax_get_colorized_line(cp, offset, offsetp, line_num);
     } else
 #endif
-    if (s->b->b_styles) {
-        len = get_staticly_colorized_line(cp, offset, offsetp, line_num);
+    if (cp->b->b_styles) {
+        len = get_staticly_colorized_line(cp, offset, offsetp);
     } else {
-        len = eb_get_line(s->b, cp->buf, cp->buf_size, offset, offsetp);
-        if (cp->buf[len] != '\n') {
-            /* line was truncated */
-            int new_size = min_int(eb_get_line_length(s->b, offset, offsetp) + 1,
-                                   MAX_COLORED_LINE_SIZE);
-            if (cp_reallocate(cp, new_size)) {
-                len = eb_get_line(s->b, cp->buf, cp->buf_size, offset, NULL);
-            }
-        }
-        cp->buf[len] = '\0';
-        if (cp->sbuf) {
-            memset(cp->sbuf, 0, (len + 1) * sizeof(*cp->sbuf));
-        }
+        len = cp_get_line(cp, offset, offsetp);
+        memset(cp->sbuf, 0, (len + 1) * sizeof(*cp->sbuf));
     }
     // XXX: should test if TABs should be colorized too
     // XXX: should colorize trailing blanks

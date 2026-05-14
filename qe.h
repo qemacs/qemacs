@@ -273,8 +273,10 @@ struct QEColorizeContext {
     EditBuffer *b;
     int offset;
     int colorize_state;
-    short state_only;
-    short partial_file;
+    u8 state_only;
+    u8 partial_file;
+    u8 reallocated;
+    u8 truncated;
     int combine_start, combine_stop; /* region for combine_static_colorized_line() */
     int cur_pos;   /* position of cursor in line or -1 if outside line */
     int buf_size;
@@ -285,8 +287,9 @@ struct QEColorizeContext {
 };
 
 QEColorizeContext *cp_initialize(QEColorizeContext *cp, EditState *s);
-int cp_reallocate(QEColorizeContext *cp, int new_size);
 void cp_destroy(QEColorizeContext *cp);
+int cp_reallocate(QEColorizeContext *cp, int new_size);
+int cp_get_line(QEColorizeContext *cp, int offset, int *offset_ptr);
 
 /* Colorize a line: this function modifies `sbuf` to set the character
  * styles. 'buf' is guaranted to have a '\0' at buf[n].
@@ -545,6 +548,9 @@ static inline int eb_prev(EditBuffer *b, int offset) {
 static inline int eb_peekc(EditBuffer *b, int offset) {
     return eb_nextc(b, offset, &offset);
 }
+static inline int eb_peek_prevc(EditBuffer *b, int offset) {
+    return eb_prevc(b, offset, &offset);
+}
 
 //int eb_clip_offset(EditBuffer *b, int offset);
 void do_repeat(EditState *s, int argval);
@@ -606,11 +612,9 @@ static inline int eb_get_contents(EditBuffer *b, char *buf, int buf_size, int en
 int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
                              EditBuffer *src, int src_offset,
                              int size);
-int eb_get_line(EditBuffer *b, char32_t *buf, int size,
-                int offset, int *offset_ptr);
+int eb_get_line(EditBuffer *b, char32_t *buf, int size, int offset, int *offset_ptr);
 int eb_get_line_length(EditBuffer *b, int offset, int *offset_ptr);
-int eb_fgets(EditBuffer *b, char *buf, int size,
-             int offset, int *offset_ptr);
+int eb_fgets(EditBuffer *b, char *buf, int size, int offset, int *offset_ptr);
 int eb_prev_line(EditBuffer *b, int offset);
 int eb_goto_bol(EditBuffer *b, int offset);
 int eb_goto_bol2(EditBuffer *b, int offset, int *countp);

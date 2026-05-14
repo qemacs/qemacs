@@ -144,9 +144,7 @@ static int qe_skip_style(EditState *s, int offset, int *offsetp, QETermStyle sty
     eb_get_pos(s->b, &line_num, &col_num, offset);
     offset0 = eb_goto_bol2(s->b, offset, &pos);
     len = get_colorized_line(cp, offset0, &offset1, line_num);
-    if (len > cp->buf_size)
-        len = cp->buf_size;
-    if (pos >= len ||cp->sbuf[pos] != style) {
+    if (pos >= len || cp->sbuf[pos] != style) {
         cp_destroy(cp);
         return 0;
     }
@@ -793,8 +791,7 @@ static void do_indent_region(EditState *s, int start, int end, int argval)
     /* Iterate over all lines inside block */
     for (line = line1; line <= line2; line++) {
         int offset = eb_goto_pos(s->b, line, 0);
-        int off1;
-        if (eb_nextc(s->b, offset, &off1) != '\n')
+        if (eb_peekc(s->b, offset) != '\n')
             (s->mode->indent_func)(s, offset);
     }
 }
@@ -824,57 +821,89 @@ static char32_t matching_delimiter(char32_t c) {
     return c;
 }
 
+static int style_normalize(int style) {
+    // XXX: if style is absolute color, try and match comment and string color
+    switch (style) {
+    case QE_STYLE_COMMENT:
+        return QE_STYLE_COMMENT;
+    case QE_STYLE_STRING:
+    case QE_STYLE_STRING_Q:
+        return QE_STYLE_STRING;
+    }
+    return 0;
+}
+
 static void forward_block(EditState *s, int dir)
 {
+    // We skip characters, balancing blocks delimited by (){}[]
+    // * we use the colorizer to determine the token type.
+    // * If starting in a string of in a comment, we stop at the end of the
+    //   string or comment, allowing for non colored whitespace.
+    // * otherwise, we skip comments and strings
+    // * block delimiters are balanced inside the region and skipping stops
+    //   when a closing delimiter is found.
+    // if a nesting error occurs, point and mark are set around the mismatched
+    //   delimiters. use C-x C-x to skip between them
+
     QEColorizeContext cp[1];
     char32_t balance[MAX_LEVEL];
-    int use_colors;
-    int line_num, col_num, style, style0, level;
-    int pos;      /* position of the current character on line */
-    int len;      /* number of colorized positions */
-    int offset;   /* offset of the current character */
-    int offset0;  /* offset of the beginning of line */
-    int offset1;  /* offset of the beginning of the next line */
+    int delim_offset[MAX_LEVEL];
+    int line_num, col_num;
+    int use_colors; /* set if using styles from colorizer */
+    int level;      /* block nesting level */
+    int style;      /* style of current character */
+    int style0;     /* style of the starting point */
+    int pos;        /* index of the current character on line */
+    int len;        /* number of colorized positions */
+    int offset;     /* offset of the current character */
+    int bol_offset; /* offset of the beginning of line */
+    int pending_offset; /* end of string or comment if skipping whitespace */
+    int dummy_offset;
     char32_t c;
 
     cp_initialize(cp, s);
 
     offset = s->offset;
     eb_get_pos(s->b, &line_num, &col_num, offset);
-    offset1 = offset0 = eb_goto_bol2(s->b, offset, &pos);
+    bol_offset = eb_goto_bol2(s->b, offset, &pos);
     use_colors = s->colorize_mode || s->b->b_styles;
+    pending_offset = -1;
     style0 = 0;
     len = 0;
     if (use_colors) {
-        len = get_colorized_line(cp, offset1, &offset1, line_num);
-        if (len < cp->buf_size - 2) {
-            if (pos > 0
-            &&  ((c = cp->buf[pos - 1]) == ']' || c == '}' || c == ')')) {
-                style0 = cp->sbuf[pos - 1];
-            } else
-            if (pos < len) {
-                style0 = cp->sbuf[pos];
-            }
-        } else {
-            /* very long line detected, use fallback version */
+        len = get_colorized_line(cp, bol_offset, &dummy_offset, line_num);
+        if (cp->truncated) {
+            /* very long line detected, do not use styles */
             use_colors = 0;
             len = 0;
+        } else {
+            if (dir < 0) {
+                if (pos <= len)
+                    style0 = style_normalize(cp->sbuf[pos - (pos > 0)]);
+            } else {
+                if (pos < len) {
+                    style0 = style_normalize(cp->sbuf[pos]);
+                } else {
+                    // XXX if point is at end of line, should check if inside a block of comments or strings
+                }
+            }
         }
     }
     level = 0;
 
     if (dir < 0) {
         for (;;) {
+            int this_offset = offset;
             c = eb_prevc(s->b, offset, &offset);
             if (c == '\n') {
                 if (offset <= 0)
                     break;
                 line_num--;
-                offset1 = offset0 = eb_goto_bol2(s->b, offset, &pos);
+                bol_offset = eb_goto_bol2(s->b, offset, &pos);
                 len = 0;
                 if (use_colors) {
-                    len = get_colorized_line(cp, offset1, &offset1, line_num);
-                    if (len >= cp->buf_size - 2) {
+                    len = get_colorized_line(cp, bol_offset, &dummy_offset, line_num);
+                    if (cp->truncated) {
                         /* very long line detected, use fallback version */
                         use_colors = 0;
                         len = 0;
@@ -883,29 +912,47 @@ static void forward_block(EditState *s, int dir)
                 }
                 continue;
             }
+            pos--;
+            if (qe_isspace(c))
+                continue;
             style = 0;
-            --pos;
-            if (pos >= 0 && pos < len) {
-                style = cp->sbuf[pos];
+            if (use_colors) {
+                if (pos >= 0 && pos < len) {
+                    style = style_normalize(cp->sbuf[pos]);
+                }
+                if (style != style0) {
+                    if (style0 == 0) {
+                        // skip string or comment
+                        continue;
+                    }
+                    // stop at end of string or comment
+                    break;
+                }
             }
-            if (style != style0 && style != QE_STYLE_KEYWORD && style != QE_STYLE_FUNCTION) {
-                if (style0 == 0)
-                    continue;
-                style0 = 0;
-                if (style != 0)
-                    continue;
-            }
+            pending_offset = offset;
             switch (c) {
-            case '\"':
             case '\'':
-                if (pos >= len) {
+                // Single quotes can occur as digit separators in C++, this
+                // convention is inconsistent and nefarious to many respects
+                // and including it in the C Standard as of C2y is a shame.
+                if (style)
+                    break;
+                if (qe_isdigit(eb_peekc(s->b, this_offset))
+                &&  qe_isdigit(eb_peek_prevc(s->b, offset)))
+                    break;
+                FALLTHROUGH;
+            case '\"':
+                // we get here if scan started inside a string or a comment
+                // or if styles are disabled: try and skip the string backward
+                // using simplistic algorithm, ignoring escaped quotes
+                if (!style && pos > 0) {
                     /* simplistic string skip with escape char */
                     int off;
                     char32_t c1;
                     while ((c1 = eb_prevc(s->b, offset, &off)) != '\n') {
                         offset = off;
                         pos--;
-                        if (c1 == c && eb_prevc(s->b, offset, &off) != '\\')
+                        if (c1 == c && eb_peek_prevc(s->b, offset) != '\\')
                             break;
                     }
                 }
@@ -914,6 +961,7 @@ static void forward_block(EditState *s, int dir)
             case ']':
             case '}':
                 if (level < MAX_LEVEL) {
+                    delim_offset[level] = this_offset;
                     balance[level] = matching_delimiter(c);
                 }
                 level++;
@@ -925,6 +973,8 @@ static void forward_block(EditState *s, int dir)
                     --level;
                     if (level < MAX_LEVEL && balance[level] != c) {
                         /* XXX: should set mark and offset */
+                        s->b->mark = delim_offset[level];
+                        s->offset = offset;
                         put_error(s, "Unmatched delimiter %c <> %c",
                                   (int)c, (int)balance[level]);
                         goto done;
@@ -935,61 +985,79 @@ static void forward_block(EditState *s, int dir)
                     }
                 } else {
                     /* silently move up one level */
+                    // XXX: stop if argument?
                 }
                 break;
             }
         }
     } else {
         for (;;) {
+            int this_offset = offset;
             c = eb_nextc(s->b, offset, &offset);
             if (c == '\n') {
                 line_num++;
                 if (offset >= s->b->total_size)
                     break;
-                offset1 = offset0 = offset;
+                bol_offset = offset;
                 len = 0;
+                pos = 0;
                 if (use_colors) {
-                    len = get_colorized_line(cp, offset1, &offset1, line_num);
-                    if (len >= cp->buf_size - 2) {
+                    len = get_colorized_line(cp, bol_offset, &dummy_offset, line_num);
+                    if (cp->truncated) {
                         /* very long line detected, use fallback version */
                         use_colors = 0;
-                        len = 0;
                         style0 = 0;
                     }
                 }
-                pos = 0;
                 continue;
             }
-            style = 0;
-            if (pos < len) {
-                style = cp->sbuf[pos];
-            }
             pos++;
-            if (style0 != style && style != QE_STYLE_KEYWORD && style != QE_STYLE_FUNCTION) {
-                if (style0 == 0)
-                    continue;
-                style0 = 0;
-                if (style != 0)
-                    continue;
+            if (qe_isspace(c))
+                continue;
+            style = 0;
+            if (use_colors) {
+                if (pos <= len) {
+                    style = style_normalize(cp->sbuf[pos - 1]);
+                }
+                if (style0 != style) {
+                    if (style0 == 0) {
+                        // skip string or comment
+                        continue;
+                    }
+                    // stop at end of string or comment
+                    break;
+                }
             }
+            pending_offset = offset;
             switch (c) {
-            case '\"':
             case '\'':
-                if (pos >= len) {
+                // Single quotes can occur as digit separators in C++, this
+                // convention is inconsistent and nefarious to many respects
+                // and including it in the C Standard as of C2y is a shame.
+                if (style)
+                    break;
+                if (qe_isdigit(eb_peekc(s->b, offset))
+                &&  qe_isdigit(eb_peek_prevc(s->b, this_offset)))
+                    break;
+                FALLTHROUGH;
+            case '\"':
+                // We get here if scan started inside a string or a comment
+                // or if styles are disabled: try and skip the string using a
+                // simplistic algorithm, ignoring escaped quotes
+                if (!style && pos >= len) {
                     /* simplistic string skip with escape char */
                     int off;
                     char32_t c1;
                     while ((c1 = eb_nextc(s->b, offset, &off)) != '\n') {
                         offset = off;
                         pos++;
+                        if (c1 == c)
+                            break;
                         if (c1 == '\\') {
                             if (eb_nextc(s->b, offset, &off) == '\n')
                                 break;
                             offset = off;
                             pos++;
-                        } else
-                        if (c1 == c) {
-                            break;
                         }
                     }
                 }
@@ -998,6 +1066,7 @@ static void forward_block(EditState *s, int dir)
             case '[':
             case '{':
                 if (level < MAX_LEVEL) {
+                    delim_offset[level] = this_offset;
                     balance[level] = matching_delimiter(c);
                 }
                 level++;
@@ -1009,6 +1078,8 @@ static void forward_block(EditState *s, int dir)
                     --level;
                     if (level < MAX_LEVEL && balance[level] != c) {
                         /* XXX: should set mark and offset */
+                        s->b->mark = delim_offset[level];
+                        s->offset = offset;
                         put_error(s, "Unmatched delimiter %c <> %c",
                                   (int)c, (int)balance[level]);
                         goto done;
@@ -1019,6 +1090,7 @@ static void forward_block(EditState *s, int dir)
                     }
                 } else {
                     /* silently move up one level */
+                    // XXX: stop if argument?
                 }
                 break;
             }
@@ -1026,9 +1098,13 @@ static void forward_block(EditState *s, int dir)
     }
     if (level != 0) {
         /* XXX: should set mark and offset */
+        s->b->mark = delim_offset[level - 1];
+        s->offset = offset;
         put_error(s, "Unmatched delimiter");
     } else {
         s->offset = offset;
+        if (pending_offset >= 0)
+            s->offset = pending_offset;
     }
 done:
     cp_destroy(cp);
@@ -2188,10 +2264,9 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
         chunk_array[i].end = offset = eb_goto_eol(b, pos);
         offset = eb_next(b, offset);
         if (flags & SF_PARAGRAPH) {
-            int offset1;
             /* paragraph sorting: skip continuation lines */
             // XXX: Should ignore initial indent
-            while (offset < p2 && qe_isspace(eb_nextc(b, offset, &offset1))) {
+            while (offset < p2 && qe_isspace(eb_peekc(b, offset))) {
                 chunk_array[i].end = offset = eb_goto_eol(b, offset);
                 offset = eb_next(b, offset);
             }
