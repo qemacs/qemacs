@@ -1,4 +1,4 @@
-<!-- TODO list for qemacs -- Author: Charlie Gordon -- Updated: 2025-02-10 -->
+<!-- TODO list for qemacs -- Author: Charlie Gordon -- Updated: 2026-05-15 -->
 
 # QEmacs TODO list
 
@@ -6,7 +6,6 @@
 
 * encode non printing characters in filenames and buffer names
 * change buffer list layout to increase buffer name width if needed
-* support M-n and M-p to move by 4 lines in popup lists
 * fix warning: `int (*eb_printf_fun)(EditBuffer *b, const char *fmt, ...) = (void*)eb_printf;`
 * fix crash bug on `C-X C-B C-X C-F xxx RET`
 * fix cursor positioning beyond end of screen
