@@ -353,8 +353,8 @@ in UTF-8. `offset` is bumped to point to the first unread character.
 * argument `offset` the offset in bytes of the beginning of the line in
 the buffer
 
-* argument `offset_ptr` a pointer to a variable to receive the offset
-of the first unread character in the buffer.
+* argument `offset_ptr` a nullable pointer to a variable to receive the
+offset of the first unread character in the buffer
 
 Return the number of bytes stored into the destination array before
 the newline if any. No partial encoding is stored into the array.
@@ -363,7 +363,7 @@ Note: the return value `len` verifies `len >= 0` and `len < buf_size`.
 If a complete line was read, `buf[len] == '\n'` and `buf[len + 1] == '\0'`.
 Truncation can be detected by checking `buf[len] != '\n'` or `len < buf_size - 1`.
 
-### `int eb_get_line(EditBuffer *b, char32_t *buf, int size, int offset, int *offset_ptr);`
+### `int eb_get_line(EditBuffer *b, char32_t *buf, int size, int offset, int *offset_ptr /* nullable */);`
 
 Get contents of the line starting at offset `offset` as an array of
 code points. `offset` is bumped to point to the first unread character.
@@ -377,17 +377,19 @@ code points. `offset` is bumped to point to the first unread character.
 * argument `offset` the offset in bytes of the beginning of the line in
 the buffer
 
-* argument `offset_ptr` a pointer to a variable to receive the offset
-of the first unread character in the buffer.
+* argument `offset_ptr` a nullable pointer to a variable to receive the
+offset of the first unread character in the buffer
 
 Return the number of codepoints stored into the destination array
 before the newline if any.
 
 Note: the return value `len` verifies `len >= 0` and `len < buf_size`.
 If a complete line was read, `buf[len] == '\n'` and `buf[len + 1] == '\0'`.
+A newline is stored at `buf[len]` even if at end of buffer without a trailing
+newline.
 Truncation can be detected by checking `buf[len] != '\n'` or `len < buf_size - 1`.
 
-### `int eb_get_line_length(EditBuffer *b, int offset, int *offset_ptr);`
+### `int eb_get_line_length(EditBuffer *b, int offset, int *offset_ptr /* nullable */);`
 
 Get the length in codepoints of the line starting at offset `offset`
 as an number of code points. `offset` is bumped to point to the first
@@ -398,8 +400,8 @@ character after the newline.
 * argument `offset` the offset in bytes of the beginning of the line in
 the buffer
 
-* argument `offset_ptr` a pointer to a variable to receive the offset
-of the first unread character in the buffer.
+* argument `offset_ptr` a nullable pointer to a variable to receive the
+offset of the first unread character in the buffer.
 
 Return the number of codepoints in the line including the newline if any.
 
