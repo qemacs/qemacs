@@ -2796,7 +2796,7 @@ static void do_shell(EditState *e, int argval)
 
 static inline EditState *shell_target_window(EditState *e, EditBuffer *b)
 {
-    EditState *e1, *e2;
+    EditState *e1 = NULL, *e2;
     QEmacsState *qs = e->qs;
     ShellState *s = qe_get_buffer_mode_data(b, &shell_mode, NULL);
 
@@ -2808,10 +2808,10 @@ static inline EditState *shell_target_window(EditState *e, EditBuffer *b)
 
     int size1, size = 0;
     for (e2 = qs->first_window; e2 != NULL; e2 = e2->next_window) {
-        if (e2 == qs->active_window)
+        if (e2 == qs->active_window || e2->flags & (WF_MINIBUF | WF_POPUP))
             continue;
 
-        size1 = (e2->x2 - e2->x1) * (e2->y2 - e2->y1);
+        size1 = e2->width * e2->height;
         if (size1 > size) {
             size = size1;
             e1 = e2;
@@ -2820,8 +2820,12 @@ static inline EditState *shell_target_window(EditState *e, EditBuffer *b)
 
     if (e1 == NULL) {
         e1 = qe_split_window(e, SW_STACKED, 50);
-        if (e1 ==  NULL)
+        if (e1 == NULL) {
             e1 = e;
+        } else {
+            switch_to_buffer(e1, NULL);
+            e1->last_buffer = NULL;
+        }
     }
 
 found:
@@ -4100,6 +4104,30 @@ static int pager_mode_init(EditState *e, EditBuffer *b, int flags)
     return 0;
 }
 
+static void do_pager_abort(EditState *e)
+{
+    EditBuffer *b1;
+
+    if (e->mode != &pager_mode) {
+        put_error(e, "Not a %s buffer", pager_mode.name);
+    } else {
+        b1 = qe_check_buffer(e->qs, &e->last_buffer);
+        if (b1 != NULL) {
+            switch_to_buffer(e, NULL);
+            e->last_buffer = NULL;
+            switch_to_buffer(e, b1);
+        } else { 
+            do_delete_window(e, 0);
+        }
+    }
+}
+
+static const CmdDef pager_commands[] = {
+    CMD0( "pager-abort", "q",
+          "Quit pager mode",
+          do_pager_abort)
+};
+
 /* additional mode specific bindings */
 static const char * const pager_bindings[] = {
     "DEL", "scroll-down",
@@ -4146,6 +4174,7 @@ static int shell_init(QEmacsState *qs)
     pager_mode.bindings = pager_bindings;
 
     qe_register_mode(qs, &pager_mode, MODEF_NOCMD | MODEF_VIEW);
+    qe_register_commands(qs, &pager_mode, pager_commands, countof(pager_commands));
 
     return 0;
 }
