@@ -8107,12 +8107,18 @@ static const CmdDef minibuffer_commands[] = {
           "Try and complete the minibuffer input",
           do_minibuffer_complete_space, ESii,
           "*" "k" "p")
-    CMD2( "minibuffer-previous-history-element", "C-p, up, M-p",
+    CMD2( "minibuffer-previous-history-element", "C-p, up",
           "Replace contents of the minibuffer with the previous historical entry",
           do_minibuffer_history, ESi, "q")
-    CMD2( "minibuffer-next-history-element", "C-n, down, M-n",
+    CMD2( "minibuffer-next-history-element", "C-n, down",
           "Replace contents of the minibuffer with the next historical entry",
           do_minibuffer_history, ESi, "p")
+    CMD1( "minibuffer-next-fourth-history-element", "M-n",
+          "Replace contents of the minibuffer with the fourth next historical entry",
+          do_minibuffer_history, 4)
+    CMD1( "minibuffer-previous-fourth-history-element", "M-p",
+          "Replace contents of the minibuffer with the fourth previous historical entry",
+          do_minibuffer_history, -4)
     CMD2( "minibuffer-electric-key", "/, ~",
           "Insert a character into the minibuffer with side effects",
           do_minibuffer_electric_key, ESii,
