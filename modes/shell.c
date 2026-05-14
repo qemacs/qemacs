@@ -2796,7 +2796,8 @@ static void do_shell(EditState *e, int argval)
 
 static inline EditState *shell_target_window(EditState *e, EditBuffer *b)
 {
-    EditState *e1;
+    EditState *e1, *e2;
+    QEmacsState *qs = e->qs;
     ShellState *s = qe_get_buffer_mode_data(b, &shell_mode, NULL);
 
     if (s && !(s->shell_flags & SF_INTERACTIVE)) {
@@ -2805,9 +2806,23 @@ static inline EditState *shell_target_window(EditState *e, EditBuffer *b)
             goto found;
     }
 
-    e1 = qe_split_window(e, SW_STACKED, 50);
-    if (e1 ==  NULL)
-        e1 = e;
+    int size1, size = 0;
+    for (e2 = qs->first_window; e2 != NULL; e2 = e2->next_window) {
+        if (e2 == qs->active_window)
+            continue;
+
+        size1 = (e2->x2 - e2->x1) * (e2->y2 - e2->y1);
+        if (size1 > size) {
+            size = size1;
+            e1 = e2;
+        }
+    }
+
+    if (e1 == NULL) {
+        e1 = qe_split_window(e, SW_STACKED, 50);
+        if (e1 ==  NULL)
+            e1 = e;
+    }
 
 found:
     switch_to_buffer(e1, b);
