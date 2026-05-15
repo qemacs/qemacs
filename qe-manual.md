@@ -214,7 +214,7 @@ Note: `size` must be strictly positive and `pos` must be in range: `0 <= pos < s
 
 Note: this function does not set a null terminator at offset `pos`.
 
-### `int buf_avail(buf_t *bp);`
+### `int buf_avail(const buf_t *bp);`
 
 Compute the number of bytes available in the destination array
 
@@ -576,6 +576,8 @@ Get the numerical value associated with a codepoint
 Return the corresponding numerical value, or 255 for none
 ie: `'0'` -> `0`, `'1'` -> `1`, `'a'` -> 10, `'Z'` -> 35
 
+Note: only ASCII digits are supported
+
 ### `int qe_findchar(const char *str, char32_t c);`
 
 Test if a codepoint value is part of a set of ASCII characters
@@ -614,6 +616,8 @@ Range test for codepoint values
 * argument `b` the maximum codepoint value for the range
 
 Return a boolean value indicating if the codepoint is inside the range
+
+Note: both boundaries are included in the range
 
 ### `int qe_isalnum(char32_t c);`
 
@@ -683,7 +687,7 @@ Test if a codepoint represents blank space
 
 Return a boolean value indicating if the codepoint is blank space
 
-Note: only ASCII blanks and non-breaking-space are supported
+Note: only ASCII blanks (SPC and TAB) and non-breaking-space are supported
 
 ### `int qe_isdigit(char32_t c);`
 
@@ -845,10 +849,7 @@ Note: only ASCII letters are supported
 Free the allocated memory pointed to by a pointer whose address is passed.
 
 * argument `pp` the address of a possibly null pointer. This pointer is set
-to `NULL` after freeing the memory. If the pointer memory is null,
-nothing happens.
-
-* argument `n` the number of bytes to allocate in addition to the size of type `T`.
+to `NULL` after freeing the memory. If the pointer is null, nothing happens.
 
 Note: this function is implemented as a macro.
 
@@ -936,17 +937,6 @@ The objects are initialized to all bits zero.
 
 Note: this function is implemented as a macro.
 
-### `T *qe_mallocz_array(type T, size_t n);`
-
-Allocate memory for an object of type `T` with `n` extra bytes.
-The object and the extra space is initialized to all bits zero.
-
-* argument `T` the type of the object to allocate.
-
-* argument `n` the number of bytes to allocate in addition to the size of type `T`.
-
-Note: this function is implemented as a macro.
-
 ### `void *qe_mallocz_bytes(size_t size);`
 
 Allocate a block of memory of a given size in bytes initialized
@@ -956,6 +946,17 @@ to all bits zero.
 
 Return a pointer to allocated memory, aligned on the maximum
 alignment size.
+
+### `T *qe_mallocz_hack(type T, size_t n);`
+
+Allocate memory for an object of type `T` with `n` extra bytes.
+The object and the extra space are initialized to all bits zero.
+
+* argument `T` the type of the object to allocate.
+
+* argument `n` the number of bytes to allocate in addition to the size of type `T`.
+
+Note: this function is implemented as a macro.
 
 ### `T *qe_realloc_array(T **pp, size_t new_len);`
 
@@ -1946,7 +1947,7 @@ Get the next match in a directory enumeration.
 * argument `filename_size_max` the length if the `filename` destination
 array in bytes.
 
-Return `0` if there is a match, `-1` if no more files matche the pattern.
+Return `0` if there is a match, `-1` if no more files match the pattern.
 
 ### `FindFileState *find_file_open(const char *path, const char *pattern, int flags);`
 
@@ -2373,6 +2374,21 @@ implementation is non recursive using a combination of quicksort
 and insertion sort for small chunks. The GNU lib C on linux also
 has a function `qsort_r()` with similar semantics but a different
 calling convention.
+
+### `int qe_shell_match(const char *string, const char *pattern);`
+
+Test whether a filename or pathname matches a shell-style pattern
+
+* argument `string` a valid pointer to a string representing a
+filename
+
+* argument `pattern` a valid pointer to a file pattern using `?`
+and `*` with the classic semantics used by unix shells
+
+Return non zero if `string` matches `pattern`.
+
+Note: this function is a simplified version of POSIX function
+`fnmatch` defined in header `<fnmatch.h>`
 
 ### `int qe_skip_spaces(const char **pp);`
 
