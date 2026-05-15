@@ -111,9 +111,9 @@ typedef struct ShellError {
 typedef struct ShellKillContext {
     ShellState *s;
     EditBuffer *b;
+    void (*callback)(EditState*, const char*);
     EditState *e;
     const char *cmd;
-    void (*callback)(EditState*, const char*);
 } ShellKillContext;
 
 static ShellError error_state = {
@@ -3481,8 +3481,8 @@ static void do_shell_command(EditState *e, const char *cmd)
 {
     char curpath[MAX_FILENAME_SIZE];
     QEmacsState *qs = e->qs;
-    EditBuffer *b;
     const char *bufname = "*shell command output*";
+    EditBuffer *b;
 
     get_default_path(e->b, e->offset, curpath, sizeof curpath);
 
@@ -3510,7 +3510,7 @@ static void do_interactive_shell_command(EditState *e, const char *cmd)
     get_default_path(e->b, e->offset, curpath, sizeof curpath);
 
     /* create new buffer */
-    b = qe_new_shell_buffer(qs, NULL, e, "*interactive shell command*", NULL,
+    b = qe_new_shell_buffer(qs, NULL, e, "*interactive shell command*", "Shell process",
                             curpath, cmd, SF_COLOR | SF_INFINITE | SF_INTERACTIVE);
     if (!b)
         return;
@@ -3526,8 +3526,8 @@ static void do_compile(EditState *s, const char *cmd)
 {
     char curpath[MAX_FILENAME_SIZE];
     QEmacsState *qs = s->qs;
-    EditBuffer *b;
     const char *bufname = "*compilation*";
+    EditBuffer *b;
 
     if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
