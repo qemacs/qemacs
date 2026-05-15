@@ -8273,9 +8273,17 @@ EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
     EditState *e;
     int w, h, w1, h1;
 
-    /* Prevent recursion */
-    if (s && s->b == b)
+    b->flags |= BF_READONLY;
+
+    /* Update caption and prevent recursion */
+    if (s && s->b == b) {
+        if (s->caption)
+            qe_free(&s->caption);
+        if (caption)
+            s->caption = qe_strdup(caption);
+        do_refresh(s);
         return s;
+    }
 
     /* XXX: generic function to open popup ? */
     w1 = qs->screen->width;
@@ -8284,7 +8292,6 @@ EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
     h = (h1 * 3) / 4;
 
     b->default_mode = &popup_mode;
-    b->flags |= BF_READONLY;
     e = qe_new_window(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
     if (e != NULL) {
         if (caption)
@@ -8303,6 +8310,9 @@ static const CmdDef popup_commands[] = {
     CMD3( "popup-isearch", "/",
           "Search for contents",
           do_isearch, ESii, "p" "v", 1)
+    CMD1( "popup-abort", "q, C-x 0, CLOSE",
+          "Quit popup window",
+          do_delete_window, 1)
 };
 
 static void popup_init(QEmacsState *qs)
@@ -9646,6 +9656,8 @@ void do_other_window(EditState *s)
 {
     EditState *e = get_next_window(s, 0, 0);
     if (e) {
+        if (e->flags & WF_POPUP)
+            return;
         if (e->flags & WF_MINIBUF)
             edit_invalidate(e, 0);
         s->qs->active_window = e;
@@ -10108,7 +10120,6 @@ void do_help_for_help(EditState *s)
     if (!b)
         return;
 
-    // FIXME: use minor mode for `q` to quit
     eb_puts(b,
             "QEmacs help for help - Press q to quit:\n"
             "\n"
