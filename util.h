@@ -2,7 +2,7 @@
  * Utilities for qemacs.
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2000-2025 Charlie Gordon.
+ * Copyright (c) 2000-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,21 +47,6 @@
 #define MAX_WORD_SIZE  128
 #define MAX_FILENAME_SIZE 1024
 
-/* string arrays */
-typedef struct StringItem {
-    void *opaque;  /* opaque data that the user can use */
-    char selected; /* true if selected */
-    char group;    /* used to group sorted items */
-    char str[1];
-} StringItem;
-
-typedef struct StringArray {
-    int nb_allocated;
-    int nb_items;
-    StringItem **items;
-} StringArray;
-#define NULL_STRINGARRAY  { 0, 0, NULL }
-
 typedef struct FindFileState FindFileState;
 
 #define FF_PATH     0x010  /* enumerate path argument */
@@ -73,6 +58,7 @@ typedef struct FindFileState FindFileState;
 FindFileState *find_file_open(const char *path, const char *pattern, int flags);
 int find_file_next(FindFileState *s, char *filename, int filename_size_max);
 void find_file_close(FindFileState **sp);
+int qe_shell_match(const char *pattern, const char *string);
 int is_directory(const char *path);
 int is_filepattern(const char *filespec);
 char *canonicalize_path(char *buf, int buf_size, const char *path);
@@ -107,6 +93,7 @@ static inline int qe_digit_value(char32_t c) {
        @argument `c` a codepoint value
        @return the corresponding numerical value, or 255 for none
        ie: `'0'` -> `0`, `'1'` -> `1`, `'a'` -> 10, `'Z'` -> 35
+       @note: only ASCII digits are supported
      */
     return c < 128 ? qe_digit_value__[c] : 255;
 }
@@ -118,6 +105,7 @@ static inline int qe_inrange(char32_t c, char32_t a, char32_t b) {
        @argument `a` the minimum codepoint value for the range
        @argument `b` the maximum codepoint value for the range
        @return a boolean value indicating if the codepoint is inside the range
+       @note: both boundaries are included in the range
      */
     //return c >= a && c <= b;
     //CG: assuming a <= b and wrap around semantics for (c - a) and (b - a)
@@ -140,7 +128,7 @@ static inline int qe_isblank(char32_t c) {
        Test if a codepoint represents blank space
        @argument `c` a codepoint value
        @return a boolean value indicating if the codepoint is blank space
-       @note: only ASCII blanks and non-breaking-space are supported
+       @note: only ASCII blanks (SPC and TAB) and non-breaking-space are supported
      */
     return (c == ' ' || c == '\t' || c == 160);
 }
@@ -501,10 +489,10 @@ T *qe_malloc_hack(type T, size_t n);
    @note this function is implemented as a macro.
  */
 
-T *qe_mallocz_array(type T, size_t n);
+T *qe_mallocz_hack(type T, size_t n);
 /*@API memory
    Allocate memory for an object of type `T` with `n` extra bytes.
-   The object and the extra space is initialized to all bits zero.
+   The object and the extra space are initialized to all bits zero.
    @argument `T` the type of the object to allocate.
    @argument `n` the number of bytes to allocate in addition to the size of type `T`.
    @note this function is implemented as a macro.
@@ -535,9 +523,7 @@ void qe_free(T **pp);
 /*@API memory
    Free the allocated memory pointed to by a pointer whose address is passed.
    @argument `pp` the address of a possibly null pointer. This pointer is set
-   to `NULL` after freeing the memory. If the pointer memory is null,
-   nothing happens.
-   @argument `n` the number of bytes to allocate in addition to the size of type `T`.
+   to `NULL` after freeing the memory. If the pointer is null, nothing happens.
    @note this function is implemented as a macro.
  */
 #endif
@@ -574,6 +560,21 @@ void qe_free(T **pp);
 /*---- StringArray functions ----*/
 
 // XXX: Should unify these string packages but keep API simple
+
+/* string arrays */
+typedef struct StringItem {
+    void *opaque;  /* opaque data that the user can use */
+    char selected; /* true if selected */
+    char group;    /* used to group sorted items */
+    char str[1];
+} StringItem;
+
+typedef struct StringArray {
+    int nb_allocated;
+    int nb_items;
+    StringItem **items;
+} StringArray;
+#define NULL_STRINGARRAY  { 0, 0, NULL }
 
 StringItem *set_string(StringArray *cs, int index, const char *str, int group);
 StringItem *add_string(StringArray *cs, const char *str, int group);
@@ -634,7 +635,7 @@ static inline buf_t *buf_attach(buf_t *bp, char *buf, int size, int pos) {
     return bp;
 }
 
-static inline int buf_avail(buf_t *bp) {
+static inline int buf_avail(const buf_t *bp) {
     /*@API buf
        Compute the number of bytes available in the destination array
        @argument `bp` a valid pointer to fixed length buffer
@@ -650,11 +651,13 @@ static inline int buf_put_byte(buf_t *bp, unsigned char ch) {
        @argument `ch` a byte
        @return the number of bytes actually written.
      */
-    if (bp->pos + 1 < bp->size) {
+    bp->pos++;
+    if (bp->pos < bp->size) {
         bp->buf[bp->len++] = ch;
         bp->buf[bp->len] = '\0';
+        return 1;
     }
-    return bp->pos++;
+    return 0;
 }
 
 int buf_write(buf_t *bp, const void *src, int size);

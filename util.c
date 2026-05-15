@@ -2,7 +2,7 @@
  * Utilities for qemacs.
  *
  * Copyright (c) 2001 Fabrice Bellard.
- * Copyright (c) 2002-2025 Charlie Gordon.
+ * Copyright (c) 2002-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,37 +35,39 @@
 #include "config.h"     /* for CONFIG_WIN32 */
 #include "util.h"
 
-#ifdef CONFIG_WIN32
-
-/* XXX: not sufficient, but OK for basic operations */
-// XXX: should use own own function in all cases
-int fnmatch(const char *pattern, const char *string, int flags) {
+int qe_shell_match(const char *string, const char *pattern) {
+    /*@API utils
+       Test whether a filename or pathname matches a shell-style pattern
+       @argument `string` a valid pointer to a string representing a
+       filename
+       @argument `pattern` a valid pointer to a file pattern using `?`
+       and `*` with the classic semantics used by unix shells
+       @return non zero if `string` matches `pattern`.
+       @note this function is a simplified version of POSIX function
+       `fnmatch` defined in header `<fnmatch.h>`
+     */
     char c;
     while ((c = *pattern++) != '\0') {
         if (c == '*') {
             if (*pattern == '\0')
-                return 0;
+                return 1;
             while (*string) {
-                if (!fnmatch(pattern, string))
-                    return 0;
+                if (qe_shell_match(string, pattern))
+                    return 1;
                 string++;
             }
-            return FNM_NOMATCH;
+            return 0;
         } else
         if (c == '?') {
             if (*string++ == '\0')
-                return FNM_NOMATCH;
+                return 0;
         } else
         if (c != *string++) {
-            return FNM_NOMATCH;
+            return 0;
         }
     }
-    return *string ? FNM_NOMATCH : 0;
+    return *string == '\0';
 }
-
-#else
-#include <fnmatch.h>
-#endif
 
 #define MAX_FILENAME_SIZE    1024       /* Size for a filename buffer */
 
@@ -89,6 +91,7 @@ FindFileState *find_file_open(const char *path, const char *pattern, int flags) 
        semantics used by unix shells
        @return a pointer to an opaque FindFileState structure.
      */
+    // XXX: should check if pattern has wildcards
     FindFileState *s;
 
     s = qe_mallocz(FindFileState);
@@ -108,8 +111,9 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max) {
        @argument `filename` a valid pointer to an array for the file name.
        @argument `filename_size_max` the length if the `filename` destination
        array in bytes.
-       @return `0` if there is a match, `-1` if no more files matche the pattern.
+       @return `0` if there is a match, `-1` if no more files match the pattern.
      */
+    // XXX: should match wildcards in directory names
     struct dirent *dirent;
     const char *p;
 
@@ -169,8 +173,7 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max) {
                 if (s->flags & FF_ONLYDIR)
                     continue;
             }
-            // XXX: should use our own fnmatch version
-            if (fnmatch(s->pattern, dirent->d_name, 0) == 0) {
+            if (qe_shell_match(dirent->d_name, s->pattern)) {
                 makepath(filename, filename_size_max,
                          s->dirpath, dirent->d_name);
                 return 0;
