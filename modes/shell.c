@@ -2800,22 +2800,50 @@ static void do_shell(EditState *e, int argval)
     put_status(e, "Press C-o to toggle between shell input and buffer navigation");
 }
 
-static inline EditState *shell_target_window(EditState *e, EditBuffer *b)
+static EditState *shell_target_window(EditState *e, EditBuffer *b)
 {
-    EditState *e1;
+    /* Shell: target window selection logic
+
+       The behavior follows this priority order:
+
+       1. reuse an existing window already displaying the buffer,
+       2. if shell-command-other-window is not set, use the current
+          window, otherwise
+       3. select the largest available non-active window.
+       4. split a new window if no sutiable window is found.
+       5. fall back to the current window if splitting fails.
+     */
     ShellState *s = qe_get_buffer_mode_data(b, &shell_mode, NULL);
+    QEmacsState *qs = e->qs;
+    EditState *e1 = NULL;
 
     if (s && !(s->shell_flags & SF_INTERACTIVE)) {
         e1 = eb_find_window(b, NULL);
-        if (e1 != NULL)
-            goto found;
     }
 
-    e1 = qe_split_window(e, SW_STACKED, 50);
-    if (e1 ==  NULL)
-        e1 = e;
+    if (e1 == NULL && qs->shell_command_other_window) {
+        int size1 = 0;
+        // Try and locate the largest window
+        EditState *e2;
+        for (e2 = qs->first_window; e2 != NULL; e2 = e2->next_window) {
+            if (e2->flags & (WF_POPUP | WF_MINIBUF | WF_POPLEFT))
+                continue;
+            if (e2 != qs->active_window) {
+                int size2 = (e2->x2 - e2->x1) * (e2->y2 - e2->y1);
+                if (size2 > size1) {
+                    size1 = size2;
+                    e1 = e2;
+                }
+            }
+        }
 
-found:
+        if (e1 == NULL) {
+            e1 = qe_split_window(e, SW_STACKED, 50);
+            if (e1 == NULL)
+                e1 = e;
+        }
+    }
+
     switch_to_buffer(e1, b);
     return e1;
 }

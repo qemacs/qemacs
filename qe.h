@@ -1100,6 +1100,7 @@ struct QEmacsState {
     int flag_split_window_change_focus;
     int shell_buffer_read_only;
     int shell_mode_auto_interactive;
+    int shell_command_other_window;
     int emulation_flags;
     int backspace_is_control_h;
     int backup_inhibited;  /* prevent qemacs from backing up files */
