@@ -8257,12 +8257,10 @@ void do_popup_exit(EditState *s)
     QEmacsState *qs = s->qs;
 
     if (s->flags & WF_POPUP) {
-        /* only do this for a popup? */
-        // XXX: BF_TRANSIENT flag should be set at buffer creation time
-        if (s->b->flags & BF_SYSTEM)
-            s->b->flags |= BF_TRANSIENT;
         edit_close(&s);
         do_refresh(qs->active_window);
+    } else {
+        put_error(s, "Not a popup window");
     }
 }
 
@@ -8273,10 +8271,13 @@ EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
     EditState *e;
     int w, h, w1, h1;
 
-    b->flags |= BF_READONLY;
+    b->flags |= BF_READONLY | BF_TRANSIENT;
+    b->default_mode = &popup_mode;
 
     /* Update caption and prevent recursion */
-    if (s && s->b == b) {
+    if (s && (s->flags & WF_POPUP)) {
+        if (s->b != b)
+            switch_to_buffer(s, b);
         if (s->caption)
             qe_free(&s->caption);
         if (caption)
@@ -8291,7 +8292,6 @@ EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
     w = (w1 * 4) / 5;
     h = (h1 * 3) / 4;
 
-    b->default_mode = &popup_mode;
     e = qe_new_window(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
     if (e != NULL) {
         if (caption)
@@ -8310,9 +8310,9 @@ static const CmdDef popup_commands[] = {
     CMD3( "popup-isearch", "/",
           "Search for contents",
           do_isearch, ESii, "p" "v", 1)
-    CMD1( "popup-abort", "q, C-x 0, CLOSE",
+    CMD0( "popup-abort", "q, C-x 0, CLOSE",
           "Quit popup window",
-          do_delete_window, 1)
+          do_popup_exit)
 };
 
 static void popup_init(QEmacsState *qs)
@@ -10127,7 +10127,7 @@ void do_help_for_help(EditState *s)
             "C-h b     Display table of all key bindings\n"
             "C-h c     Describe key briefly\n"
             );
-    show_popup(s, b, "QEmacs help for help - Press q to quit:");
+    show_popup(s, b, "QEmacs help for help");
 }
 
 #ifdef CONFIG_WIN32
