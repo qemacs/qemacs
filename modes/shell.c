@@ -2829,7 +2829,7 @@ static EditState *shell_target_window(EditState *e, EditBuffer *b)
             if (e2->flags & (WF_POPUP | WF_MINIBUF | WF_POPLEFT))
                 continue;
             if (e2 != qs->active_window) {
-                int size2 = (e2->x2 - e2->x1) * (e2->y2 - e2->y1);
+                int size2 = e2->width * e2->height;
                 if (size2 > size1) {
                     size1 = size2;
                     e1 = e2;
