@@ -2842,9 +2842,8 @@ static EditState *shell_target_window(EditState *e, EditBuffer *b)
             if (e1 == NULL) {
                 e1 = e;
             } else {
-                switch_to_buffer(e1, b);
+                switch_to_buffer(e1, NULL);
                 e1->last_buffer = NULL;
-                return e1;
             }
         }
     }
@@ -4124,18 +4123,28 @@ static int pager_mode_init(EditState *e, EditBuffer *b, int flags)
     return 0;
 }
 
-static void do_pager_abort(EditState *e, int force)
+static void do_pager_abort(EditState *e)
 {
-    if (force || e->last_buffer == NULL)
-        do_delete_window(e, 0);
-    else
-        switch_to_buffer(e, e->last_buffer);
+    EditBuffer *b1;
+
+    if (e->mode != &pager_mode) {
+        put_error(e, "Not a %s buffer", pager_mode.name);
+    } else {
+        b1 = qe_check_buffer(e->qs, &e->last_buffer);
+        if (b1 != NULL) {
+            switch_to_buffer(e, NULL);
+            e->last_buffer = NULL;
+            switch_to_buffer(e, b1);
+        } else {
+            do_delete_window(e, 0);
+        }
+    }
 }
 
 static const CmdDef pager_commands[] = {
-    CMD1( "pager-abort", "q",
+    CMD0( "pager-abort", "q",
           "Quit pager mode",
-          do_pager_abort, 0)
+          do_pager_abort)
 };
 
 /* additional mode specific bindings */

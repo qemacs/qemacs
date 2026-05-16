@@ -543,8 +543,8 @@ int eb_delete(EditBuffer *b, int offset, int size)
 
 /*---------------- finding buffers ----------------*/
 
-/* Verify that window still exists, return argument or NULL,
- * update handle if window is invalid.
+/* Verify that buffer still exists, return argument or NULL,
+ * update handle if buffer is invalid.
  */
 EditBuffer *qe_check_buffer(QEmacsState *qs, EditBuffer **sp)
 {
