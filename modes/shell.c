@@ -2839,8 +2839,13 @@ static EditState *shell_target_window(EditState *e, EditBuffer *b)
 
         if (e1 == NULL) {
             e1 = qe_split_window(e, SW_STACKED, 50);
-            if (e1 == NULL)
+            if (e1 == NULL) {
                 e1 = e;
+            } else {
+                switch_to_buffer(e1, b);
+                e1->last_buffer = NULL;
+                return e1;
+            }
         }
     }
 
@@ -4119,6 +4124,20 @@ static int pager_mode_init(EditState *e, EditBuffer *b, int flags)
     return 0;
 }
 
+static void do_pager_abort(EditState *e, int force)
+{
+    if (force || e->last_buffer == NULL)
+        do_delete_window(e, 0);
+    else
+        switch_to_buffer(e, e->last_buffer);
+}
+
+static const CmdDef pager_commands[] = {
+    CMD1( "pager-abort", "q",
+          "Quit pager mode",
+          do_pager_abort, 0)
+};
+
 /* additional mode specific bindings */
 static const char * const pager_bindings[] = {
     "DEL", "scroll-down",
@@ -4165,6 +4184,7 @@ static int shell_init(QEmacsState *qs)
     pager_mode.bindings = pager_bindings;
 
     qe_register_mode(qs, &pager_mode, MODEF_NOCMD | MODEF_VIEW);
+    qe_register_commands(qs, &pager_mode, pager_commands, countof(pager_commands));
 
     return 0;
 }
