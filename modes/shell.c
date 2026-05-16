@@ -2462,6 +2462,10 @@ static void shell_read_cb(void *opaque)
         b->flags |= BF_READONLY;
     }
 
+    EditState *e = qs->active_window;
+    if (e->b == b && !e->interactive && qs->last_cmd_func == (CmdFunc)do_eof)
+        e->offset = b->total_size;
+
     /* now we do some refresh (should just invalidate?) */
     qe_display(qs);
 }
@@ -2552,28 +2556,44 @@ static void shell_close(ShellState *s)
 
         ti = time(NULL);
         time_str = ctime(&ti);
-        if (WIFEXITED(status))
-            status = WEXITSTATUS(status);
-        else
-            status = -1;
-        if (status == 0) {
-            snprintf(buf, sizeof(buf), "\n%s finished at %s",
-                     s->caption, time_str);
-        } else {
-            snprintf(buf, sizeof(buf), "\n%s exited abnormally with code %d at %s",
-                     s->caption, status, time_str);
+        if (WIFEXITED(status)) {
+            int code = WEXITSTATUS(status);
+            if (code == 0) {
+                snprintf(buf, sizeof(buf), "%s finished", s->caption);
+            } else {
+                snprintf(buf, sizeof(buf), "%s exited abnormally with code %d",
+                         s->caption, code);
+            }
+        } else if (WIFSIGNALED(status)) {
+            snprintf(buf, sizeof(buf), "%s %s",
+                     s->caption, strsignal(WTERMSIG(status)));
         }
-    }
-    {
-        /* Flush output to buffer, bypassing readonly flag */
-        int save_readonly = s->b->flags & BF_READONLY;
-        s->b->flags &= ~BF_READONLY;
+        if (*buf != '\0') {
+            int save_readonly = s->b->flags & BF_READONLY;
+            int prev_offset;
 
-        eb_write(b, b->total_size, buf, strlen(buf));
+            e = qs->active_window;
 
-        if (save_readonly) {
-            s->b->modified = 0;
-            s->b->flags |= BF_READONLY;
+            if (!(s->shell_flags & SF_INTERACTIVE))
+                put_status(e, "%s", buf);
+
+            /* Flush output to buffer, bypassing readonly flag */
+            s->b->flags &= ~BF_READONLY;
+
+            prev_offset = b->offset = b->total_size;
+            eb_printf(b, "\n%s at %s", buf, time_str);
+
+            if (e->b == b) {
+                if ((!e->interactive && qs->last_cmd_func == (CmdFunc)do_eof)
+                ||  (e->offset == prev_offset)) {
+                    e->offset = b->total_size;
+                }
+            }
+
+            if (save_readonly) {
+                s->b->modified = 0;
+                s->b->flags |= BF_READONLY;
+            }
         }
     }
 
