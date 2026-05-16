@@ -11839,6 +11839,7 @@ static int qe_init(void *opaque)
     qs->line_number_mode = 1;
     qs->column_number_mode = 1;
     qs->shell_mode_auto_interactive = 1;
+    qs->shell_command_other_window = 1;
 
     qs->default_tab_width = DEFAULT_TAB_WIDTH;
     qs->default_fill_column = DEFAULT_FILL_COLUMN;
