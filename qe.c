@@ -12098,7 +12098,7 @@ int main(int argc, char **argv)
             if (vp->str_alloc)
                 qe_free(&vp->value.str);
             if (vp->var_alloc) {
-                qe_free(&vp->name);
+                qe_free(unconst(char **)&vp->name);
                 qe_free(&vp);
             }
         }

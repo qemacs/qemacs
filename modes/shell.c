@@ -76,7 +76,6 @@ typedef struct ShellState {
     int params[MAX_CSI_PARAMS + 1];
     int state;
     int esc1, esc2;
-    int this_byte, last_byte;
     char32_t lastc;
     int shifted;
     int cset, charset[2];
@@ -114,7 +113,7 @@ typedef struct ShellKillContext {
     EditBuffer *b;
     void (*callback)(EditState*, const char*);
     EditState *e;
-    const char *cmd;
+    char *cmd;  /* allocated */
 } ShellKillContext;
 
 static ShellError error_state = {

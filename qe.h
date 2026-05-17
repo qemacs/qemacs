@@ -1185,7 +1185,7 @@ typedef enum CmdSig {
 typedef union CmdArg {
     EditState *s;
     void *vp;
-    const char *p;
+    char *p; /* allocated */
     int n;
 } CmdArg;
 

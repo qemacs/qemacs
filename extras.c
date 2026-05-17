@@ -44,9 +44,9 @@ Equivalent *create_equivalent(const char *str1, const char *str2) {
 }
 
 void delete_equivalent(Equivalent *ep) {
-    qe_free(ep->str1);
-    qe_free(ep->str2);
-    qe_free(ep);
+    qe_free(&ep->str1);
+    qe_free(&ep->str2);
+    qe_free(&ep);
 }
 
 static void do_define_equivalent(EditState *s, const char *str1, const char *str2)
