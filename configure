@@ -696,7 +696,7 @@ fi
 
 if test "$tiny" = "yes" ; then
   echo "#define CONFIG_TINY 1" >> $TMPH
-  echo "CONFIG_TINY=yes" >> $TMPMAK
+  echo "TARGET_TINY=yes" >> $TMPMAK
 fi
 
 if test "$html" = "yes" ; then
