@@ -76,6 +76,7 @@ typedef struct ShellState {
     int params[MAX_CSI_PARAMS + 1];
     int state;
     int esc1, esc2;
+    int this_byte, last_byte;
     char32_t lastc;
     int shifted;
     int cset, charset[2];
@@ -296,12 +297,8 @@ static int run_process(ShellState *s,
         // * we set the `LINES` and `COLUMNS` environment variables
         // * we update the pseudo-terminal size because ioctl TIOCGWINSZ
         //   or WIOCGETD take precedence over LINES and COLUMNS in linux
-        // Other methods have been tried but are not portable solutions:
-        // * MANWIDTH overrides COLUMNS and ioctl stuff?
-        // * MAN_KEEP_FORMATING count be used
-        // * "PAGER=less -E -z1000" does not seem to work
-        // * "LESS=-E -z1000" does not work either
-        // We set `LESS_LINES` and `MANPAGER` in the man command
+        // We set `MAN_KEEP_FORMATTING=1` and `MANPAGER=cat` for the man
+        // command and handle overstriking in the terminal emulation.
 
         setenv("LINES", lines_string, 1);
         setenv("COLUMNS", columns_string, 1);
@@ -1410,7 +1407,36 @@ static void qe_term_emulate(ShellState *s, int c)
     offset = s->cur_offset = clamp_offset(s->cur_offset, 0, s->b->total_size);
 
     if (s->state == QE_TERM_STATE_NORM) {
-        s->term_pos = 0;
+        if (c == 8 && s->term_pos == 1) {
+            // backspace after a regular character: store in term_buf
+        } else
+        if (s->term_pos == 2 && s->term_buf[1] == 8 && c >= 32) {
+            if (s->term_buf[0] == '_' && (c != '_' || s->term_buf[2] == '_')) {
+                // special overstrike: _^HX -> underlined X
+                unsigned int attr = s->attr;
+                s->attr |= QE_TERM_UNDERLINE;
+                s->term_buf[2] = '_';
+                buf1[0] = c;
+                s->cur_offset = qe_term_overwrite(s, offset, 1, buf1, 1);
+                s->attr = attr;
+                s->term_pos = 0;
+                goto done;
+            }
+            if (s->term_buf[0] == c) {
+                // special overstrike: X^HX -> bold X
+                unsigned int attr = s->attr;
+                s->attr |= QE_TERM_BOLD;
+                s->term_buf[2] = 0;
+                buf1[0] = c;
+                s->cur_offset = qe_term_overwrite(s, offset, 1, buf1, 1);
+                s->attr = attr;
+                s->term_pos = 0;
+                goto done;
+            }
+            s->term_pos = 0;
+        } else {
+            s->term_pos = 0;
+        }
     }
     if (s->term_pos < countof(s->term_buf)) {
         /* UTF-8 bytes are appended here (among other uses of the buffer) */
@@ -2389,6 +2415,7 @@ static void qe_term_emulate(ShellState *s, int c)
         break;
     }
 #undef ESC2
+done:
     qe_term_update_cursor(s);
 }
 
@@ -2872,11 +2899,10 @@ static void do_man(EditState *s, const char *arg)
         s->qs->active_window = s;
     }
 
-    // LESS_LINES Sets the number of lines on the screen and takes
-    // precedence over the system's idea of the screen size.
-    // -F makes less quit automatically when output fits the screen.
-    snprintf(cmd, sizeof(cmd), "LESS_LINES='%d' MANPAGER='less -F' man %s",
-             QE_TERM_YSIZE_INFINITE, arg);
+    // Prevent `less` from paging: use `cat` as the `man` pager and
+    // keep formatting with environment variable for systems where `man`
+    // disables formatting when writing to a pipe or a file.
+    snprintf(cmd, sizeof(cmd), "MAN_KEEP_FORMATTING=1 MANPAGER=cat man %s", arg);
 
     snprintf(bufname, sizeof(bufname), "*Man %s*", arg);
     if (try_show_buffer(&s, bufname))
