@@ -289,8 +289,8 @@ static int tty_dpy_init(QEditScreen *s, QEmacsState *qs,
                         qe__unused__ int w, qe__unused__ int h)
 {
     TTYState *ts;
-    struct termios tty;
-    struct sigaction sig;
+    struct termios tty = { 0 };
+    struct sigaction sig = { 0 };
     const char *p;
 
     ts = qe_mallocz(TTYState);
