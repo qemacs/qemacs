@@ -2027,8 +2027,7 @@ StringItem *set_string(StringArray *cs, int index, const char *str, int group)
     v->selected = 0;
     v->group = group;
     memcpy(v->str, str, len + 1);
-    if (cs->items[index])
-        qe_free(&cs->items[index]);
+    qe_free(&cs->items[index]);
     cs->items[index] = v;
     return v;
 }

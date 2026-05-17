@@ -8278,8 +8278,7 @@ EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
     if (s && (s->flags & WF_POPUP)) {
         if (s->b != b)
             switch_to_buffer(s, b);
-        if (s->caption)
-            qe_free(&s->caption);
+        qe_free(&s->caption);
         if (caption)
             s->caption = qe_strdup(caption);
         do_refresh(s);
