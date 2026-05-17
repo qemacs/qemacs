@@ -230,6 +230,10 @@ static int run_process(ShellState *s,
     }
     fcntl(pty_fd, F_SETFL, O_NONBLOCK);
 
+    if (shell_flags & SF_INFINITE) {
+        rows += QE_TERM_YSIZE_INFINITE;
+    }
+
     /* set dummy screen size */
     ws.ws_col = cols;
     ws.ws_row = rows;
@@ -284,20 +288,21 @@ static int run_process(ShellState *s,
 #ifdef CONFIG_DARWIN
         setsid();
 #endif
-        if (shell_flags & SF_INFINITE) {
-            rows += QE_TERM_YSIZE_INFINITE;
-        }
         snprintf(lines_string, sizeof lines_string, "%d", rows);
         snprintf(columns_string, sizeof columns_string, "%d", cols);
 
-        // XXX: should prevent less from paging:
-        //      update the terminal size because
-        //         ioctl TIOCGWINSZ or WIOCGETD take precedence
-        //         over LINES and COLUMNS in linux
-        //      MANWIDTH overrides COLUMNS and ioctl stuff?
-        //      MAN_KEEP_FORMATING count be used
-        //      "PAGER=less -E -z1000" does not seem to work
-        //      "LESS=-E -z1000" does not work either
+        // To prevent less from paging is somewhat difficult to achieve
+        // portably:
+        // * we set the `LINES` and `COLUMNS` environment variables
+        // * we update the pseudo-terminal size because ioctl TIOCGWINSZ
+        //   or WIOCGETD take precedence over LINES and COLUMNS in linux
+        // Other methods have been tried but are not portable solutions:
+        // * MANWIDTH overrides COLUMNS and ioctl stuff?
+        // * MAN_KEEP_FORMATING count be used
+        // * "PAGER=less -E -z1000" does not seem to work
+        // * "LESS=-E -z1000" does not work either
+        // We set `LESS_LINES` and `MANPAGER` in the man command
+
         setenv("LINES", lines_string, 1);
         setenv("COLUMNS", columns_string, 1);
         setenv("TERM", "xterm-256color", 1);
@@ -2867,8 +2872,11 @@ static void do_man(EditState *s, const char *arg)
         s->qs->active_window = s;
     }
 
-    /* Assume standard man command */
-    snprintf(cmd, sizeof(cmd), "man %s", arg);
+    // LESS_LINES Sets the number of lines on the screen and takes
+    // precedence over the system's idea of the screen size.
+    // -F makes less quit automatically when output fits the screen.
+    snprintf(cmd, sizeof(cmd), "LESS_LINES='%d' MANPAGER='less -F' man %s",
+             QE_TERM_YSIZE_INFINITE, arg);
 
     snprintf(bufname, sizeof(bufname), "*Man %s*", arg);
     if (try_show_buffer(&s, bufname))
