@@ -88,7 +88,7 @@ static void input_complete(CompleteState *cp, CompleteFunc enumerate) {
     InputMethod *m;
 
     for (m = qs->input_methods; m != NULL; m = m->next) {
-        enumerate(cp, m->name, CT_IGLOB);
+        (*enumerate)(cp, m->name, CT_IGLOB);
     }
 }
 

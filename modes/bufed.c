@@ -35,6 +35,7 @@ enum {
 };
 
 static int bufed_sort_order;  // XXX: should be a variable
+static int bufed_pf_flags;
 
 enum {
     BUFED_HIDE_SYSTEM = 0,
@@ -56,6 +57,7 @@ typedef struct BufedState {
     int flags;
     int last_index;
     int sort_mode;
+    int pf_flags;
     EditState *cur_window;
     EditBuffer *cur_buffer;
     EditBuffer *last_buffer;
@@ -146,6 +148,7 @@ static void build_bufed_list(EditState *s, BufedState *bs)
         }
     }
     bs->sort_mode = bufed_sort_order;
+    bs->pf_flags = bufed_pf_flags;
 
     if (bufed_sort_order) {
         qe_qsort_r(bs->items.items, bs->items.nb_items,
@@ -164,6 +167,7 @@ static void build_bufed_list(EditState *s, BufedState *bs)
     eb_clear(b);
 
     line = 0;
+    b->tab_width = 20;
     for (i = 0; i < bs->items.nb_items; i++) {
         char flags[4];
         char *flagp = flags;
@@ -193,15 +197,9 @@ static void build_bufed_list(EditState *s, BufedState *bs)
         b->cur_style = style0;
         eb_printf(b, " %-2s", flags);
         b->cur_style = BUFED_STYLE_BUFNAME;
-        len = strlen(item->str);
-        /* simplistic column fitting, does not work for wide characters */
-#define COLWIDTH  20
-        if (len > COLWIDTH) {
-            eb_printf(b, "%.*s...%s",
-                      COLWIDTH - 5 - 3, item->str, item->str + len - 5);
-        } else {
-            eb_printf(b, "%-*s", COLWIDTH, item->str);
-        }
+        len = eb_put_filename(b, item->str, bufed_pf_flags);
+        eb_putc(b, '\t');
+        b->tab_width = max_int(3 + len + 1, b->tab_width);
         if (b1) {
             char path[MAX_FILENAME_SIZE];
             char mode_buf[64];
@@ -248,7 +246,7 @@ static void build_bufed_list(EditState *s, BufedState *bs)
             } else {
                 make_user_path(path, sizeof(path), b1->filename);
             }
-            eb_puts(b, path);
+            eb_put_filename(b, path, bs->pf_flags);
             b->cur_style = style0;
         }
         eb_putc(b, '\n');
@@ -500,6 +498,31 @@ static void bufed_set_sort(EditState *s, int order)
     build_bufed_list(s, bs);
 }
 
+static void bufed_cycle_encoding(EditState *s)
+{
+    BufedState *bs;
+    int encoding = bufed_pf_flags & PF_ENCODING;
+    bufed_pf_flags &= ~PF_ENCODING;
+    bufed_pf_flags |= (encoding + 1) & PF_ENCODING;
+
+    if (!(bs = bufed_get_state(s, 1)))
+        return;
+
+    build_bufed_list(s, bs);
+}
+
+static void bufed_toggle_unicode(EditState *s)
+{
+    BufedState *bs;
+
+    bufed_pf_flags ^= PF_NO_UNICODE;
+
+    if (!(bs = bufed_get_state(s, 1)))
+        return;
+
+    build_bufed_list(s, bs);
+}
+
 static void bufed_display_hook(EditState *s)
 {
     /* Prevent point from going beyond list */
@@ -578,6 +601,12 @@ static const CmdDef bufed_commands[] = {
     CMD1( "bufed-sort-modified", "m",
           "Sort the buffer list with modified buffers first",
           bufed_set_sort, BUFED_SORT_MODIFIED)
+    CMD0( "bufed-cycle-encoding", "\\",
+          "Cycle display of non printing characters in filenames",
+          bufed_cycle_encoding)
+    CMD0( "bufed-toggle-unicode", "U",
+          "Toggle display of Unicode characters in filenames",
+          bufed_toggle_unicode)
     CMD2( "bufed-summary", "?",
           "Display a summary of bufed commands",
           do_apropos, ESs, "@{bufed}")
@@ -615,6 +644,29 @@ static int bufed_init(QEmacsState *qs)
     qe_register_commands(qs, NULL, bufed_global_commands, countof(bufed_global_commands));
 
     return 0;
+}
+
+int buffer_print_entry(CompleteState *cp, EditState *s, const char *name)
+{
+    EditBuffer *b = s->b;
+    QEmacsState *qs = s->qs;
+    EditBuffer *b1 = qe_find_buffer_name(qs, name);
+    int len;
+
+    if (b1) {
+        b->cur_style = QE_STYLE_KEYWORD;
+        len = eb_put_filename(b, b1->name, bufed_pf_flags);
+        b->tab_width = max3_int(16, len + 2, b->tab_width);
+        len += eb_putc(b, '\t');
+        if (*b1->filename) {
+            b->cur_style = QE_STYLE_COMMENT;
+            len += eb_put_filename(b, b1->filename, bufed_pf_flags);
+        }
+        b->cur_style = QE_STYLE_DEFAULT;
+    } else {
+        return eb_put_filename(b, name, bufed_pf_flags);
+    }
+    return len;
 }
 
 qe_module_init(bufed_init);

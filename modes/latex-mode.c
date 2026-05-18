@@ -220,7 +220,7 @@ static void latex_complete(CompleteState *cp, CompleteFunc enumerate) {
     struct latex_function *func;
 
     for (func = latex_funcs; func->name; func++) {
-        enumerate(cp, func->name, CT_STRX);
+        (*enumerate)(cp, func->name, CT_STRX);
     }
 }
 

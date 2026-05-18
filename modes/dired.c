@@ -77,7 +77,7 @@ struct DiredState {
     enum time_format time_format;
     int show_dot_files;
     int show_ds_store;
-    int hflag, nflag;
+    int hflag, nflag, pf_flags;
     int details_flag, last_details_flag;
     int sort_mode;
     DiredItem *last_cur;
@@ -137,6 +137,7 @@ static int dired_hflag = 0; /* 0=exact, 1=human-decimal, 2=human-binary */
 #define DIRED_DETAILS_HIDE  1
 #define DIRED_DETAILS_SHOW  2
 static int dired_sort_mode = DIRED_SORT_GROUP | DIRED_SORT_FULLNAME;
+static int dired_pf_flags;
 // XXX: could use a regexp and make it extendable
 static const char *dired_ignore_extensions = {
     "|bak"
@@ -353,6 +354,60 @@ static int dired_sort_func(void *opaque, const void *p1, const void *p2)
         }
     }
     return (sort_mode & DIRED_SORT_DESCENDING) ? -res : res;
+}
+
+int eb_put_filename(EditBuffer *b, const char *name, int flags) {
+    // write a filename to a buffer, encoding special characters according
+    // to flags
+    int len = 0;
+    char buf[8];
+    u8 cc;
+    while ((cc = *name++) != '\0') {
+        if (cc > 0x7F && !(flags & PF_NO_UNICODE)) {
+            const char *p = name - 1;
+            char32_t c = utf8_decode(&p);
+            if (c >= 128 && c <= 0x10FFFF) {
+                int nc = utf8_encode(buf, c);
+                if (nc == p - name + 1 && !memcmp(buf, name - 1, nc)) {
+                    // valid UTF-8 encoded codepoint
+                    buf[nc] = '\0';
+                    eb_puts(b, buf);
+                    len += qe_wcwidth(c);
+                    name = p;
+                    continue;
+                }
+            }
+        }
+        if (cc < ' ' || cc >= 0x7F) {
+            switch (flags & PF_ENCODING) {
+            case PF_QUESTION:
+                eb_putc(b, '?');
+                len += 1;
+                break;
+            case PF_OCTAL:
+                eb_printf(b, "\\%03o", cc);
+                len += 4;
+                break;
+            case PF_HEX:
+                eb_printf(b, "\\x%02X", cc);
+                len += 4;
+                break;
+            case PF_CARET:
+                if (cc < 32 || cc == 127) {
+                    eb_printf(b, "\\^%c", (cc + '@') & 127);
+                    len += 3;
+                    break;
+                }
+                eb_printf(b, "\\x%02X", cc);
+                len += 4;
+                break;
+            }
+        } else {
+            eb_putc(b, cc);
+            len += 1;
+        }
+    }
+    return len;
 }
 
 static int format_number(char *buf, int size, int human, off_t number)
@@ -675,6 +730,7 @@ static void dired_compute_columns(DiredState *ds)
     ds->time_format = dired_time_format;
     ds->hflag = dired_hflag;
     ds->nflag = dired_nflag;
+    ds->pf_flags = dired_pf_flags;
     ds->blockslen = ds->modelen = ds->linklen = 0;
     ds->uidlen = ds->gidlen = 0;
     ds->sizelen = ds->datelen = ds->namelen = 0;
@@ -821,6 +877,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
     if (ds->time_format != dired_time_format
     ||  ds->nflag != dired_nflag
     ||  ds->hflag != dired_hflag
+    ||  ds->pf_flags != dired_pf_flags
     ||  ds->details_flag != ds->last_details_flag) {
         flags |= DIRED_UPDATE_COLUMNS;
     }
@@ -870,7 +927,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
         b->cur_style = DIRED_STYLE_HEADER;
         eb_puts(b, "  Directory of ");
         b->cur_style = DIRED_STYLE_DIRECTORY;
-        eb_puts(b, ds->path);
+        eb_put_filename(b, ds->path, ds->pf_flags);
         b->cur_style = DIRED_STYLE_HEADER;
         eb_puts(b, "\n  ");
         if (ds->ndirs) {
@@ -939,7 +996,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
         else
             b->cur_style = DIRED_STYLE_FILENAME;
 
-        eb_puts(b, fname);
+        eb_put_filename(b, fname, ds->pf_flags);
 
         if (*fname != '/' || fname[1]) {
             int trailchar = get_trailchar(dip->mode);
@@ -949,7 +1006,8 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
         }
         if (S_ISLNK(dip->mode)
         &&  getentryslink(buf, sizeof(buf), dip->fullname)) {
-            eb_printf(b, " -> %s", buf);
+            eb_puts(b, " -> ");
+            eb_put_filename(b, buf, ds->pf_flags);
         }
         b->cur_style = DIRED_STYLE_NORMAL;
         eb_putc(b, '\n');
@@ -1023,7 +1081,7 @@ static void sortkey_complete(CompleteState *cp, CompleteFunc enumerate) {
         current[len + 1] = '\0';
         for (p = "fnesdug+-r"; *p; p++) {
             current[len] = *p;
-            enumerate(cp, current, CT_GLOB);
+            (*enumerate)(cp, current, CT_GLOB);
         }
     }
 }
@@ -1064,7 +1122,7 @@ static int sortkey_print_entry(CompleteState *cp, EditState *s, const char *name
             msg = "sort by descending";
             break;
         }
-        return eb_printf(s->b, "%c   %s", c, msg);
+        return eb_printf(s->b, "%c\t%s", c, msg);
     }
     return 0;
 }
@@ -1493,6 +1551,18 @@ static void dired_toggle_nflag(EditState *s)
     dired_nflag = (dired_nflag + 1) % 3;
 }
 
+static void dired_cycle_encoding(EditState *s)
+{
+    int encoding = dired_pf_flags & PF_ENCODING;
+    dired_pf_flags &= ~PF_ENCODING;
+    dired_pf_flags |= (encoding + 1) & PF_ENCODING;
+}
+
+static void dired_toggle_unicode(EditState *s)
+{
+    dired_pf_flags ^= PF_NO_UNICODE;
+}
+
 static void dired_hide_details_mode(EditState *s)
 {
     DiredState *ds;
@@ -1867,6 +1937,12 @@ static const CmdDef dired_commands[] = {
     CMD0( "dired-hide-details-mode", "(",
           "Toggle visibility of detailed information in current Dired buffer)",
           dired_hide_details_mode)
+    CMD0( "dired-cycle-encoding", "\\",
+          "Cycle display of non printing characters in filenames",
+          dired_cycle_encoding)
+    CMD0( "dired-toggle-unicode", "U",
+          "Toggle display of Unicode characters in filenames",
+          dired_toggle_unicode)
     CMD2( "dired-summary", "?",
           "Display a summary of dired commands",
           do_apropos, ESs, "@{dired}")
@@ -1943,8 +2019,8 @@ int file_print_entry(CompleteState *cp, EditState *s, const char *name) {
 
     if (!stat(name, &st)) {
         b->cur_style = S_ISDIR(st.st_mode) ? DIRED_STYLE_DIRECTORY : DIRED_STYLE_FILENAME;
-        len = eb_puts(b, name);
-        b->tab_width = max3_int(16, 2 + len, b->tab_width);
+        len = eb_put_filename(b, name, dired_pf_flags);
+        b->tab_width = max3_int(16, len + 2, b->tab_width);
         b->cur_style = DIRED_STYLE_NORMAL;
         format_size(buf, sizeof(buf), dired_hflag, st.st_mode, st.st_dev, st.st_size);
         len += eb_printf(b, "\t%*s", sizelen, buf);
@@ -1957,7 +2033,7 @@ int file_print_entry(CompleteState *cp, EditState *s, const char *name) {
         len += eb_printf(b, "  %-*s", gidlen, buf);
         len += eb_printf(b, "  %*d", linklen, (int)st.st_nlink);
     } else {
-        return eb_puts(b, name);
+        len = eb_put_filename(b, name, dired_pf_flags);
     }
     return len;
 }
