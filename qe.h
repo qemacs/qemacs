@@ -1902,8 +1902,8 @@ int list_get_offset(EditState *s);
 
 #define PF_QUESTION    0
 #define PF_CARET       1
-#define PF_HEX         2
-#define PF_OCTAL       3
+#define PF_OCTAL       2
+#define PF_HEX         3
 #define PF_ENCODING    3
 #define PF_NO_UNICODE  8
 int eb_put_filename(EditBuffer *b, const char *name, int flags);

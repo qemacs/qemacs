@@ -656,7 +656,7 @@ int buffer_print_entry(CompleteState *cp, EditState *s, const char *name)
     if (b1) {
         b->cur_style = QE_STYLE_KEYWORD;
         len = eb_put_filename(b, b1->name, bufed_pf_flags);
-        b->tab_width = max3_int(16, len + 2, b->tab_width);
+        b->tab_width = max3_int(16, len + 3, b->tab_width);
         len += eb_putc(b, '\t');
         if (*b1->filename) {
             b->cur_style = QE_STYLE_COMMENT;
