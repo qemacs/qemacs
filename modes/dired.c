@@ -370,9 +370,17 @@ int eb_put_filename(EditBuffer *b, const char *name, int flags) {
                 int nc = utf8_encode(buf, c);
                 if (nc == p - name + 1 && !memcmp(buf, name - 1, nc)) {
                     // valid UTF-8 encoded codepoint
-                    buf[nc] = '\0';
-                    eb_puts(b, buf);
-                    len += qe_wcwidth(c);
+                    if (flags & 1) {
+                        if (c > 0xFFFF) {
+                            len += eb_printf(b, "\\u{%X}", c);
+                        } else {
+                            len += eb_printf(b, "\\x%04X", c);
+                        }
+                    } else {
+                        buf[nc] = '\0';
+                        eb_puts(b, buf);
+                        len += qe_wcwidth(c);
+                    }
                     name = p;
                     continue;
                 }
@@ -385,8 +393,16 @@ int eb_put_filename(EditBuffer *b, const char *name, int flags) {
                 len += 1;
                 break;
             case PF_OCTAL:
-                eb_printf(b, "\\%03o", cc);
-                len += 4;
+                eb_putc(b, '\\');
+                len += 2;
+                switch (cc) {
+                case '\n':  eb_putc(b, 'n'); break;
+                case '\t':  eb_putc(b, 't'); break;
+                case '\r':  eb_putc(b, 'r'); break;
+                case '\b':  eb_putc(b, 'b'); break;
+                case '\f':  eb_putc(b, 'f'); break;
+                default:    eb_printf(b, "%03o", cc); len += 2; break;
+                }
                 break;
             case PF_HEX:
                 eb_printf(b, "\\x%02X", cc);
