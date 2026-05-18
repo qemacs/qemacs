@@ -1430,6 +1430,7 @@ typedef struct CompletionDef {
 #define CF_NO_AUTO_SUBMIT  8
 #define CF_DIRNAME         16
 #define CF_RESOURCE        32
+#define CF_SAVE_LIST       64
     int flags;
     /* custom handlers to start and end minibuffer edit session */
     void (*start_edit)(EditState *s);
@@ -1457,6 +1458,7 @@ int command_get_entry(EditState *s, char *dest, int size, int offset);
 void file_complete(CompleteState *cp, CompleteFunc enumerate);
 int file_print_entry(CompleteState *cp, EditState *s, const char *name);
 void buffer_complete(CompleteState *cp, CompleteFunc enumerate);
+int buffer_print_entry(CompleteState *cp, EditState *s, const char *name);
 
 #ifdef CONFIG_WIN32
 static inline int is_user_input_pending(void) {
@@ -1897,6 +1899,14 @@ int list_get_pos(EditState *s);
 int list_get_offset(EditState *s);
 
 /* dired.c */
+
+#define PF_QUESTION    0
+#define PF_CARET       1
+#define PF_HEX         2
+#define PF_OCTAL       3
+#define PF_ENCODING    3
+#define PF_NO_UNICODE  8
+int eb_put_filename(EditBuffer *b, const char *name, int flags);
 
 void do_dired(EditState *s, int argval);
 void do_dired_path(EditState *s, const char *path);

@@ -2349,7 +2349,7 @@ static void tag_complete(CompleteState *cp, CompleteFunc enumerate) {
 
         for (p = cp->target->b->property_list; p; p = p->next) {
             if (p->type == QE_PROP_TAG) {
-                enumerate(cp, p->data, CT_GLOB);
+                (*enumerate)(cp, p->data, CT_GLOB);
             }
         }
     }
@@ -2372,21 +2372,6 @@ static int tag_print_entry(CompleteState *cp, EditState *s, const char *name) {
         }
     }
     return eb_puts(s->b, name);
-}
-
-static int tag_get_entry(EditState *s, char *dest, int size, int offset)
-{
-    int len = eb_fgets(s->b, dest, size, offset, &offset);
-    int p2 = strcspn(dest, "=[{(,;");
-    int p1;
-    while (p2 > 0 && !qe_isalnum_(dest[p2 - 1]))
-        p2--;
-    p1 = p2;
-    while (p1 > 0 && (qe_isalnum_(dest[p1 - 1]) || dest[p1 - 1] == '-'))
-        p1--;
-    memmove(dest, dest + p1, len = p2 - p1);
-    dest[len] = '\0';   /* strip the prototype or trailing newline if any */
-    return len;
 }
 
 static void do_find_tag(EditState *s, const char *str) {
@@ -2469,7 +2454,7 @@ static CompletionDef tag_completion = {
     .name = "tag",
     .enumerate = tag_complete,
     .print_entry = tag_print_entry,
-    .get_entry = tag_get_entry,
+    .flags = CF_SAVE_LIST,
 };
 
 /*---------------- Unicode character name completion ----------------*/
@@ -2497,7 +2482,7 @@ static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
                 if (p3)
                     *p3 = '\0';
                 snprintf(entry, sizeof entry, "%s\t%5.6s", p1, buf);
-                enumerate(cp, entry, CT_IGLOB);
+                (*enumerate)(cp, entry, CT_IGLOB);
             }
         }
         fclose(fp);
@@ -2513,7 +2498,7 @@ static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
                 *p1++ = '\0';
                 *p2 = '\0';
                 snprintf(entry, sizeof entry, "%s\t%5.6s", p1, buf);
-                enumerate(cp, entry, CT_IGLOB);
+                (*enumerate)(cp, entry, CT_IGLOB);
             }
         }
         fclose(fp);

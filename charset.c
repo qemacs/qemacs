@@ -992,13 +992,13 @@ void charset_complete(CompleteState *cp, CompleteFunc enumerate) {
     const char *p, *q;
 
     for (charset = first_charset; charset != NULL; charset = charset->next) {
-        enumerate(cp, charset->name, CT_STRX);
+        (*enumerate)(cp, charset->name, CT_STRX);
         if (charset->aliases) {
             for (q = p = charset->aliases;; q++) {
                 if (*q == '\0' || *q == '|') {
                     if (q > p) {
                         pstrncpy(name, sizeof(name), p, q - p);
-                        enumerate(cp, name, CT_STRX);
+                        (*enumerate)(cp, name, CT_STRX);
                     }
                     if (*q == '\0')
                         break;

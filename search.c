@@ -154,7 +154,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
             }
             if ((offset & 0xfffff) == 0) {
                 /* check for search abort every megabyte */
-                if (abort_func && abort_func(abort_opaque))
+                if (abort_func && (*abort_func)(abort_opaque))
                     return -1;
             }
 
@@ -225,7 +225,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
             }
             if ((offset & 0xffff) == 0) {
                 /* check for search abort every 64K */
-                if (abort_func && abort_func(abort_opaque)) {
+                if (abort_func && (*abort_func)(abort_opaque)) {
                     res = -1;
                     break;
                 }
@@ -275,7 +275,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
         }
         if ((offset & 0xfffff) == 0) {
             /* check for search abort every megabyte */
-            if (abort_func && abort_func(abort_opaque))
+            if (abort_func && (*abort_func)(abort_opaque))
                 return -1;
         }
 

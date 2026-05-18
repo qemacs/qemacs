@@ -220,9 +220,9 @@ void mode_complete(CompleteState *cp, CompleteFunc enumerate) {
     ModeDef *m;
 
     for (m = qs->first_mode; m != NULL; m = m->next) {
-        enumerate(cp, m->name, CT_GLOB);
+        (*enumerate)(cp, m->name, CT_GLOB);
         if (m->alt_name && !strequal(m->name, m->alt_name))
-            enumerate(cp, m->alt_name, CT_GLOB);
+            (*enumerate)(cp, m->alt_name, CT_GLOB);
     }
 }
 
@@ -254,7 +254,7 @@ void command_complete(CompleteState *cp, CompleteFunc enumerate) {
 
     for (i = 0; i < qs->cmd_array_count; i++) {
         for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
-            enumerate(cp, d->name, CT_GLOB);
+            (*enumerate)(cp, d->name, CT_GLOB);
         }
     }
 }
@@ -718,23 +718,23 @@ static void color_complete(CompleteState *cp, CompleteFunc enumerate) {
             rgb <<= shift;
             for (i = 0; i < (0x1 << shift); i++) {
                 snprintf(buf, sizeof buf, "#%06x", rgb + i);
-                enumerate(cp, buf, CT_GLOB);
+                (*enumerate)(cp, buf, CT_GLOB);
             }
         } else {
             for (i = 0; i < 8192; i++) {
                 QEColor rgb = qe_unmap_color(i, 8192);
                 snprintf(buf, sizeof buf, "#%06x", rgb & 0xFFFFFF);
-                enumerate(cp, buf, CT_GLOB);
+                (*enumerate)(cp, buf, CT_GLOB);
             }
         }
     } else
 #if 0
     if (name[0] == 'g' && name[1] == 'r' && (name[2] == 'a' || name[2] == 'e') && name[3] == 'y') {
         snprintf(buf, sizeof buf, "%.4s", name);
-        enumerate(cp, buf, CT_GLOB);
+        (*enumerate)(cp, buf, CT_GLOB);
         for (i = 0; i < 100; i++) {
             snprintf(buf + 4, sizeof(buf) - 4, "%d", i);
-            enumerate(cp, buf, CT_GLOB);
+            (*enumerate)(cp, buf, CT_GLOB);
         }
     } else
 #endif
@@ -742,14 +742,14 @@ static void color_complete(CompleteState *cp, CompleteFunc enumerate) {
         ColorDef const *def = qe_colors;
         int count = nb_qe_colors;
         while (count > 0) {
-            enumerate(cp, def->name, CT_STRX);
+            (*enumerate)(cp, def->name, CT_STRX);
             def++;
             count--;
         }
         if (name[0] == 'p' && !qe_isalpha(name[1])) {
             for (i = 0; i < 8192; i++) {
                 snprintf(buf, sizeof buf, "p%d", i);
-                enumerate(cp, buf, CT_GLOB);
+                (*enumerate)(cp, buf, CT_GLOB);
             }
         }
     }
@@ -3613,7 +3613,7 @@ void style_complete(CompleteState *cp, CompleteFunc enumerate) {
 
     stp = qe_styles;
     for (i = 0; i < QE_STYLE_NB; i++, stp++) {
-        enumerate(cp, stp->name, CT_GLOB);
+        (*enumerate)(cp, stp->name, CT_GLOB);
     }
 }
 
@@ -3675,7 +3675,7 @@ void style_property_complete(CompleteState *cp, CompleteFunc enumerate) {
     int i;
 
     for (i = 0; i < countof(qe_style_properties); i++) {
-        enumerate(cp, qe_style_properties[i], CT_STRX);
+        (*enumerate)(cp, qe_style_properties[i], CT_STRX);
     }
 }
 
@@ -7315,7 +7315,7 @@ void file_complete(CompleteState *cp, CompleteFunc enumerate)
              * should check and ignore binary executable files.
              */
         }
-        enumerate(cp, filename, CT_SET);
+        (*enumerate)(cp, filename, CT_SET);
     }
     find_file_close(&ffst);
 }
@@ -7326,7 +7326,7 @@ static CompletionDef file_completion = {
 #ifndef CONFIG_TINY
     .print_entry = file_print_entry,
 #endif
-    .flags = CF_FILENAME,
+    .flags = CF_FILENAME | CF_SAVE_LIST,
 };
 
 #ifndef CONFIG_TINY
@@ -7334,14 +7334,14 @@ static CompletionDef dir_completion = {
     .name = "dir",
     .enumerate = file_complete,
     .print_entry = file_print_entry,
-    .flags = CF_DIRNAME | CF_NO_FUZZY,
+    .flags = CF_DIRNAME | CF_NO_FUZZY | CF_SAVE_LIST,
 };
 
 static CompletionDef resource_completion = {
     .name = "resource",
     .enumerate = file_complete,
     .print_entry = file_print_entry,
-    .flags = CF_RESOURCE | CF_NO_FUZZY,
+    .flags = CF_RESOURCE | CF_NO_FUZZY | CF_SAVE_LIST,
 };
 #endif
 
@@ -7351,37 +7351,17 @@ void buffer_complete(CompleteState *cp, CompleteFunc enumerate) {
 
     for (b = qs->first_buffer; b != NULL; b = b->next) {
         if (!(b->flags & BF_SYSTEM))
-            enumerate(cp, b->name, CT_GLOB);
+            (*enumerate)(cp, b->name, CT_GLOB);
     }
-}
-
-static int buffer_print_entry(CompleteState *cp, EditState *s, const char *name)
-{
-    EditBuffer *b = s->b;
-    QEmacsState *qs = s->qs;
-    EditBuffer *b1 = qe_find_buffer_name(qs, name);
-    int len;
-
-    if (b1) {
-        b->cur_style = QE_STYLE_KEYWORD;
-        len = eb_puts(b, b1->name);
-        b->tab_width = max3_int(16, 2 + len, b->tab_width);
-        len += eb_putc(b, '\t');
-        if (*b1->filename) {
-            b->cur_style = QE_STYLE_COMMENT;
-            len += eb_puts(b, b1->filename);
-        }
-        b->cur_style = QE_STYLE_DEFAULT;
-    } else {
-        return eb_puts(b, name);
-    }
-    return len;
 }
 
 static CompletionDef buffer_completion = {
     .name = "buffer",
     .enumerate = buffer_complete,
+#ifndef CONFIG_TINY
     .print_entry = buffer_print_entry,
+#endif
+    .flags = CF_SAVE_LIST,
 };
 
 static int default_completion_window_print_entry(CompleteState *cp, EditState *s, const char *name) {
@@ -7511,6 +7491,7 @@ typedef struct MinibufState {
     int completion_end;
     int completion_count;
     CompletionDef *completion;
+    StringArray completion_list;
 
     StringArray *history;
     int history_index;
@@ -7697,6 +7678,11 @@ void do_minibuffer_complete(EditState *s, int type, int key, int argval) {
         e->mouse_force_highlight = 1;
         e->force_highlight = 1;
         e->offset = 0;
+        free_strings(&mb->completion_list);
+        if (mb->completion->flags & CF_SAVE_LIST) {
+            mb->completion_list = cs.cs;
+            memset(&cs.cs, 0, sizeof(cs.cs));
+        }
     }
     complete_end(&cs);
 }
@@ -7929,8 +7915,14 @@ void do_minibuffer_exit(EditState *s, int do_abort)
         /* if completion is activated, then select current file only if
            the selection is highlighted */
         if (cw && cw->force_highlight) {
+            int index = list_get_pos(cw);
             int len;
-            len = mb->completion->get_entry(cw, buf, sizeof(buf), list_get_offset(cw) + 1);
+            if (index < mb->completion_list.nb_items) {
+                pstrcpy(buf, sizeof(buf), mb->completion_list.items[index]->str);
+                len = strlen(buf);
+            } else {
+                len = mb->completion->get_entry(cw, buf, sizeof(buf), list_get_offset(cw) + 1);
+            }
             if (len > 0) {
                 // insert completion string (delete highlighted part)
                 minibuffer_set_str(s, mb->completion_start, mb->completion_end, buf);
@@ -7958,6 +7950,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     if (cw) {
         edit_close(&mb->completion_popup_window);
         cw = NULL;
+        free_strings(&mb->completion_list);
         do_refresh(s);
     }
 
