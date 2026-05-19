@@ -11558,14 +11558,18 @@ static const CmdDef basic_commands[] = {
           do_convert_buffer_file_coding_system, ESs, "*"
           "s{Charset: }[charset]|charset|")
     CMD0( "toggle-bidir", "C-x RET b, C-c b",
-          "",
+          "Toggle bidirectional text rendering",
           do_toggle_bidir)
     CMD2( "set-input-method", "C-x RET C-\\, C-c C-\\",
-          "",
+          "Set and activate the window input method",
           do_set_input_method, ESs,
           "s{Input method: }[input]")
+    CMD2( "select-input-method", "",
+          "Set the window input method without activating it",
+          do_select_input_method, ESs,
+          "s{Input method: }[input]")
     CMD0( "switch-input-method", "C-x C-\\",
-          "",
+          "Toggle the window input method",
           do_switch_input_method)
 
     /*---------------- Styles & display ----------------*/
