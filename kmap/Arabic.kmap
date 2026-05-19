@@ -2,6 +2,8 @@
 // 2001-12-17 Arabeyes <support@arabeyes.org>
 // Commented back E= - gaspar
 
+// Extended for QEmacs by huwwa May 2026
+
 // The alphabet ‮ ‬(‮)الحروف الأبجدية‬
 "q=0x0636",          // dad (ض)
 "w=0x0635",          // sad (ص)
@@ -69,7 +71,10 @@
 "K=0x060c",          // comma (،)
 "?=0x061f",          // question mark (؟)
 "L=0x2f",            // forward slash (/)
+"U=0x0060",          // grave accent  (`)
+"M=0x0027",          // apostrophe    (')
 
+// numbers
 
 "0x30=0x0660",       // 0  (٠)
 "0x31=0x0661",       // 1  (١)
@@ -81,4 +86,11 @@
 "0x37=0x0667",       // 7  (٧)
 "0x38=0x0668",       // 8  (٨)
 "0x39=0x0669",       // 9  (٩)
+
+// operators
+
 "%=0x066a",          // percent  (٪)
+"I=0x00f7",          // division sign (÷)
+"O=0x00d7",          // multiplication sign (×)
+"}=0x003c",          // less then (>)
+"{=0x003e",          // greater than (<)
