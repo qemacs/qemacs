@@ -1949,6 +1949,8 @@ void text_write_char(EditState *s, int key)
                 /* more chars expected: do nothing and insert current key */
                 break;
             } else {
+                int at_insert_point;
+
                 /* match: delete matched chars */
                 offset = eb_skip_chars(s->b, s->compose_start_offset, match_len);
                 eb_delete_range(s->b, s->compose_start_offset, offset);
@@ -1959,10 +1961,11 @@ void text_write_char(EditState *s, int key)
                 for (i = 0; i < ret; i++) {
                     key = match_buf[i];
                     len = eb_encode_char32(s->b, buf, key);
+                    at_insert_point = (s->offset == s->compose_start_offset);
                     eb_insert(s->b, s->compose_start_offset, buf, len);
                     s->compose_start_offset += len;
-                    /* should only bump s->offset if at insert point */
-                    s->offset += len;
+                    if (at_insert_point)
+                        s->offset += len;
                 }
                 /* if some compose chars are left, we iterate */
                 if (s->compose_len == 0)
