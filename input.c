@@ -115,6 +115,17 @@ void do_set_input_method(EditState *s, const char *name)
     }
 }
 
+void do_select_input_method(EditState *s, const char *name)
+{
+    InputMethod *m = qe_find_input_method(s->qs, name);
+
+    if (m) {
+        s->selected_input_method = m;
+    } else {
+        put_error(s, "'%s' not found", name);
+    }
+}
+
 void do_switch_input_method(EditState *s)
 {
     if (s->input_method)
