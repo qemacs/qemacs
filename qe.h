@@ -1402,6 +1402,7 @@ struct InputMethod {
 
 void qe_register_input_method(QEmacsState *qs, InputMethod *m);
 void do_set_input_method(EditState *s, const char *method);
+void do_select_input_method(EditState *s, const char *method);
 void do_switch_input_method(EditState *s);
 void qe_input_methods_init(QEmacsState *qs);
 int qe_load_input_methods(QEmacsState *qs, const char *filename);

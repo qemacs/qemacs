@@ -1976,6 +1976,10 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d\n", w, "unihex_mode", s->unihex_mode);
     eb_printf(b1, "%*s: %d\n", w, "hex_nibble", s->hex_nibble);
     eb_printf(b1, "%*s: %d\n", w, "overwrite", s->overwrite);
+    if (s->input_method)
+        eb_printf(b1, "%*s: %s\n", w, "input_method", s->input_method->name);
+    if (s->selected_input_method)
+        eb_printf(b1, "%*s: %s\n", w, "selected_input_method", s->selected_input_method->name);
     eb_printf(b1, "%*s: %d\n", w, "bidir", s->bidir);
     eb_printf(b1, "%*s: %d\n", w, "cur_rtl", s->cur_rtl);
     eb_printf(b1, "%*s: %u  %s\n", w, "wrap", s->wrap,
