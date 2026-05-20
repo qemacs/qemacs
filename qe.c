@@ -2318,7 +2318,7 @@ static void do_unknown_key(EditState *s) {
 
 void do_keyboard_quit(EditState *s)
 {
-    if (s->flags & WF_POPUP) {
+    if (s->flags & WF_POPUP && !s->region_style) {
         do_popup_exit(s);
         return;
     }
