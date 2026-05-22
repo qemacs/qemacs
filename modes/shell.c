@@ -216,43 +216,55 @@ static int run_process(ShellState *s,
                        int shell_flags)
 {
     long i, nb_fds;
-    int pty_fd, pid;
+    int pty_fd, pid, pipe_fds[2];
     char tty_name[MAX_FILENAME_SIZE];
     char lines_string[20];
     char columns_string[20];
     struct winsize ws;
 
-    pty_fd = get_pty(tty_name, sizeof(tty_name));
-    if (pty_fd < 0) {
-        put_error(s->b->qs->active_window, "run_process: cannot get tty: %s",
-                  strerror(errno));
-        return -1;
+    if (shell_flags & SF_INTERACTIVE) {
+        pty_fd = get_pty(tty_name, sizeof(tty_name));
+        if (pty_fd < 0) {
+            put_error(s->b->qs->active_window, "run_process: cannot get tty: %s",
+                      strerror(errno));
+            return -1;
+        }
+        /* set dummy screen size */
+        ws.ws_col = cols;
+        ws.ws_row = rows;
+        ws.ws_xpixel = 0;
+        ws.ws_ypixel = 0;
+        ioctl(pty_fd, TIOCSWINSZ, &ws);
+    } else {
+        if (pipe(pipe_fds) < 0) {
+            put_error(s->b->qs->active_window, "run_process: cannot pipe: %s",
+                      strerror(errno));
+            return -1;
+        }
+        pty_fd = pipe_fds[0];
     }
+
     fcntl(pty_fd, F_SETFL, O_NONBLOCK);
-
-    if (shell_flags & SF_INFINITE) {
-        rows += QE_TERM_YSIZE_INFINITE;
-    }
-
-    /* set dummy screen size */
-    ws.ws_col = cols;
-    ws.ws_row = rows;
-    ws.ws_xpixel = ws.ws_col;
-    ws.ws_ypixel = ws.ws_row;
-    ioctl(pty_fd, TIOCSWINSZ, &ws);
 
     pid = fork();
     if (pid < 0) {
         put_error(s->b->qs->active_window, "run_process: cannot fork");
+        if (shell_flags & SF_INTERACTIVE) {
+            close(pty_fd);
+        } else {
+            close(pipe_fds[0]);
+            close(pipe_fds[1]);
+        }
         return -1;
     }
+
     if (pid == 0) {
         /* child process */
         const char *argv[4];
         char qelevel[16];
         char *vp;
         int argc = 0;
-        int fd0, fd1, fd2;
+        int tmp_fd;
 
         argv[argc++] = get_shell();
         if (cmd) {
@@ -265,46 +277,37 @@ static int run_process(ShellState *s,
 #ifndef CONFIG_DARWIN
         setsid();
 #endif
-        /* close all files */
-        nb_fds = sysconf(_SC_OPEN_MAX);
-        for (i = 0; i < nb_fds; i++)
-            close(i);
 
         /* open pseudo tty for standard I/O */
         if (shell_flags & SF_INTERACTIVE) {
             /* interactive shell: input from / output to pseudo terminal */
-            fd0 = open(tty_name, O_RDWR);
-            fd1 = dup(0);
-            fd2 = dup(0);
+            tmp_fd = open(tty_name, O_RDWR);
+            dup2(tmp_fd, 0);
+            dup2(tmp_fd, 1);
+            dup2(tmp_fd, 2);
         } else {
             /* collect output from non interactive process: no input */
-            fd0 = open("/dev/null", O_RDONLY);
-            fd1 = open(tty_name, O_RDWR);
-            fd2 = dup(1);
+            tmp_fd = open("/dev/null", O_RDONLY);
+            dup2(tmp_fd, 0);
+            dup2(pipe_fds[1], 1);
+            dup2(pipe_fds[1], 2);
         }
-        if (fd0 != 0 || fd1 != 1 || fd2 != 2) {
-            setenv("QESTATUS", "invalid handles", 1);
-        }
+
+        nb_fds = sysconf(_SC_OPEN_MAX);
+        for (i = 3; i < nb_fds; i++)
+            close(i);
+
 #ifdef CONFIG_DARWIN
         setsid();
 #endif
         snprintf(lines_string, sizeof lines_string, "%d", rows);
         snprintf(columns_string, sizeof columns_string, "%d", cols);
 
-        // To prevent less from paging is somewhat difficult to achieve
-        // portably:
-        // * we set the `LINES` and `COLUMNS` environment variables
-        // * we update the pseudo-terminal size because ioctl TIOCGWINSZ
-        //   or WIOCGETD take precedence over LINES and COLUMNS in linux
-        // We set `MAN_KEEP_FORMATTING=1` and `MANPAGER=cat` for the man
-        // command and handle overstriking in the terminal emulation.
-
         setenv("LINES", lines_string, 1);
         setenv("COLUMNS", columns_string, 1);
         setenv("TERM", "xterm-256color", 1);
         setenv("TERM_PROGRAM", "qemacs", 1);
         setenv("TERM_PROGRAM_VERSION", str_version, 1);
-        unsetenv("PAGER");
         vp = getenv("QELEVEL");
         snprintf(qelevel, sizeof qelevel, "%d", 1 + (vp ? atoi(vp) : 0));
         setenv("QELEVEL", qelevel, 1);
@@ -318,6 +321,10 @@ static int run_process(ShellState *s,
         execv(argv[0], unconst(char * const *)argv);
         exit(1);
     }
+
+    if (!(shell_flags & SF_INTERACTIVE))
+        close(pipe_fds[1]);
+
     /* return file info */
     *fd_ptr = pty_fd;
     *pid_ptr = pid;
@@ -2898,10 +2905,9 @@ static void do_man(EditState *s, const char *arg)
         s->qs->active_window = s;
     }
 
-    // Prevent `less` from paging: use `cat` as the `man` pager and
     // keep formatting with environment variable for systems where `man`
     // disables formatting when writing to a pipe or a file.
-    snprintf(cmd, sizeof(cmd), "MAN_KEEP_FORMATTING=1 MANPAGER=cat man %s", arg);
+    snprintf(cmd, sizeof(cmd), "MAN_KEEP_FORMATTING=1 man %s", arg);
 
     snprintf(bufname, sizeof(bufname), "*Man %s*", arg);
     if (try_show_buffer(&s, bufname))
@@ -2909,7 +2915,7 @@ static void do_man(EditState *s, const char *arg)
 
     /* create new buffer */
     b = qe_new_shell_buffer(s->qs, NULL, s, bufname, NULL,
-                            NULL, cmd, SF_COLOR | SF_INFINITE);
+                            NULL, cmd, SF_COLOR);
     if (!b)
         return;
 
@@ -3576,7 +3582,7 @@ static void do_shell_command(EditState *e, const char *cmd)
 
     /* create new buffer */
     b = qe_new_shell_buffer(qs, NULL, e, bufname, NULL,
-                            curpath, cmd, SF_COLOR | SF_INFINITE |
+                            curpath, cmd, SF_COLOR |
                             SF_REUSE_BUFFER | SF_ERASE_BUFFER);
     if (!b)
         return;
@@ -3596,7 +3602,7 @@ static void do_interactive_shell_command(EditState *e, const char *cmd)
 
     /* create new buffer */
     b = qe_new_shell_buffer(qs, NULL, e, "*interactive shell command*", "Shell process",
-                            curpath, cmd, SF_COLOR | SF_INFINITE | SF_INTERACTIVE);
+                            curpath, cmd, SF_COLOR | SF_INTERACTIVE);
     if (!b)
         return;
 
@@ -3633,7 +3639,7 @@ static void do_compile(EditState *s, const char *cmd)
 
     /* create new buffer */
     b = qe_new_shell_buffer(qs, NULL, s, bufname, "Compilation",
-                            curpath, cmd, SF_COLOR | SF_INFINITE |
+                            curpath, cmd, SF_COLOR |
                             SF_REUSE_BUFFER | SF_ERASE_BUFFER);
     if (!b)
         return;

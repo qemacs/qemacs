@@ -1955,10 +1955,9 @@ void shell_colorize_line(QEColorizeContext *cp,
 
 #define SF_INTERACTIVE   0x01
 #define SF_COLOR         0x02
-#define SF_INFINITE      0x04
-#define SF_AUTO_CODING   0x08
-#define SF_AUTO_MODE     0x10
-#define SF_BUFED_MODE    0x20
+#define SF_AUTO_CODING   0x04
+#define SF_AUTO_MODE     0x08
+#define SF_BUFED_MODE    0x10
 #define SF_REUSE_BUFFER  0x1000
 #define SF_ERASE_BUFFER  0x2000
 EditBuffer *qe_new_shell_buffer(QEmacsState *qs, EditBuffer *b0, EditState *e,
