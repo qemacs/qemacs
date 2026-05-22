@@ -256,7 +256,7 @@ static void latex_cmd_run(void *opaque, char *cmd,
         EditBuffer *b;
         /* invoke command in shell buffer */
         b = qe_new_shell_buffer(qs, NULL, s, "*LaTeX output*", NULL,
-                                path, cmd, SF_COLOR | SF_INFINITE |
+                                path, cmd, SF_COLOR |
                                 SF_REUSE_BUFFER | SF_ERASE_BUFFER);
         if (b) {
             /* XXX: try to split window if necessary */

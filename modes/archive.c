@@ -150,7 +150,7 @@ static int archive_buffer_load(EditBuffer *b, FILE *f)
                   atp->name, b->filename);
         qe_shell_subst(cmd, sizeof(cmd), atp->list_cmd, b->filename, NULL);
         qe_new_shell_buffer(b->qs, b, NULL, get_basename(b->filename), NULL,
-                            NULL, cmd, atp->sf_flags | SF_INFINITE | SF_BUFED_MODE);
+                            NULL, cmd, atp->sf_flags | SF_BUFED_MODE);
 
         /* XXX: should check for archiver error */
         /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
@@ -299,7 +299,7 @@ static int compress_buffer_load(EditBuffer *b, FILE *f)
         qe_shell_subst(cmd, sizeof(cmd), ctp->load_cmd, b->filename, NULL);
         qe_new_shell_buffer(b->qs, b, NULL, get_basename(b->filename), NULL,
                             NULL, cmd,
-                            ctp->sf_flags | SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
+                            ctp->sf_flags | SF_AUTO_CODING | SF_AUTO_MODE);
         /* XXX: should check for archiver error */
         /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
         b->flags |= BF_READONLY;
@@ -388,7 +388,7 @@ static int wget_buffer_load(EditBuffer *b, FILE *f)
     eb_clear(b);
     qe_shell_subst(cmd, sizeof(cmd), "wget -q -O - $1", b->filename, NULL);
     qe_new_shell_buffer(b->qs, b, NULL, get_basename(b->filename), NULL,
-                        NULL, cmd, SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
+                        NULL, cmd, SF_AUTO_CODING | SF_AUTO_MODE);
     /* XXX: should refilter by content type */
     /* XXX: should have a way to keep http headers --save-headers */
     /* XXX: should check for wget error */
@@ -482,7 +482,7 @@ static int man_buffer_load(EditBuffer *b, FILE *f)
     eb_clear(b);
     qe_shell_subst(cmd, sizeof(cmd), "man $1", b->filename, NULL);
     qe_new_shell_buffer(b->qs, b, NULL, get_basename(b->filename), NULL,
-                        NULL, cmd, SF_COLOR | SF_INFINITE);
+                        NULL, cmd, SF_COLOR);
     /* XXX: should check for man error */
     /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
     b->flags |= BF_READONLY;
