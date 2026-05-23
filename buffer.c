@@ -730,6 +730,7 @@ EditBuffer *qe_new_buffer(QEmacsState *qs, const char *name, int flags)
     b->tab_width = qs->default_tab_width;
     b->fill_column = qs->default_fill_column;
     b->eol_type = qs->default_eol_type;
+    b->atime = b->mtime = b->ctime = get_clock_ms();
 
     /* set the buffer name to a unique name */
     // XXX: `b` is not in the buffer list nor in the buffer cache
@@ -1153,6 +1154,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
 
     was_modified = b->modified;
     b->modified = 1;
+    b->mtime = get_clock_ms();
 
     if (!b->save_log)
         return;

@@ -3381,25 +3381,29 @@ void basic_mode_line(EditState *s, buf_t *out, int c1)
 {
     char buf[128];
     const char *mode_name;
-    int mod, state;
+    char lead[] = "--:--";
 
-    mod = s->b->modified ? '*' : '-';
+    lead[0] = (char)c1;
     if (s->b->flags & BF_LOADING)
-        state = 'L';
+        lead[1] = 'L';
     else if (s->b->flags & BF_SAVING)
-        state = 'S';
+        lead[1] = 'S';
     else if (s->busy)
-        state = 'B';
+        lead[1] = 'B';
+
+    if (s->b->flags & BF_READONLY)
+        lead[3] = lead[4] = '%';
     else
-        state = '-';
+    if (s->b->modified)
+        lead[3] = '*';
+    if (s->b->modified)
+        lead[4] = '*';
 
     mode_name = qe_get_mode_name(s, buf, sizeof(buf), 1);
     /* Strip text mode name if another mode is also active */
     strstart(mode_name, "text ", &mode_name);
 
-    buf_printf(out, "%c%c:%c%c  %-20s  (%s)",
-               c1, state, s->b->flags & BF_READONLY ? '%' : mod,
-               mod, s->b->name, mode_name);
+    buf_printf(out, "%s  %-20s  (%s)", lead, s->b->name, mode_name);
 }
 
 void text_mode_line(EditState *s, buf_t *out)
@@ -5864,6 +5868,9 @@ void qe_display(QEmacsState *qs)
     int start_time, elapsed_time;
 
     start_time = get_clock_ms();
+
+    if (qs->active_window)
+        qs->active_window->b->atime = start_time;
 
     /* first call hooks for mode specific fixups */
     for (s = qs->first_window; s != NULL; s = s->next_window) {
