@@ -477,9 +477,10 @@ struct EditBuffer {
     int atime;               /* buffer last access time, get_clock_ms() */
     int ctime;               /* buffer creation time, get_clock_ms() */
     int mtime;               /* buffer last modification time */
-    unsigned long file_size; /* file size at load time */
+    mode_t st_mode;          /* unix file mode */
+    int file_ignore;         /* disable qe_check_buffer_file */
+    off_t file_size;         /* file size at load time */
     time_t file_mtime;       /* file last modification time */
-    int st_mode;             /* unix file mode */
     const char name[MAX_BUFFERNAME_SIZE];     /* buffer name */
     const char filename[MAX_FILENAME_SIZE];   /* file name */
 
@@ -1491,6 +1492,26 @@ static inline int is_user_input_pending(void) {
 #define LF_NOSELECT       0x10
 #define LF_NOWILDCARD     0x20
 int qe_load_file(EditState *s, const char *filename, int lflags, int bflags);
+
+enum {
+    CBF_NOT_RAW = -3,       // not a data file
+    CBF_OPEN_FAILED = -2,   // cannot open the file
+    CBF_NO_ACCESS = -1,     // access failed
+    CBF_SAME = 0,           // same size and time
+    CBF_SAME_CONTENTS,      // same contents (time updated)
+    CBF_APPENDED,           // file data was appended
+    CBF_PROMPT,
+    //CBF_ABORT,            // abort command
+    //CBF_IGNORE,           // file modifications ignored
+    //CBF_UPDATED,          // buffer contents updated
+    //CBF_MERGE,            // buffer and file data merged
+};
+enum {            // check_buffer_file mode values
+    CBF_CHECK,
+    CBF_MODIFY,
+    CBF_SAVE,
+};
+int qe_check_buffer_file(EditBuffer *b, int mode);
 
 /* config file support */
 void do_load_config_file(EditState *e, const char *file);

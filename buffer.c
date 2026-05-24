@@ -134,6 +134,9 @@ int eb_write(EditBuffer *b, int offset, const void *buf, int size)
     if (b->flags & BF_READONLY)
         return 0;
 
+    if (qe_check_buffer_file(b, CBF_MODIFY) == CBF_PROMPT)
+        return 0;
+
     /* We carefully clip the request, avoiding integer overflow */
     if (offset < 0 || size <= 0 || offset > b->total_size)
         return 0;
@@ -160,8 +163,11 @@ int eb_write(EditBuffer *b, int offset, const void *buf, int size)
             page_offset = 0;
         }
     }
-    if (size > write_size)
+    if (size > write_size) {
+        b->file_ignore++;
         eb_insert(b, offset + write_size, buf, size - write_size);
+        b->file_ignore--;
+    }
     return size;
 }
 
@@ -314,6 +320,9 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
     if (dest->flags & BF_READONLY)
         return 0;
 
+    if (qe_check_buffer_file(dest, CBF_MODIFY) == CBF_PROMPT)
+        return 0;
+
     /* Assert parameter consistency */
     if (dest_offset < 0 || src_offset < 0 || src_offset >= src->total_size)
         return 0;
@@ -452,6 +461,9 @@ int eb_insert(EditBuffer *b, int offset, const void *buf, int size)
     if (b->flags & BF_READONLY)
         return 0;
 
+    if (qe_check_buffer_file(b, CBF_MODIFY) == CBF_PROMPT)
+        return 0;
+
     /* sanity checks */
     if (offset > b->total_size)
         offset = b->total_size;
@@ -462,9 +474,6 @@ int eb_insert(EditBuffer *b, int offset, const void *buf, int size)
     eb_addlog(b, LOGOP_INSERT, offset, size);
 
     eb_insert_lowlevel(b, offset, buf, size);
-
-    /* the page cache is no longer valid */
-    b->cur_page = NULL;
     return size;
 }
 
@@ -477,6 +486,9 @@ int eb_delete(EditBuffer *b, int offset, int size)
     Page *del_start, *p;
 
     if (b->flags & BF_READONLY)
+        return 0;
+
+    if (qe_check_buffer_file(b, CBF_MODIFY) == CBF_PROMPT)
         return 0;
 
     if (offset < 0 || offset >= b->total_size || size <= 0)
@@ -2906,6 +2918,10 @@ int eb_save_buffer(EditBuffer *b)
     /* set correct file st_mode to old file permissions */
     chmod(filename, st_mode);
 #endif
+    if (stat(filename, &st) == 0) {
+        b->file_mtime = st.st_mtime;
+        b->file_size = st.st_size;
+    }
     /* reset log */
     /* CG: should not do this! */
     //eb_free_log_buffer(b);

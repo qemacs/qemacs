@@ -1457,6 +1457,7 @@ static void dired_select(EditState *s, int mode)
         if (e) {
 #if 1
             s->qs->active_window = e;
+            qe_check_buffer_file(e->b, CBF_CHECK);
             if (mode == 1) {
                 /* XXX: should keep BF_PREVIEW flag and set pager-mode */
                 e->b->flags &= ~BF_PREVIEW;
@@ -1542,6 +1543,7 @@ static void dired_parent(EditState *s, int collapse)
         EditState *e = find_window(s, KEY_LEFT, NULL);
         if (e && (e->flags & WF_FILELIST)) {
             s->qs->active_window = e;
+            qe_check_buffer_file(e->b, CBF_CHECK);
             return;
         }
     }

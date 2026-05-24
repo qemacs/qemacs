@@ -1775,6 +1775,7 @@ void text_mouse_goto(EditState *s, int x, int y, QEEvent *ev)
     if (!(curw && (curw->flags & (WF_POPUP | WF_MINIBUF)))
     &&  !qs->key_ctx.grab_key_cb) {
         qs->active_window = s;
+        qe_check_buffer_file(s->b, CBF_CHECK);
     }
     if (s->mouse_force_highlight)
         s->force_highlight = 1;
@@ -2592,18 +2593,17 @@ void do_exchange_point_and_mark(EditState *s)
     s->offset = tmp;
 }
 
-static int reload_buffer(EditState *s, EditBuffer *b)
+static int reload_buffer(EditState *s, EditBuffer *b, int reload)
 {
     FILE *f, *f1 = NULL;
     int ret, saved;
+    struct stat st;
 
     /* if no file associated, cannot do anything */
     if (b->filename[0] == '\0')
         return 0;
 
     if (!f1 && b->data_type == &raw_data_type) {
-        struct stat st;
-
         if (stat(b->filename, &st) < 0 || !S_ISREG(st.st_mode))
             return -1;
 
@@ -2614,18 +2614,25 @@ static int reload_buffer(EditState *s, EditBuffer *b)
     } else {
         f = f1;
     }
-    /* XXX: the log buffer is inappropriate if the file was modified on
-     * disk. If this is a reload operation, should create a log for
-     * clearing the buffer and another one for loading it. So the
-     * operation can be undone.
-     */
     saved = b->save_log;
-    b->save_log = 0;
+    b->file_ignore++;
+    if (reload) {
+        /* If this is a reload operation, clear the buffer first.
+         * if undo is enabled, create a log for clearing the buffer
+         * and another one for loading it, so the operation can be undone.
+         */
+        // XXX: should try and minimize modification log */
+        eb_delete_range(b, 0, b->total_size);
+    } else {
+        /* Otherwise, do not log the initial load */
+        b->save_log = 0;
+    }
     if (b->data_type->buffer_load)
         ret = b->data_type->buffer_load(b, f);
     else
         ret = -1;
 
+    b->file_ignore = 0;
     b->modified = 0;
     b->save_log = saved;
 
@@ -2641,7 +2648,11 @@ static int reload_buffer(EditState *s, EditBuffer *b)
         }
         return -1;
     } else {
-        return 0;
+        if (stat(b->filename, &st) < 0) {
+            b->file_mtime = st.st_mtime;
+            b->file_size = st.st_size;
+        }
+        return ret;
     }
 }
 
@@ -2845,7 +2856,7 @@ int edit_set_mode(EditState *s, ModeDef *m)
                 s->mode = m;
                 b->data_type = m->data_type;
                 b->data_type_name = m->data_type->name;
-                if (reload_buffer(s, b) < 0) {
+                if (reload_buffer(s, b, FALSE) < 0) {
                     b->data_type = &raw_data_type;
                     b->data_type_name = NULL;
                     errstr = "Cannot reload buffer";
@@ -2862,7 +2873,7 @@ int edit_set_mode(EditState *s, ModeDef *m)
         } else {
             /* if raw data and nothing loaded, we try to load */
             if (b->total_size == 0 && !b->modified)
-                reload_buffer(s, b);
+                reload_buffer(s, b, FALSE);
         }
         if (errstr) {
             put_error(s, "Cannot set mode %s: %s", m->name, errstr);
@@ -7120,6 +7131,8 @@ static void edit_detach(EditState *s)
             qs->active_window = s->target_window;
         else
             qs->active_window = qs->first_window;
+        if (qs->active_window)
+            qe_check_buffer_file(qs->active_window->b, CBF_CHECK);
     }
 }
 
@@ -9241,6 +9254,15 @@ void do_set_visited_file_name(EditState *s, const char *filename,
     eb_set_filename(s->b, path);
 }
 
+static void put_read_message(EditState *s, const char *filename, int nb)
+{
+    if (nb >= 0) {
+        put_status(s, "Read %d bytes from %s", nb, filename);
+    } else {
+        put_error(s, "Could not read %s", filename);
+    }
+}
+
 static void put_save_message(EditState *s, const char *filename, int nb)
 {
     if (nb >= 0) {
@@ -9257,6 +9279,9 @@ void do_save_buffer(EditState *s)
         put_status(s, "(No changes need to be saved)");
         return;
     }
+    if (qe_check_buffer_file(s->b, CBF_SAVE) == CBF_PROMPT)
+        return;
+
     put_save_message(s, s->b->filename, eb_save_buffer(s->b));
 }
 
@@ -9278,6 +9303,175 @@ void do_write_region(EditState *s, const char *filename)
     canonicalize_absolute_path(s, absname, sizeof(absname), filename);
     put_save_message(s, filename,
                      eb_write_buffer(s->b, s->b->mark, s->offset, filename));
+}
+
+static void qe_check_buffer_file_key(EditBuffer *b, int ch, int save)
+{
+    QEmacsState *qs = b->qs;
+    EditState *s = qs->active_window;
+
+    switch (ch) {
+    case 'y':
+        if (save) goto do_save;
+        goto do_read;
+    case 'n':  /* do not read or save */
+    case 'q':
+        qe_ungrab_keys(qs);
+        put_status(s, "Stop");
+        break;
+    case 'i':
+        b->file_ignore++;
+        qe_ungrab_keys(qs);
+        put_status(s, "Ignored");
+        break;
+    case 'r':
+    do_read:
+        qe_ungrab_keys(qs);
+        b->file_ignore++;
+        put_read_message(s, b->filename, reload_buffer(s, b, TRUE));
+        b->file_ignore = 0;
+        // XXX: should not be needed
+        qs->complete_refresh = 1;
+        break;
+    case 's':
+    do_save:
+        qe_ungrab_keys(qs);
+        put_save_message(s, b->filename, eb_save_buffer(b));
+        break;
+    case KEY_CTRL('g'): /* abort */
+        qe_ungrab_keys(qs);
+        put_error(s, "&Quit");
+        break;
+    case 'd':
+    case 'c':
+        put_error(s, "Diff not supported yet");
+        break;
+    case 'm':
+        put_error(s, "Merge not supported yet");
+        break;
+    case '?': {
+            struct stat st;
+            qs->complete_refresh = 1;
+            do_refresh(s);
+            if (stat(b->filename, &st) < 0) {
+                put_status(s, "Cannot stat %s", b->filename);
+            } else {
+                put_status(s, "Buffer: %ld bytes, file: %ld bytes %ld sec, was %ld bytes %ld sec",
+                           (long)b->total_size, (long)st.st_size, (long)st.st_mtime,
+                           (long)b->file_size, (long)b->file_mtime);
+            }
+        }
+        break;
+    default:
+        /* get another key */
+        dpy_sound_bell(s->screen);
+        break;
+    }
+    qe_display(qs);
+}
+
+static void qe_check_buffer_file_key_read(void *opaque, int ch)
+{
+    qe_check_buffer_file_key(opaque, ch, FALSE);
+}
+
+static void qe_check_buffer_file_key_save(void *opaque, int ch)
+{
+    qe_check_buffer_file_key(opaque, ch, TRUE);
+}
+
+int qe_check_buffer_file(EditBuffer *b, int mode)
+{
+    QEmacsState *qs = b->qs;
+    struct stat st;
+    char buf1[4096];
+    char buf2[4096];
+    FILE *fp;
+    int pos, size1, size2;
+
+    if (b->file_ignore)
+        return CBF_SAME;
+
+    if (b->data_type && b->data_type != &raw_data_type)
+        return CBF_NOT_RAW;
+
+    if (stat(b->filename, &st))
+        return CBF_NO_ACCESS;
+
+    if (st.st_mtime == b->file_mtime && st.st_size == b->file_size)
+        return CBF_SAME;
+
+    if (st.st_size >= b->file_size) {
+        fp = fopen(b->filename, "rb");
+        if (!fp)
+            return CBF_OPEN_FAILED;
+        pos = 0;
+        for (;;) {
+            size1 = fread(buf1, 1, sizeof(buf1), fp);
+            if (size1 == 0) {
+                if (pos == b->total_size) {
+                    // file contents identical
+                    fclose(fp);
+                    b->file_mtime = st.st_mtime;
+                    b->file_size = st.st_size;
+                    put_status(qs->active_window, "File time updated");
+                    return CBF_SAME_CONTENTS;
+                }
+            }
+            size2 = eb_read(b, pos, buf2, size1);
+            if (!memcmp(buf1, buf2, size2)) {
+                if (size1 == size2) {
+                    pos += size1;
+                    continue;
+                }
+                // file has extra data
+                if (mode == CBF_CHECK && pos + size2 == b->total_size) {
+                    int saved = b->save_log;
+                    b->save_log = 0;
+                    b->file_ignore++;
+                    pos += size2;
+                    size1 -= size2;
+                    eb_insert(b, pos, buf1 + size2, size1);
+                    while ((size1 = fread(buf1, 1, sizeof(buf1), fp)) > 0) {
+                        eb_insert(b, pos, buf1, size1);
+                        pos += size1;
+                    }
+                    // should have pos == st.st_size
+                    fclose(fp);
+                    b->modified = 0;
+                    b->file_ignore--;
+                    b->save_log = saved;
+                    b->file_mtime = st.st_mtime;
+                    b->file_size = st.st_size;
+                    put_status(qs->active_window, "File data was appended");
+                    return CBF_APPENDED;
+                }
+                // no auto_append or size mismatch
+            } else {
+                // file contents differs
+            }
+            break;
+        }
+        fclose(fp);
+    }
+    // file contents differs
+    qe_stop_macro(qs);
+    switch (mode) {
+    case CBF_CHECK:
+    case CBF_MODIFY:
+        qe_grab_keys(qs, qe_check_buffer_file_key_read, b);
+        put_status(qs->active_window,
+                   "%s changed on disk; read the modified file? (y, n, r, s or ?)",
+                   b->filename);
+        break;
+    case CBF_SAVE:
+        qe_grab_keys(qs, qe_check_buffer_file_key_save, b);
+        put_status(qs->active_window,
+                   "%s changed on disk; really save the buffer? (y, n, r, s or ?)",
+                   b->filename);
+        break;
+    }
+    return CBF_PROMPT;
 }
 
 enum QSState {
@@ -9668,14 +9862,17 @@ void do_other_window(EditState *s)
         if (e->flags & WF_MINIBUF)
             edit_invalidate(e, 0);
         s->qs->active_window = e;
+        qe_check_buffer_file(e->b, CBF_CHECK);
     }
 }
 
 void do_previous_window(EditState *s)
 {
     EditState *e = get_previous_window(s, 0, 0);
-    if (e)
+    if (e) {
         s->qs->active_window = e;
+        qe_check_buffer_file(e->b, CBF_CHECK);
+    }
 }
 
 /* Delete a window and try to resize other windows so that it gets
@@ -9747,9 +9944,11 @@ void do_delete_window(EditState *s, int force)
         if (x1 != x2 && y1 != y2)
             qs->complete_refresh = 1;
     }
-    if (qs->active_window == s)
+    if (qs->active_window == s) {
         qs->active_window = e1 ? e1 : qs->first_window;
-
+        if (qs->active_window)
+            qe_check_buffer_file(qs->active_window->b, CBF_CHECK);
+    }
     edit_close(&s);
     if (qs->first_window)
         do_refresh(qs->first_window);

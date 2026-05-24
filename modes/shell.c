@@ -2776,6 +2776,7 @@ static EditBuffer *try_show_buffer(EditState **sp, const char *bufname)
         e = eb_find_window(b, NULL);
         if (e) {
             qs->active_window = *sp = e;
+            qe_check_buffer_file(e->b, CBF_CHECK);
         } else {
             switch_to_buffer(s, b);
         }
@@ -2907,6 +2908,7 @@ static void do_man(EditState *s, const char *arg)
 {
     char bufname[32];
     char cmd[128];
+    QEmacsState *qs = s->qs;
     EditBuffer *b;
 
     if (s->flags & (WF_POPUP | WF_MINIBUF))
@@ -2915,7 +2917,7 @@ static void do_man(EditState *s, const char *arg)
     if (s->flags & WF_POPLEFT) {
         /* avoid messing with the dired pane */
         s = find_window(s, KEY_RIGHT, s);
-        s->qs->active_window = s;
+        qs->active_window = s;
     }
 
     // keep formatting with environment variable for systems where `man`
@@ -2927,8 +2929,7 @@ static void do_man(EditState *s, const char *arg)
         return;
 
     /* create new buffer */
-    b = qe_new_shell_buffer(s->qs, NULL, s, bufname, NULL,
-                            NULL, cmd, SF_COLOR);
+    b = qe_new_shell_buffer(qs, NULL, s, bufname, NULL, NULL, cmd, SF_COLOR);
     if (!b)
         return;
 
@@ -2942,6 +2943,7 @@ static void do_ssh(EditState *s, const char *arg)
 {
     char bufname[64];
     char cmd[128];
+    QEmacsState *qs = s->qs;
     EditBuffer *b;
 
     if (s->flags & (WF_POPUP | WF_MINIBUF))
@@ -2950,7 +2952,7 @@ static void do_ssh(EditState *s, const char *arg)
     if (s->flags & WF_POPLEFT) {
         /* avoid messing with the dired pane */
         s = find_window(s, KEY_RIGHT, s);
-        s->qs->active_window = s;
+        qs->active_window = s;
     }
 
     /* Use standard ssh command */
@@ -2958,7 +2960,7 @@ static void do_ssh(EditState *s, const char *arg)
     snprintf(bufname, sizeof(bufname), "*ssh-%s*", arg);
 
     /* create new buffer */
-    b = qe_new_shell_buffer(s->qs, NULL, s, bufname, "ssh",
+    b = qe_new_shell_buffer(qs, NULL, s, bufname, "ssh",
                             NULL, cmd, SF_COLOR | SF_INTERACTIVE);
     if (!b)
         return;
