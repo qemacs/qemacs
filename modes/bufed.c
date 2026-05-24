@@ -282,14 +282,15 @@ static void bufed_select(EditState *s, int temp)
     BufedState *bs;
     EditBuffer *b, *last_buffer;
     EditState *e;
+    QEmacsState *qs = s->qs;
     int index = -1;
 
     if (!(bs = bufed_get_state(s, 1)))
         return;
 
     if (temp < 0) {
-        b = qe_check_buffer(s->qs, &bs->cur_buffer);
-        last_buffer = qe_check_buffer(s->qs, &bs->last_buffer);
+        b = qe_check_buffer(qs, &bs->cur_buffer);
+        last_buffer = qe_check_buffer(qs, &bs->last_buffer);
     } else {
         index = list_get_pos(s);
         if (index < 0 || index >= bs->items.nb_items)
@@ -298,10 +299,10 @@ static void bufed_select(EditState *s, int temp)
         if (temp > 0 && index == bs->last_index)
             return;
 
-        b = qe_check_buffer(s->qs, (EditBuffer**)(void *)&bs->items.items[index]->opaque);
+        b = qe_check_buffer(qs, (EditBuffer**)(void *)&bs->items.items[index]->opaque);
         last_buffer = bs->cur_buffer;
     }
-    e = qe_check_window(s->qs, &bs->cur_window);
+    e = qe_check_window(qs, &bs->cur_window);
     if (e && b) {
         switch_to_buffer(e, b);
         e->last_buffer = last_buffer;
@@ -314,8 +315,10 @@ static void bufed_select(EditState *s, int temp)
         if (s->flags & WF_POPUP) {
             /* delete bufed window */
             do_delete_window(s, 1);
-            if (e)
-                e->qs->active_window = e;
+            if (e) {
+                qs->active_window = e;
+                qe_check_buffer_file(e->b, CBF_CHECK);
+            }
         }
     } else {
         bs->last_index = index;
