@@ -64,6 +64,10 @@ atari="no"
 win32="no"
 cygwin="no"
 darwin="no"
+linux="no"
+freebsd="no"
+openbsd="no"
+netbsd="no"
 haiku="no"
 lshared="no"
 dllibs="-ldl"
@@ -112,6 +116,7 @@ case $targetos in
     ptsname="no"
     ;;
   NetBSD)
+    netbsd="yes"
     extralibs="-lm"
     unlockio="no"
     doc="no"
@@ -119,6 +124,7 @@ case $targetos in
     dllibs=
     ;;
   OpenBSD)
+    openbsd="yes"
     extralibs="-lm"
     make="gmake"
     doc="no"
@@ -129,6 +135,7 @@ case $targetos in
     host_cc="cc"
     ;;
   FreeBSD)
+    freebsd="yes"
     extralibs="-lm"
     make="gmake"
     doc="no"
@@ -165,6 +172,11 @@ case $targetos in
     html="yes"
     png="yes"
     x11="no"
+    ;;
+  Linux)
+    linux="yes"
+    extralibs="-lm"
+    unlockio="yes"
     ;;
   *)
     extralibs="-lm"
@@ -673,6 +685,26 @@ fi
 if test "$darwin" = "yes" ; then
   echo "#define CONFIG_DARWIN 1" >> $TMPH
   echo "CONFIG_DARWIN=yes" >> $TMPMAK
+fi
+
+if test "$linux" = "yes" ; then
+  echo "#define CONFIG_LINUX 1" >> $TMPH
+  echo "CONFIG_LINUX=yes" >> $TMPMAK
+fi
+
+if test "$freebsd" = "yes" ; then
+  echo "#define CONFIG_FREEBSD 1" >> $TMPH
+  echo "CONFIG_FREEBSD=yes" >> $TMPMAK
+fi
+
+if test "$openbsd" = "yes" ; then
+  echo "#define CONFIG_OPENBSD 1" >> $TMPH
+  echo "CONFIG_OPENBSD=yes" >> $TMPMAK
+fi
+
+if test "$netbsd" = "yes" ; then
+  echo "#define CONFIG_NETBSD 1" >> $TMPH
+  echo "CONFIG_NETBSD=yes" >> $TMPMAK
 fi
 
 if test "$haiku" = "yes" ; then
