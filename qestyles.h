@@ -62,6 +62,16 @@
     STYLE_DEF(QE_STYLE_BLANK_HILITE, "blank-hilite", /* black on red */
               QERGB(0x00, 0x00, 0x00), QERGB(0xff, 0x00, 0x00), 0, 0)
 
+    /* diff/patch styles */
+    STYLE_DEF(QE_STYLE_DIFF_HEAD, "diff-head", /* bright white */
+              QERGB(0xff, 0xff, 0xff), COLOR_TRANSPARENT, 0, 0)
+    STYLE_DEF(QE_STYLE_DIFF_MARK, "diff-mark", /* grey88 on blue */
+              QERGB(0xc0, 0xc0, 0xc0), QERGB(0x00, 0x00, 0x40), 0, 0)
+    STYLE_DEF(QE_STYLE_DIFF_OLD, "diff-old", /* bright white on red */
+              QERGB(0xff, 0xff, 0xff), QERGB(0x40, 0x00, 0x00), 0, 0)
+    STYLE_DEF(QE_STYLE_DIFF_NEW, "diff-new", /* bright white on green */
+              QERGB(0xff, 0xff, 0xff), QERGB(0x00, 0x40, 0x00), 0, 0)
+
     /* HTML coloring styles */
     STYLE_DEF(QE_STYLE_HTML_COMMENT, "html-comment", /* #f84400 */
               QERGB(0xf8, 0x44, 0x00), COLOR_TRANSPARENT, 0, 0)

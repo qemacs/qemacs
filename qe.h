@@ -477,10 +477,10 @@ struct EditBuffer {
     int atime;               /* buffer last access time, get_clock_ms() */
     int ctime;               /* buffer creation time, get_clock_ms() */
     int mtime;               /* buffer last modification time */
-    mode_t st_mode;          /* unix file mode */
     int file_ignore;         /* disable qe_check_buffer_file */
-    off_t file_size;         /* file size at load time */
+    mode_t file_mode;        /* unix file mode */
     time_t file_mtime;       /* file last modification time */
+    off_t file_size;         /* file size at load time */
     const char name[MAX_BUFFERNAME_SIZE];     /* buffer name */
     const char filename[MAX_FILENAME_SIZE];   /* file name */
 
@@ -1987,4 +1987,5 @@ EditBuffer *qe_new_shell_buffer(QEmacsState *qs, EditBuffer *b0, EditState *e,
                                 const char *bufname, const char *caption,
                                 const char *path, const char *cmd,
                                 int shell_flags);
+void qe_diff_buffer_with_file(EditState *s, EditBuffer *b);
 #endif

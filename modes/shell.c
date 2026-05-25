@@ -2906,8 +2906,8 @@ static EditState *shell_target_window(EditState *e, EditBuffer *b)
 
 static void do_man(EditState *s, const char *arg)
 {
-    char bufname[32];
-    char cmd[128];
+    char bufname[MAX_BUFFERNAME_SIZE];
+    char cmd[16 + MAX_FILENAME_SIZE];
     QEmacsState *qs = s->qs;
     EditBuffer *b;
 
@@ -2939,10 +2939,81 @@ static void do_man(EditState *s, const char *arg)
     edit_set_mode(s, &pager_mode);
 }
 
+void qe_diff_buffer_with_file(EditState *s, EditBuffer *b)
+{
+    char bufname[MAX_BUFFERNAME_SIZE];
+    char cmd[64 + 2 * MAX_FILENAME_SIZE];
+    char tmpfile[MAX_FILENAME_SIZE];
+    QEmacsState *qs = s->qs;
+    EditState *e;
+    EditBuffer *b1;
+    const char *fname = get_basename(b->filename);
+    const char *tmpdir = getenv("TMPDIR");
+    int tmpdir_len;
+
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
+        return;
+    if (!*fname)
+        return;
+
+    if (!tmpdir || !*tmpdir) tmpdir = "/tmp";
+    tmpdir_len = strlen(tmpdir);
+    if (tmpdir[tmpdir_len - 1] == '/') tmpdir_len--;
+
+    snprintf(tmpfile, sizeof(tmpfile), "%.*s/qe-%d-%s",
+             tmpdir_len, tmpdir, getpid(), fname);
+    eb_write_buffer(b, 0, b->total_size, tmpfile);
+
+    // Pass options to diff command
+    // -s, --report-identical-files
+    //      report when two files are the same
+    // -p, --show-c-function
+    //      show which C function each change is in
+    // --label LABEL   [-L on FreeBSD and OpenBSD]
+    //      use LABEL instead of file name and timestamp (can be repeated)
+    // -t, --expand-tabs
+    //      expand tabs to spaces in output
+    // --color[=WHEN]  [macOS only]
+    //      color output; WHEN is 'never', 'always', or 'auto'; plain
+    //      --color means --color='auto'
+
+#if defined(CONFIG_DARWIN) || defined(CONFIG_LINUX)
+    snprintf(cmd, sizeof(cmd), "diff -s -p -u --label '%s' --label '#<buffer %s>' '%s' '%s'; rm '%s'",
+             b->filename, b->name, b->filename, tmpfile, tmpfile);
+#elif defined(CONFIG_FREEBSD) || defined(CONFIG_OPENBSD)
+    snprintf(cmd, sizeof(cmd), "diff -s -p -u -L '%s' -L '#<buffer %s>' '%s' '%s'; rm '%s'",
+             b->filename, b->name, b->filename, tmpfile, tmpfile);
+#else
+    snprintf(cmd, sizeof(cmd), "diff -s -p -u '%s' '%s'; rm '%s'",
+             b->filename, tmpfile, tmpfile);
+#endif
+    snprintf(bufname, sizeof(bufname), "*Diff %s*", fname);
+
+    b1 = qe_new_shell_buffer(qs, NULL, s, bufname, NULL, NULL, cmd, SF_COLOR);
+    if (!b1) {
+        unlink(tmpdir);
+        return;
+    }
+
+    // construct popup caption
+    snprintf(cmd, sizeof(cmd), "Diff buffer %s", fname);
+
+    b1->data_type_name = "diff";
+    b1->flags |= BF_READONLY;
+    e = show_popup(s, b1, cmd);
+    // XXX: Should use patch mode
+    edit_set_mode(e, &pager_mode);
+}
+
+static void do_diff_buffer_with_file(EditState *s)
+{
+    qe_diff_buffer_with_file(s, s->b);
+}
+
 static void do_ssh(EditState *s, const char *arg)
 {
-    char bufname[64];
-    char cmd[128];
+    char bufname[MAX_BUFFERNAME_SIZE];
+    char cmd[16 + MAX_FILENAME_SIZE];
     QEmacsState *qs = s->qs;
     EditBuffer *b;
 
@@ -3843,7 +3914,7 @@ static int shell_grab_filename(const char32_t *buf, int n,
                     break;
             }
         }
-        if (qe_isspace(c)) {
+        if (qe_isspace(c) && buf[0] != '#') {
             if (len)
                 break;
             continue;
@@ -3889,7 +3960,7 @@ void shell_colorize_line(QEColorizeContext *cp,
     /* detect match lines for known languages and colorize accordingly */
     char filename[MAX_FILENAME_SIZE];
     ModeDef *m;
-    int i = 0, start = 0;
+    int i = 0, start = 0, style = 0;
 
     if (qe_isspace(str[0])) {
         if (cp->colorize_state & STATE_SHELL_SKIP)
@@ -3898,11 +3969,30 @@ void shell_colorize_line(QEColorizeContext *cp,
         /* Detect patches and colorize according to filename */
         if (str[0] == '+' || str[0] == '-') {
             if (match_string(str, n, "+++ ") || match_string(str, n, "--- ")) {
-                shell_grab_filename(str + 4, n - 4, filename, countof(filename), FALSE);
+                /* extract filename, strip some known prefixes and suffixes */
+                const char32_t *p = str + 4;
+                const char32_t *q = str + n;
+                int pref = match_string(p, q - p, "#<buffer ");
+                if (pref && q[-1] == '>') {
+                    p += pref;
+                    q--;
+                }
+                if (q[-1] == '>' && qe_isdigit(q[-2])) {
+                    q -= 2;
+                    while (qe_isdigit(q[-1]))
+                        q--;
+                    if (q[-1] == '<')
+                        q--;
+                }
+                shell_grab_filename(p, q - p, filename, countof(filename), FALSE);
                 cp->colorize_state = qe_shell_find_mode(cp->s->qs, filename);
                 cp->colorize_state |= STATE_SHELL_SKIP | STATE_SHELL_KEEP;
+                SET_STYLE(sbuf, 0, n, QE_STYLE_DIFF_HEAD);
+                cp->combine_stop = 0;
                 return;
             } else {
+                // XXX: combine colorized code with background color
+                style = (str[0] == '-') ? QE_STYLE_DIFF_OLD : QE_STYLE_DIFF_NEW;
                 start = 1;
             }
         } else
@@ -3915,20 +4005,23 @@ void shell_colorize_line(QEColorizeContext *cp,
         if (match_string(str, n, "diff ") || match_string(str, n, "Only in ")) {
             return;
         } else
-        if (match_string(str, n, "@@")) {
-            /* patch diff location lines */
-            cp->colorize_state &= STATE_SHELL_MASK;  /* reset potential comment state */
+        if (match_string(str, n, "@@")) {  /* patch/diff location lines */
+            /* reset current multiline state */
+            cp->colorize_state &= STATE_SHELL_MASK;
+            if (cp->colorize_state & STATE_SHELL_MODE) {
+                SET_STYLE(sbuf, 0, n, QE_STYLE_DIFF_MARK);
+                cp->combine_stop = 0;
+            }
             return;
         } else
-        if (match_string(str, n, "==> ")) {
+        if (match_string(str, n, "==> ") && match_string(str + n - 4, 4, " <==")) {
             /* head and tail file marker */
-            i = 4;
-            i += shell_grab_filename(str + i, n - i, filename, countof(filename), FALSE);
-            if (match_string(str + i, n - i, " <==")) {
-                cp->colorize_state = qe_shell_find_mode(cp->s->qs, filename);
-                cp->colorize_state |= STATE_SHELL_KEEP;
-                return;
-            }
+            shell_grab_filename(str + 4, n - 8, filename, countof(filename), FALSE);
+            cp->colorize_state = qe_shell_find_mode(cp->s->qs, filename);
+            cp->colorize_state |= STATE_SHELL_KEEP;
+            SET_STYLE(sbuf, 0, n, QE_STYLE_DIFF_HEAD);
+            cp->combine_stop = 0;
+            return;
         } else {
             /* Detect compiler messages and colorize according to filename */
             while (i < n) {
@@ -4007,18 +4100,23 @@ void shell_colorize_line(QEColorizeContext *cp,
     }
     if ((cp->colorize_state & STATE_SHELL_MODE)
     &&  (m = mode_cache[cp->colorize_state & STATE_SHELL_MODE]) != NULL) {
-        int save_state = cp->colorize_state;
-        cp->colorize_state >>= STATE_SHELL_SHIFT;
-        cp->partial_file++;
-        cp_colorize_line(cp, str, start, n, sbuf, m);
-        cp->partial_file--;
-        if (save_state & STATE_SHELL_KEEP) {
-            cp->colorize_state <<= STATE_SHELL_SHIFT;
-            cp->colorize_state |= save_state & STATE_SHELL_MASK;
+        if (style) {
+            SET_STYLE(sbuf, 0, n, style);
+            cp->combine_stop = 0;
         } else {
-            cp->colorize_state = 0;
+            int save_state = cp->colorize_state;
+            cp->colorize_state >>= STATE_SHELL_SHIFT;
+            cp->partial_file++;
+            cp_colorize_line(cp, str, start, n, sbuf, m);
+            cp->partial_file--;
+            if (save_state & STATE_SHELL_KEEP) {
+                cp->colorize_state <<= STATE_SHELL_SHIFT;
+                cp->colorize_state |= save_state & STATE_SHELL_MASK;
+            } else {
+                cp->colorize_state = 0;
+            }
+            cp->combine_stop = start;
         }
-        cp->combine_stop = start;
         /* Colorize trailing blanks if colorizing shell output */
         for (i = n; i > start && qe_isblank(str[i - 1]); i--) {
             SET_STYLE1(sbuf, i - 1, QE_STYLE_BLANK_HILITE);
@@ -4135,6 +4233,9 @@ static const CmdDef shell_global_commands[] = {
     CMD3( "previous-error", "C-x C-p, M-g p, M-g M-p",
           "Move to the previous error from the last shell command output",
           do_next_error, ESii, "P" "v", -1)
+    CMD0( "diff-buffer-with-file", "C-c C-d, C-c =",
+          "Show differences between the buffer in the current window and its file",
+          do_diff_buffer_with_file)
 };
 
 static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -4241,9 +4342,11 @@ static int shell_init(QEmacsState *qs)
     // XXX: remove this mess: should just inherit with fallback
     memcpy(&pager_mode, &text_mode, offsetof(ModeDef, first_key));
     pager_mode.name = "pager";
+    pager_mode.flags |= MODEF_NO_TRAILING_BLANKS;
     pager_mode.mode_probe = NULL;
     pager_mode.mode_init = pager_mode_init;
     pager_mode.bindings = pager_bindings;
+    pager_mode.colorize_func = shell_colorize_line;
 
     qe_register_mode(qs, &pager_mode, MODEF_NOCMD | MODEF_VIEW);
     qe_register_commands(qs, &pager_mode, pager_commands, countof(pager_commands));

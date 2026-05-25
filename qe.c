@@ -6864,7 +6864,7 @@ void print_at_byte(QEditScreen *screen,
 static void qe_format_message(QEmacsState *qs, const char *bufname,
                               const char *message)
 {
-    char header[128];
+    char header[256];
     EditBuffer *eb = NULL;
     buf_t outbuf, *out;
 
@@ -7127,10 +7127,7 @@ static void edit_detach(EditState *s)
     edit_detach_list(&qs->first_hidden_window, s);
     /* if window was active, activate target window or default window */
     if (qs->active_window == s) {
-        if (s->target_window)
-            qs->active_window = s->target_window;
-        else
-            qs->active_window = qs->first_window;
+        qs->active_window = s->target_window ? s->target_window : qs->first_window;
         if (qs->active_window)
             qe_check_buffer_file(qs->active_window->b, CBF_CHECK);
     }
@@ -8244,6 +8241,7 @@ static int list_init(QEmacsState *qs)
     // XXX: remove this mess: should just inherit with fallback
     memcpy(&list_mode, &text_mode, offsetof(ModeDef, first_key));
     list_mode.name = "list";
+    list_mode.flags |= MODEF_NO_TRAILING_BLANKS;
     list_mode.mode_probe = NULL;
     list_mode.mode_init = list_mode_init;
     list_mode.display_hook = list_display_hook;
@@ -8920,7 +8918,7 @@ void qe_set_next_mode(EditState *s, int n, int status)
     buf[size] = '\0';
 
     nb = probe_mode(s, b, modes, countof(modes), scores, 2,
-                    b->filename, 0, b->st_mode, b->total_size,
+                    b->filename, 0, b->file_mode, b->total_size,
                     buf, size, b->charset, b->eol_type);
     found = 0;
     if (n && nb > 0) {
@@ -9009,6 +9007,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
     b = qe_find_buffer_filename(qs, filename);
     if (b != NULL) {
         switch_to_buffer(s, b);
+        qe_check_buffer_file(b, CBF_CHECK);
         return 0;
     }
 
@@ -9039,11 +9038,11 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
         eb_set_charset(b, &charset_utf8, b->eol_type);
         /* XXX: dired_mode_probe will check for wildcards in real_filename */
         /* Try to determine the desired mode based on the filename. */
-        b->st_mode = st_mode = S_IFREG;
+        b->file_mode = st_mode = S_IFREG;
         buf[0] = '\0';
         buf_size = 0;
         probe_mode(s, b, &selected_mode, 1, &mode_score, 2,
-                   b->filename, st_errno, b->st_mode, b->total_size,
+                   b->filename, st_errno, st_mode, b->total_size,
                    buf, buf_size, b->charset, b->eol_type);
 
         /* Attach buffer to window, will set default_mode
@@ -9056,7 +9055,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
         do_load_qerc(s, s->b->filename);
         return 2;
     } else {
-        b->st_mode = st_mode = st.st_mode;
+        b->file_mode = st_mode = st.st_mode;
         buf_size = 0;
         f = NULL;
 
@@ -9076,7 +9075,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
         }
         buf[buf_size] = '\0';
         if (!probe_mode(s, b, &selected_mode, 1, &mode_score, 2,
-                        filename, 0, b->st_mode, st.st_size,
+                        filename, 0, st_mode, st.st_size,
                         buf, buf_size, charset, eol_type)) {
             fclose(f);
             f = NULL;
@@ -9160,7 +9159,7 @@ static void load_completion_cb(void *opaque, int err)
         put_status(s, "(New file)");
     } else
     if (err == -EISDIR) {
-        s->b->st_mode = S_IFDIR;
+        s->b->file_mode = S_IFDIR;
     } else
     if (err < 0) {
         put_error(s, "Could not read file");
@@ -9311,19 +9310,26 @@ static void qe_check_buffer_file_key(EditBuffer *b, int ch, int save)
     EditState *s = qs->active_window;
 
     switch (ch) {
-    case 'y':
-        if (save) goto do_save;
-        goto do_read;
-    case 'n':  /* do not read or save */
-    case 'q':
+    case KEY_CTRL('g'): /* abort */
         qe_ungrab_keys(qs);
-        put_status(s, "Stop");
+        put_error(s, "&Quit");
         break;
-    case 'i':
+    case KEY_CTRL('m'): /* default */
+        if (b->modified || save) goto do_compare;
+        goto do_read;
+    case 'i':   /* ignore */
         b->file_ignore++;
         qe_ungrab_keys(qs);
         put_status(s, "Ignored");
         break;
+    case 'n':  /* do not read or save */
+    case 'q':
+        qe_ungrab_keys(qs);
+        put_status(s, "");
+        break;
+    case 'y':
+        if (save) goto do_save;
+        goto do_read;
     case 'r':
     do_read:
         qe_ungrab_keys(qs);
@@ -9338,13 +9344,16 @@ static void qe_check_buffer_file_key(EditBuffer *b, int ch, int save)
         qe_ungrab_keys(qs);
         put_save_message(s, b->filename, eb_save_buffer(b));
         break;
-    case KEY_CTRL('g'): /* abort */
-        qe_ungrab_keys(qs);
-        put_error(s, "&Quit");
-        break;
+    case ' ':
     case 'd':
     case 'c':
-        put_error(s, "Diff not supported yet");
+    do_compare:
+#ifdef CONFIG_TINY
+        put_error(s, "Diff not supported");
+#else
+        qe_ungrab_keys(qs);
+        qe_diff_buffer_with_file(s, b);
+#endif
         break;
     case 'm':
         put_error(s, "Merge not supported yet");
@@ -9356,14 +9365,17 @@ static void qe_check_buffer_file_key(EditBuffer *b, int ch, int save)
             if (stat(b->filename, &st) < 0) {
                 put_status(s, "Cannot stat %s", b->filename);
             } else {
-                put_status(s, "Buffer: %ld bytes, file: %ld bytes %ld sec, was %ld bytes %ld sec",
-                           (long)b->total_size, (long)st.st_size, (long)st.st_mtime,
-                           (long)b->file_size, (long)b->file_mtime);
+                char buf1[20];
+                char buf2[20];
+                strftime(buf1, sizeof(buf1), "%F %T", localtime(&st.st_mtime));
+                strftime(buf2, sizeof(buf2), "%F %T", localtime(&b->file_mtime));
+                put_status(s, "File: %ld bytes %s, was %ld bytes %s, buffer: %ld bytes",
+                           (long)st.st_size, buf1, (long)b->file_size, buf2,
+                           (long)b->total_size);
             }
         }
         break;
     default:
-        /* get another key */
         dpy_sound_bell(s->screen);
         break;
     }
@@ -9382,12 +9394,10 @@ static void qe_check_buffer_file_key_save(void *opaque, int ch)
 
 int qe_check_buffer_file(EditBuffer *b, int mode)
 {
-    QEmacsState *qs = b->qs;
     struct stat st;
     char buf1[4096];
     char buf2[4096];
-    FILE *fp;
-    int pos, size1, size2;
+    QEmacsState *qs = b->qs;
 
     if (b->file_ignore)
         return CBF_SAME;
@@ -9402,10 +9412,10 @@ int qe_check_buffer_file(EditBuffer *b, int mode)
         return CBF_SAME;
 
     if (st.st_size >= b->file_size) {
-        fp = fopen(b->filename, "rb");
+        int size1, size2, pos = 0;
+        FILE *fp = fopen(b->filename, "rb");
         if (!fp)
             return CBF_OPEN_FAILED;
-        pos = 0;
         for (;;) {
             size1 = fread(buf1, 1, sizeof(buf1), fp);
             if (size1 == 0) {
@@ -9456,19 +9466,21 @@ int qe_check_buffer_file(EditBuffer *b, int mode)
     }
     // file contents differs
     qe_stop_macro(qs);
+
+    // XXX: should open a popup with information and key description
     switch (mode) {
     case CBF_CHECK:
     case CBF_MODIFY:
         qe_grab_keys(qs, qe_check_buffer_file_key_read, b);
-        put_status(qs->active_window,
-                   "%s changed on disk; read the modified file? (y, n, r, s or ?)",
-                   b->filename);
+        put_error(qs->active_window,
+                  "%s changed on disk; read the modified file? (%s)",
+                  b->filename, b->modified ? "ynqrs[d]?" : "[y]nqrsd?");
         break;
     case CBF_SAVE:
         qe_grab_keys(qs, qe_check_buffer_file_key_save, b);
-        put_status(qs->active_window,
-                   "%s changed on disk; really save the buffer? (y, n, r, s or ?)",
-                   b->filename);
+        put_error(qs->active_window,
+                  "%s changed on disk; really save the buffer? (ynqrs[d]?)",
+                  b->filename);
         break;
     }
     return CBF_PROMPT;
@@ -10278,7 +10290,7 @@ void do_describe_key_briefly(EditState *s, const char *keystr, int argval) {
     /* This code is only called from a script.
      * The interactive implementation is handled in qe_key_process()
      */
-    char buf[128];
+    char buf[256];
     unsigned int keys[MAX_KEYS];
     unsigned int key_default = KEY_DEFAULT;
     int nb_keys, len;
@@ -12211,7 +12223,7 @@ static int qe_init(void *opaque)
     if (strequal(get_basename(argv[0]), "ffplay"))
         is_player = 1;
 #endif
-    if (is_player && !session_loaded && (_optind >= argc || S_ISDIR(s->b->st_mode))) {
+    if (is_player && !session_loaded && (_optind >= argc || S_ISDIR(s->b->file_mode))) {
         /* if player, go to directory mode by default if no file selected */
         do_dired(s, NO_ARG);
         s = qs->active_window;
