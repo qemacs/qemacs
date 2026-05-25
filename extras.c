@@ -837,12 +837,14 @@ static void forward_block(EditState *s, int dir)
 {
     // We skip characters, balancing blocks delimited by (){}[]
     // * we use the colorizer to determine the token type.
-    // * If starting in a string of in a comment, we stop at the end of the
-    //   string or comment, allowing for non colored whitespace.
-    // * otherwise, we skip comments and strings
+    // * If starting in a string or in a comment, we stop at the end of the
+    //   string or comment otherwise, we skip comments and strings.
+    // * we prioritize string skipping when starting at a quote.
     // * block delimiters are balanced inside the region and skipping stops
     //   when a closing delimiter is found.
-    // if a nesting error occurs, point and mark are set around the mismatched
+    // * we prioritize bracket skipping inside comment/string when starting
+    //   at a bracket.
+    //   if a nesting error occurs, point and mark are set around the mismatched
     //   delimiters. use C-x C-x to skip between them
 
     QEColorizeContext cp[1];
@@ -892,6 +894,10 @@ static void forward_block(EditState *s, int dir)
     level = 0;
 
     if (dir < 0) {
+        char32_t c0; /* character before cursor */
+        int is_delim; /* true if c0 is a bracket delimiter */
+        c0 = eb_prevc(s->b, offset, &dummy_offset);
+        is_delim = c0 != matching_delimiter(c0);
         for (;;) {
             int this_offset = offset;
             c = eb_prevc(s->b, offset, &offset);
@@ -913,8 +919,6 @@ static void forward_block(EditState *s, int dir)
                 continue;
             }
             pos--;
-            if (qe_isspace(c))
-                continue;
             style = 0;
             if (use_colors) {
                 if (pos >= 0 && pos < len) {
@@ -935,17 +939,18 @@ static void forward_block(EditState *s, int dir)
                 // Single quotes can occur as digit separators in C++, this
                 // convention is inconsistent and nefarious to many respects
                 // and including it in the C Standard as of C2y is a shame.
-                if (style)
-                    break;
-                if (qe_isdigit(eb_peekc(s->b, this_offset))
+                if (!style && qe_isdigit(eb_peekc(s->b, this_offset))
                 &&  qe_isdigit(eb_peek_prevc(s->b, offset)))
+                    break;
+                if (c0 != c)
                     break;
                 FALLTHROUGH;
             case '\"':
                 // we get here if scan started inside a string or a comment
                 // or if styles are disabled: try and skip the string backward
                 // using simplistic algorithm, ignoring escaped quotes
-                if (!style && pos > 0) {
+                // and stop if starting at the end of the string.
+                if (!style && pos > 0 || c == c0) {
                     /* simplistic string skip with escape char */
                     int off;
                     char32_t c1;
@@ -954,6 +959,10 @@ static void forward_block(EditState *s, int dir)
                         pos--;
                         if (c1 == c && eb_peek_prevc(s->b, offset) != '\\')
                             break;
+                    }
+                    if (c == c0) {
+                        s->offset = offset;
+                        goto done;
                     }
                 }
                 break;
@@ -971,6 +980,10 @@ static void forward_block(EditState *s, int dir)
             case '{':
                 if (level > 0) {
                     --level;
+                    /* continue if started inside a string or a comment unless
+                       starting exactly at a delimiter */
+                    if (style0 && !is_delim)
+                        break;
                     if (level < MAX_LEVEL && balance[level] != c) {
                         /* XXX: should set mark and offset */
                         s->b->mark = delim_offset[level];
@@ -991,6 +1004,10 @@ static void forward_block(EditState *s, int dir)
             }
         }
     } else {
+        char32_t c0; /* character after cursor */
+        int is_delim; /* true if c0 is a bracket delimiter */
+        c0 = eb_nextc(s->b, offset, &dummy_offset);
+        is_delim = c0 != matching_delimiter(c0);
         for (;;) {
             int this_offset = offset;
             c = eb_nextc(s->b, offset, &offset);
@@ -1012,8 +1029,6 @@ static void forward_block(EditState *s, int dir)
                 continue;
             }
             pos++;
-            if (qe_isspace(c))
-                continue;
             style = 0;
             if (use_colors) {
                 if (pos <= len) {
@@ -1034,17 +1049,18 @@ static void forward_block(EditState *s, int dir)
                 // Single quotes can occur as digit separators in C++, this
                 // convention is inconsistent and nefarious to many respects
                 // and including it in the C Standard as of C2y is a shame.
-                if (style)
-                    break;
-                if (qe_isdigit(eb_peekc(s->b, offset))
+                if (!style && qe_isdigit(eb_peekc(s->b, offset))
                 &&  qe_isdigit(eb_peek_prevc(s->b, this_offset)))
+                    break;
+                if (c != c0)
                     break;
                 FALLTHROUGH;
             case '\"':
                 // We get here if scan started inside a string or a comment
                 // or if styles are disabled: try and skip the string using a
                 // simplistic algorithm, ignoring escaped quotes
-                if (!style && pos >= len) {
+                // and stop if starting at the start of the string.
+                if (!style && pos >= len || c == c0) {
                     /* simplistic string skip with escape char */
                     int off;
                     char32_t c1;
@@ -1059,6 +1075,10 @@ static void forward_block(EditState *s, int dir)
                             offset = off;
                             pos++;
                         }
+                    }
+                    if (c1 == c && c0 == c) {
+                        s->offset = offset;
+                        goto done;
                     }
                 }
                 break;
@@ -1076,6 +1096,10 @@ static void forward_block(EditState *s, int dir)
             case '}':
                 if (level > 0) {
                     --level;
+                    /* continue if started inside a string or a comment unless
+                       starting exactly at a delimiter */
+                    if (style0 && !is_delim)
+                        break;
                     if (level < MAX_LEVEL && balance[level] != c) {
                         /* XXX: should set mark and offset */
                         s->b->mark = delim_offset[level];
