@@ -206,6 +206,16 @@ const char *get_shell(void)
     return shell_path;
 }
 
+static void qe_closefrom(int fd) {
+#if defined(CONFIG_FREEBSD) || defined(CONFIG_OPENBSD)
+    closefrom(fd);
+#else
+    int i, nb_fds = max_int((int)sysconf(_SC_OPEN_MAX), 20);
+    for (i = 3; i < nb_fds; i++)
+        close(i);
+#endif
+}
+
 #define QE_TERM_XSIZE  80
 #define QE_TERM_YSIZE  25
 #define QE_TERM_YSIZE_INFINITE  10000
@@ -215,14 +225,14 @@ static int run_process(ShellState *s,
                        int cols, int rows, const char *path,
                        int shell_flags)
 {
-    long i, nb_fds;
     int pty_fd, pid, pipe_fds[2];
     char tty_name[MAX_FILENAME_SIZE];
     char lines_string[20];
     char columns_string[20];
-    struct winsize ws;
 
     if (shell_flags & SF_INTERACTIVE) {
+        struct winsize ws;
+
         pty_fd = get_pty(tty_name, sizeof(tty_name));
         if (pty_fd < 0) {
             put_error(s->b->qs->active_window, "run_process: cannot get tty: %s",
@@ -230,10 +240,17 @@ static int run_process(ShellState *s,
             return -1;
         }
         /* set dummy screen size */
+        /* Recommended practice:
+           As the winsize structure may have more fields than documented,
+           applications planning to call tcsetwinsize() should call
+           tcgetwinsize() first with the same fd parameter, and use the
+           result obtained in *gws to initialize the winsize structure to
+           be used (after altering fields that are to be changed) as the
+           sws operand of tcsetwinsize.
+         */
+        ioctl(pty_fd, TIOCGWINSZ, &ws);
         ws.ws_col = cols;
         ws.ws_row = rows;
-        ws.ws_xpixel = 0;
-        ws.ws_ypixel = 0;
         ioctl(pty_fd, TIOCSWINSZ, &ws);
     } else {
         if (pipe(pipe_fds) < 0) {
@@ -264,7 +281,6 @@ static int run_process(ShellState *s,
         char qelevel[16];
         char *vp;
         int argc = 0;
-        int tmp_fd;
 
         argv[argc++] = get_shell();
         if (cmd) {
@@ -281,22 +297,19 @@ static int run_process(ShellState *s,
         /* open pseudo tty for standard I/O */
         if (shell_flags & SF_INTERACTIVE) {
             /* interactive shell: input from / output to pseudo terminal */
-            tmp_fd = open(tty_name, O_RDWR);
+            int tmp_fd = open(tty_name, O_RDWR);
             dup2(tmp_fd, 0);
             dup2(tmp_fd, 1);
             dup2(tmp_fd, 2);
         } else {
             /* collect output from non interactive process: no input */
-            tmp_fd = open("/dev/null", O_RDONLY);
+            // XXX: should be O_RDWR?
+            int tmp_fd = open("/dev/null", O_RDONLY);
             dup2(tmp_fd, 0);
             dup2(pipe_fds[1], 1);
             dup2(pipe_fds[1], 2);
         }
-
-        nb_fds = sysconf(_SC_OPEN_MAX);
-        for (i = 3; i < nb_fds; i++)
-            close(i);
-
+        qe_closefrom(3);
 #ifdef CONFIG_DARWIN
         setsid();
 #endif
@@ -3403,10 +3416,9 @@ static void do_shell_refresh(EditState *e, int flags)
 
         if (s->pty_fd > 0 && (flags & SR_UPDATE_SIZE)) {
             struct winsize ws;
+            ioctl(s->pty_fd, TIOCGWINSZ, &ws);
             ws.ws_col = s->cols;
             ws.ws_row = s->rows;
-            ws.ws_xpixel = ws.ws_col;
-            ws.ws_ypixel = ws.ws_row;
             ioctl(s->pty_fd, TIOCSWINSZ, &ws);
         }
     }
