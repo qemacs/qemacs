@@ -90,7 +90,7 @@ static int bufed_sort_func(void *opaque, const void *p1, const void *p2)
         return res;
 
     if ((b1->flags & BF_SYSTEM) || (*b1->name == '*'))
-        return qe_strcollate(b1->filename, b2->filename);
+        return qe_strcollate(b1->name, b2->name);
 
     for (p = bufed_sort_order; *p; p++) {
         switch (qe_tolower(*p)) {
