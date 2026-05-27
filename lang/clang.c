@@ -899,6 +899,7 @@ void c_indent_line(EditState *s, int offset0)
         /* get current indentation of this line, adjust if it has a label */
         pos1 = find_indent1(s, cp->buf);
         /* ignore empty and preprocessor lines */
+        // XXX: what if preprocessor directive is indented?
         if (pos1 == len || cp->sbuf[0] == C_STYLE_PREPROCESS)
             continue;
         if (c_line_has_label(s, cp->buf, len, cp->sbuf)) {
@@ -1266,6 +1267,7 @@ static void c_forward_conditional(EditState *s, int dir)
     for (;;) {
         get_colorized_line(cp, offset, &offset1, line_num);
         sharp = 0;
+        // XXX: should ignore comments
         for (p = cp->buf; *p; p++) {
             char32_t c = *p;
             int style = cp->sbuf[p - cp->buf];
@@ -1342,6 +1344,7 @@ static void do_c_list_conditionals(EditState *s)
         offset = eb_prev_line(s->b, offset);
         get_colorized_line(cp, offset, &offset1, line_num);
         sharp = 0;
+        // XXX: should ignore comments
         for (p = cp->buf; *p; p++) {
             char32_t c = *p;
             int style = cp->sbuf[p - cp->buf];
