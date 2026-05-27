@@ -833,7 +833,19 @@ static int style_normalize(int style) {
     return 0;
 }
 
-static void forward_block(EditState *s, int dir)
+// Is the character at `offset` preceeded by a backslash that is not itself
+// escaped: count the number of backslashes, must be odd.
+// this handles strings such as "\\\"" but would not be sufficient to handle
+// pathological cases of escaped newlines in C and C++.  If colorization is
+// active, these cases are handled transparently.
+static int is_escaped_backward(EditBuffer *b, int offset) {
+    int count = 0;
+    while (eb_prevc(b, offset, &offset) == '\\')
+        count++;
+    return count & 1;
+}
+
+static void forward_block(EditState *s, int dir, int stop_at_parent)
 {
     // We skip characters, balancing blocks delimited by (){}[]
     // * we use the colorizer to determine the token type.
@@ -886,7 +898,8 @@ static void forward_block(EditState *s, int dir)
                 if (pos < len) {
                     style0 = style_normalize(cp->sbuf[pos]);
                 } else {
-                    // XXX if point is at end of line, should check if inside a block of comments or strings
+                    // XXX if point is at end of line, should check if
+                    //     inside a block of comments or strings
                 }
             }
         }
@@ -926,10 +939,16 @@ static void forward_block(EditState *s, int dir)
                 }
                 if (style != style0) {
                     if (style0 == 0) {
-                        // skip string or comment
+                        // encountered string or comment during regular
+                        // scanning: skip it
                         continue;
                     }
-                    // stop at end of string or comment
+                    if (style0 == QE_STYLE_COMMENT && !style) {
+                        // skip whitespace and continue if inside a block of comments
+                        if (qe_isspace(c))
+                            continue;
+                    }
+                    // stop at string or comment boundary
                     break;
                 }
             }
@@ -939,25 +958,31 @@ static void forward_block(EditState *s, int dir)
                 // Single quotes can occur as digit separators in C++, this
                 // convention is inconsistent and nefarious to many respects
                 // and including it in the C Standard as of C2y is a shame.
-                if (!style && qe_isdigit(eb_peekc(s->b, this_offset))
+                if (!style
+                &&  qe_isdigit(eb_peekc(s->b, this_offset))
                 &&  qe_isdigit(eb_peek_prevc(s->b, offset)))
-                    break;
-                if (c0 != c)
                     break;
                 FALLTHROUGH;
             case '\"':
-                // we get here if scan started inside a string or a comment
+                // We get here if scan started inside a string or a comment
                 // or if styles are disabled: try and skip the string backward
-                // using simplistic algorithm, ignoring escaped quotes
-                // and stop if starting at the end of the string.
+                // using a simplistic algorithm: skip escaped quotes and stop
+                // at the matching quote or upon style change.
                 if ((!style && pos > 0) || c == c0) {
-                    /* simplistic string skip with escape char */
                     int off;
                     char32_t c1;
                     while ((c1 = eb_prevc(s->b, offset, &off)) != '\n') {
+                        if (use_colors && pos > 0 && pos <= len) {
+                            // stop at comment or regex boundary
+                            int style1 = style_normalize(cp->sbuf[pos - 1]);
+                            if (style1 != style) {
+                                s->offset = offset;
+                                goto done;
+                            }
+                        }
                         offset = off;
                         pos--;
-                        if (c1 == c && eb_peek_prevc(s->b, offset) != '\\')
+                        if (c1 == c && !is_escaped_backward(s->b, offset))
                             break;
                     }
                     if (c == c0) {
@@ -982,6 +1007,9 @@ static void forward_block(EditState *s, int dir)
                     --level;
                     /* continue if started inside a string or a comment unless
                        starting exactly at a delimiter */
+                    // XXX: should refine this: should balance blocks
+                    //      if scan started *inside* a comment or string
+                    //      or at a closing block delimiter.
                     if (style0 && !is_delim)
                         break;
                     if (level < MAX_LEVEL && balance[level] != c) {
@@ -997,8 +1025,11 @@ static void forward_block(EditState *s, int dir)
                         goto done;
                     }
                 } else {
+                    if (stop_at_parent) {
+                        s->offset = offset;
+                        goto done;
+                    }
                     /* silently move up one level */
-                    // XXX: stop if argument?
                 }
                 break;
             }
@@ -1012,17 +1043,18 @@ static void forward_block(EditState *s, int dir)
             int this_offset = offset;
             c = eb_nextc(s->b, offset, &offset);
             if (c == '\n') {
-                line_num++;
                 if (offset >= s->b->total_size)
                     break;
+                line_num++;
                 bol_offset = offset;
-                len = 0;
                 pos = 0;
+                len = 0;
                 if (use_colors) {
                     len = get_colorized_line(cp, bol_offset, &dummy_offset, line_num);
                     if (cp->truncated) {
                         /* very long line detected, use fallback version */
                         use_colors = 0;
+                        len = 0;
                         style0 = 0;
                     }
                 }
@@ -1031,15 +1063,20 @@ static void forward_block(EditState *s, int dir)
             pos++;
             style = 0;
             if (use_colors) {
-                if (pos <= len) {
+                if (pos > 0 && pos <= len) {
                     style = style_normalize(cp->sbuf[pos - 1]);
                 }
-                if (style0 != style) {
+                if (style != style0) {
                     if (style0 == 0) {
                         // skip string or comment
                         continue;
                     }
-                    // stop at end of string or comment
+                    if (style0 == QE_STYLE_COMMENT && !style) {
+                        // skip whitespace and continue if inside a block of comments
+                        if (qe_isspace(c))
+                            continue;
+                    }
+                    // stop at string or comment boundary
                     break;
                 }
             }
@@ -1049,22 +1086,28 @@ static void forward_block(EditState *s, int dir)
                 // Single quotes can occur as digit separators in C++, this
                 // convention is inconsistent and nefarious to many respects
                 // and including it in the C Standard as of C2y is a shame.
-                if (!style && qe_isdigit(eb_peekc(s->b, offset))
+                if (!style
+                &&  qe_isdigit(eb_peekc(s->b, offset))
                 &&  qe_isdigit(eb_peek_prevc(s->b, this_offset)))
-                    break;
-                if (c != c0)
                     break;
                 FALLTHROUGH;
             case '\"':
                 // We get here if scan started inside a string or a comment
-                // or if styles are disabled: try and skip the string using a
-                // simplistic algorithm, ignoring escaped quotes
-                // and stop if starting at the start of the string.
+                // or if styles are disabled: try and skip the string
+                // using a simplistic algorithm: skip escaped quotes and stop
+                // at the matching quote.
                 if ((!style && pos >= len) || c == c0) {
-                    /* simplistic string skip with escape char */
                     int off;
                     char32_t c1;
                     while ((c1 = eb_nextc(s->b, offset, &off)) != '\n') {
+                        if (use_colors && pos >= 0 && pos < len) {
+                            // stop at comment or regex boundary
+                            int style1 = style_normalize(cp->sbuf[pos]);
+                            if (style1 != style) {
+                                s->offset = offset;
+                                goto done;
+                            }
+                        }
                         offset = off;
                         pos++;
                         if (c1 == c)
@@ -1076,7 +1119,7 @@ static void forward_block(EditState *s, int dir)
                             pos++;
                         }
                     }
-                    if (c1 == c && c0 == c) {
+                    if (c1 == c && c == c0) {
                         s->offset = offset;
                         goto done;
                     }
@@ -1098,6 +1141,9 @@ static void forward_block(EditState *s, int dir)
                     --level;
                     /* continue if started inside a string or a comment unless
                        starting exactly at a delimiter */
+                    // XXX: should refine this: should balance blocks
+                    //      if scan started *inside* a comment or string
+                    //      or at an opening block delimiter.
                     if (style0 && !is_delim)
                         break;
                     if (level < MAX_LEVEL && balance[level] != c) {
@@ -1113,15 +1159,17 @@ static void forward_block(EditState *s, int dir)
                         goto done;
                     }
                 } else {
+                    if (stop_at_parent) {
+                        s->offset = offset;
+                        goto done;
+                    }
                     /* silently move up one level */
-                    // XXX: stop if argument?
                 }
                 break;
             }
         }
     }
     if (level != 0) {
-        /* XXX: should set mark and offset */
         s->b->mark = delim_offset[level - 1];
         s->offset = offset;
         put_error(s, "Unmatched delimiter");
@@ -1139,7 +1187,7 @@ static void do_forward_block(EditState *s, int n)
     int dir = n < 0 ? -1 : 1;
 
     for (; n != 0; n -= dir) {
-        forward_block(s, dir);
+        forward_block(s, dir, 1);
     }
 }
 
