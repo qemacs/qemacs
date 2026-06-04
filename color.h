@@ -68,11 +68,11 @@ typedef uint32_t QEColor;
  *   to trace the display unit on the device surface
  */
 
-/* Style numbers are limited to 8 bits, the default set has 27 entries */
+/* Style numbers are limited to 8 bits, the default set has 30 entries */
 /* Composite styles are 32-bit values that specify
  * - a style number
- * - display attributes for underline, bold, blink
- * - text and background colors as either palette numbers or 4096 rgb values
+ * - display attributes for underline, bold, italics, blink
+ * - text and background colors as either palette numbers or 8k rgb values
  */
 
 #if 0   /* 25-bit color for FG and BG */

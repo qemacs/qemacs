@@ -29,6 +29,8 @@ static QVarType qe_variable_set_value_offset(EditState *s, VarDef *vp, void *ptr
                                              const char *value, int num);
 static QVarType qe_variable_set_value_generic(EditState *s, VarDef *vp, void *ptr,
                                               const char *value, int num);
+static QVarType qe_variable_set_value_style(EditState *s, VarDef *vp, void *ptr,
+                                            const char *value, int num);
 
 const char * const var_domain[] = {
     "global",   /* VAR_GLOBAL */
@@ -115,11 +117,11 @@ static VarDef var_table[] = {
            "Number of columns to indent by for a syntactic level." )
     W_VAR( "indent-tabs-mode", indent_tabs_mode, VAR_NUMBER, VAR_RW,
            "Set if indentation can insert tabs." )
-    W_VAR( "default-style", default_style, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
+    W_VAR_F( "default-style", default_style, VAR_STYLE, VAR_RW, qe_variable_set_value_style,
            "Default text style for this window." )
-    W_VAR( "region-style", region_style, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
+    W_VAR_F( "region-style", region_style, VAR_STYLE, VAR_RW, qe_variable_set_value_style,
            "Text style for the current region in this window." )
-    W_VAR( "curline-style", curline_style, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
+    W_VAR_F( "curline-style", curline_style, VAR_STYLE, VAR_RW, qe_variable_set_value_style,
            "Text style for the current line in this window." )
     W_VAR( "window-width", width, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
            "Number of display columns in this window." )
@@ -262,6 +264,7 @@ QVarType qe_get_variable(EditState *s, const char *name,
             pstrcpy(buf, size, str);
         break;
     case VAR_NUMBER:
+    case VAR_STYLE:
         memcpy(&num, ptr, sizeof(num));
         if (pnum)
             *pnum = num;
@@ -287,6 +290,20 @@ static QVarType qe_variable_set_value_offset(EditState *s, VarDef *vp, void *ptr
         *pnum = clamp_offset(num, 0, s->b->total_size);
         return VAR_NUMBER;
     }
+}
+
+static QVarType qe_variable_set_value_style(EditState *s, VarDef *vp, void *ptr,
+                                            const char *value, int num)
+{
+    QETermStyle style = num;
+    if (value && qe_term_get_style(value, &style)) {
+        const char *p;
+        style = strtol_c(value, &p, 0);
+        if (*p)
+            return VAR_INVALID;
+    }
+    memcpy(ptr, &style, sizeof(style));
+    return VAR_STYLE;
 }
 
 static QVarType qe_variable_set_value_generic(EditState *s, VarDef *vp, void *ptr,
@@ -322,15 +339,19 @@ static QVarType qe_variable_set_value_generic(EditState *s, VarDef *vp, void *pt
         }
         break;
     case VAR_NUMBER:
-        if (!value) {
-            pnum = (int *)ptr;
-            if (*pnum != num) {
-                *pnum = num;
-                vp->modified = 1;
+    case VAR_STYLE:
+        /* XXX: should have default, min and max values? */
+        if (value) {
+            const char *p;
+            num = strtol_c(value, &p, 0);
+            if (*p) {
+                return VAR_INVALID;
             }
-        } else {
-            /* XXX: should have default, min and max values */
-            return VAR_INVALID;
+        }
+        pnum = (int *)ptr;
+        if (*pnum != num) {
+            *pnum = num;
+            vp->modified = 1;
         }
         break;
     default:
@@ -390,12 +411,6 @@ QVarType qe_set_variable(EditState *s, const char *name,
             break;
         default:
             return VAR_UNKNOWN;
-        }
-        if (vp->type == VAR_NUMBER && value) {
-            const char *p;
-            num = strtol_c(value, &p, 0);
-            if (!*p)
-                value = NULL;
         }
         return vp->set_value(s, vp, ptr, value, num);
     }
@@ -481,6 +496,9 @@ void qe_list_variables(EditState *s, EditBuffer *b)
         case VAR_NUMBER:
             type = "int";
             break;
+        case VAR_STYLE:
+            type = "style";
+            break;
         case VAR_STRING:
             type = "string";
             break;
@@ -536,6 +554,9 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s) {
     case VAR_NUMBER:
         type = "int";
         break;
+    case VAR_STYLE:
+        type = "style";
+        break;
     case VAR_STRING:
         type = "string";
         break;
@@ -588,6 +609,25 @@ static CompletionDef variable_completion = {
     .print_entry = variable_print_entry,
 };
 
+static void value_complete(CompleteState *cp, CompleteFunc enumerate) {
+    style_complete(cp, enumerate);
+    color_complete(cp, enumerate);
+}
+
+static int value_print_entry(CompleteState *cp, EditState *s, const char *name) {
+    if (find_style(name))
+        return style_print_entry(cp, s, name);
+    else
+        return color_print_entry(cp, s, name);
+}
+
+static CompletionDef value_completion = {
+    .name = "value",
+    .enumerate = value_complete,
+    .print_entry = value_print_entry,
+    .flags = CF_SPACE_OK,
+};
+
 /*---------------- commands ----------------*/
 
 static const CmdDef var_commands[] = {
@@ -598,7 +638,7 @@ static const CmdDef var_commands[] = {
     CMD2( "set-variable", "f8",
           "Set the value of a variable",
           do_set_variable, ESss,
-          "s{Set variable: }[variable]|variable|s{to value: }|value|")
+          "s{Set variable: }[variable]|variable|s{to value: }[value]|value|")
     CMD2( "describe-variable", "C-h v",
           "Show information for a variable",
           do_describe_variable, ESs,
@@ -609,6 +649,7 @@ static int variables_init(QEmacsState *qs) {
     qe_register_variables(qs, var_table, countof(var_table));
     qe_register_commands(qs, NULL, var_commands, countof(var_commands));
     qe_register_completion(qs, &variable_completion);
+    qe_register_completion(qs, &value_completion);
     return 0;
 }
 

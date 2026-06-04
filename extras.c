@@ -1578,7 +1578,7 @@ static int str_get_word7(char *buf, int size, const char *p, const char **pp)
     return len;
 }
 
-static int qe_term_get_style(const char *str, QETermStyle *style)
+int qe_term_get_style(const char *str, QETermStyle *style)
 {
     char buf[128];
     QEColor fg_color, bg_color;

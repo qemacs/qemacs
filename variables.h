@@ -28,6 +28,7 @@
 typedef enum QVarType {
     VAR_UNKNOWN = 0,
     VAR_NUMBER,
+    VAR_STYLE,
     VAR_STRING,
     VAR_CHARS,
     VAR_READONLY,

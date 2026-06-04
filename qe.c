@@ -704,7 +704,7 @@ void do_cd(EditState *s, const char *path)
     }
 }
 
-static void color_complete(CompleteState *cp, CompleteFunc enumerate) {
+void color_complete(CompleteState *cp, CompleteFunc enumerate) {
     const char *name = cp->current;
     char buf[32];
     int i, len;
@@ -4095,9 +4095,11 @@ static void flush_line(DisplayState *ds,
             }
             x = ds->x_line;
             x1 = ds->width + ds->eol_width;
+            // XXX: handle curline_style and other line styles
             for (i = 0; i < nb_fragments && x < x1; i++) {
                 frag = &fragments[i];
                 get_style(e, &styledef, frag->style);
+                // XXX: should not fill if transparent
                 fill_rectangle(screen, e->xleft + x, e->ytop + y,
                                frag->width, line_height, styledef.bg_color);
                 x += frag->width;
@@ -5090,11 +5092,14 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
                 }
             }
         } else
-        if (s->curline_style && s->offset >= offset && s->offset <= offset0) {
-            /* XXX: only if qs->active_window == s ? */
-            int i;
-            for (i = 0; i < colored_nb_chars; i++)
-                cp->sbuf[i] = s->curline_style;
+        if (s->curline_style && s->offset >= offset) {
+            if (s->offset < offset0 || offset == offset0
+            ||  (offset0 == s->b->total_size && eb_peek_prevc(s->b, offset0) != '\n')) {
+                /* XXX: only if qs->active_window == s ? */
+                int i;
+                for (i = 0; i < colored_nb_chars; i++)
+                    cp->sbuf[i] = s->curline_style;
+            }
         }
     }
 #endif

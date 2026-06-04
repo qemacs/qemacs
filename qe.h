@@ -1576,6 +1576,7 @@ extern ModeDef text_mode;
 int text_backward_offset(EditState *s, int offset);
 int text_display_line(EditState *s, DisplayState *ds, int offset);
 
+void color_complete(CompleteState *cp, CompleteFunc enumerate);
 void set_colorize_mode(EditState *s, ModeDef *mode);
 int get_colorized_line(QEColorizeContext *cp,
                        int offset, int *offsetp, int line_num);
@@ -1863,6 +1864,7 @@ void do_show_bindings(EditState *s, const char *cmd_name);
 void do_describe_bindings(EditState *s, int argval);
 void do_apropos(EditState *s, const char *str);
 
+int qe_term_get_style(const char *str, QETermStyle *style);
 int color_print_entry(CompleteState *cp, EditState *s, const char *name);
 int style_print_entry(CompleteState *cp, EditState *s, const char *name);
 

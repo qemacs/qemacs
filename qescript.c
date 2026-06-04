@@ -475,6 +475,7 @@ static int qe_cfg_getvalue(QEmacsDataSource *ds, QEValue *sp) {
             qe_cfg_set_str(sp, buf, strlen(buf));
             break;
         case VAR_NUMBER:
+        case VAR_STYLE:
             qe_cfg_set_num(sp, num);
             break;
         default:
