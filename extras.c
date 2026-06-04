@@ -250,24 +250,25 @@ void do_compare_windows(EditState *s, int argval)
             continue;
         break;
     }
-    if (argval == 0) {
-        qs->ignore_spaces = 0;
-        qs->ignore_comments = 0;
-        qs->ignore_case = 0;
-        qs->ignore_preproc = 0;
-        qs->ignore_equivalent = 0;
+    if (argval != NO_ARG) {
+        if (argval == 0) {
+            qs->ignore_spaces = 0;
+            qs->ignore_comments = 0;
+            qs->ignore_case = 0;
+            qs->ignore_preproc = 0;
+            qs->ignore_equivalent = 0;
+        }
+        if (argval & 4)
+            qs->ignore_spaces ^= 1;
+        if (argval & 16)
+            qs->ignore_comments ^= 1;
+        if (argval & 64)
+            qs->ignore_case ^= 1;
+        if (argval & 256)
+            qs->ignore_preproc ^= 1;
+        if (argval & 1024)
+            qs->ignore_equivalent ^= 1;
     }
-    if (argval & 4)
-        qs->ignore_spaces ^= 1;
-    if (argval & 16)
-        qs->ignore_comments ^= 1;
-    if (argval & 64)
-        qs->ignore_case ^= 1;
-    if (argval & 256)
-        qs->ignore_preproc ^= 1;
-    if (argval & 1024)
-        qs->ignore_equivalent ^= 1;
-
     size1 = s1->b->total_size;
     size2 = s2->b->total_size;
 
