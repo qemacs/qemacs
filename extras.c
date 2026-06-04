@@ -950,7 +950,7 @@ static void forward_block(EditState *s, int dir)
                 // or if styles are disabled: try and skip the string backward
                 // using simplistic algorithm, ignoring escaped quotes
                 // and stop if starting at the end of the string.
-                if (!style && pos > 0 || c == c0) {
+                if ((!style && pos > 0) || c == c0) {
                     /* simplistic string skip with escape char */
                     int off;
                     char32_t c1;
@@ -1060,7 +1060,7 @@ static void forward_block(EditState *s, int dir)
                 // or if styles are disabled: try and skip the string using a
                 // simplistic algorithm, ignoring escaped quotes
                 // and stop if starting at the start of the string.
-                if (!style && pos >= len || c == c0) {
+                if ((!style && pos >= len) || c == c0) {
                     /* simplistic string skip with escape char */
                     int off;
                     char32_t c1;
