@@ -558,8 +558,8 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s) {
         b->cur_style = QE_STYLE_NUMBER;
     len += eb_puts(b, buf);
     b->cur_style = QE_STYLE_COMMENT;
-    if (len + 1 < 40) {
-        b->tab_width = max_int(len + 1, b->tab_width);
+    if (len + 2 <= 40) {
+        b->tab_width = max_int(len + 2, b->tab_width);
         len += eb_putc(b, '\t');
     } else {
         b->tab_width = 40;
