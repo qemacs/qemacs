@@ -172,47 +172,80 @@ static int eb_skip_spaces(EditBuffer *b, int offset, int *offsetp)
     return 0;
 }
 
+static uint32_t eb_checksum_line(EditBuffer *b, int offset, int *offsetp)
+{
+    uint32_t checksum = 0;
+    char32_t c;
+
+    while ((c = eb_nextc(b, offset, &offset)) != '\n') {
+        checksum = ((checksum << 2) + c) ^ (checksum >> 30);
+    }
+    *offsetp = offset;
+    return checksum;
+}
+
 static void compare_resync(EditState *s1, EditState *s2,
                            int save1, int save2,
                            int *offset1_ptr, int *offset2_ptr)
 {
-    int pos1, off1, pos2, off2;
-    char32_t ch1, ch2;
+    EditBuffer *b1 = s1->b;
+    EditBuffer *b2 = s2->b;
+    int pos1, pos2, off1, off2;
+    enum { MAX_LINE_SYNC = 64 };
+    int p1[MAX_LINE_SYNC];
+    int p2[MAX_LINE_SYNC];
+    uint32_t chk1[MAX_LINE_SYNC];
+    uint32_t chk2[MAX_LINE_SYNC];
+    int i, j, n;
 
-    off1 = save1;
-    off2 = save2;
-    /* try skipping blanks */
-    while (qe_isblank(ch1 = eb_nextc(s1->b, pos1 = off1, &off1)))
-        continue;
-    while (qe_isblank(ch2 = eb_nextc(s2->b, pos2 = off2, &off2)))
-        continue;
-    /* XXX: should try and detect a simple insertion first
-       by comparing from the end of both lines */
-    if (ch1 != ch2) {
-        /* try skipping current words and subsequent blanks */
-        off1 = pos1;
-        off2 = pos2;
-        while (!qe_isspace(ch1 = eb_nextc(s1->b, pos1 = off1, &off1)))
-            continue;
-        while (!qe_isspace(ch2 = eb_nextc(s2->b, pos2 = off2, &off2)))
-            continue;
-        while (qe_isblank(ch1 = eb_nextc(s1->b, pos1 = off1, &off1)))
-            continue;
-        while (qe_isblank(ch2 = eb_nextc(s2->b, pos2 = off2, &off2)))
-            continue;
-        if (ch1 != ch2) {
-            /* Try to resync from end of line */
-            pos1 = eb_goto_eol(s1->b, save1);
-            pos2 = eb_goto_eol(s2->b, save2);
+    /* first try and detect a simple insertion by comparing from the end of both lines */
+    pos1 = eb_goto_eol(b1, save1);
+    pos2 = eb_goto_eol(b2, save2);
+    n = 0;
+    while (pos1 > save1 && pos2 > save2
+       &&  eb_prevc(b1, pos1, &off1) == eb_prevc(b2, pos2, &off2)) {
+        pos1 = off1;
+        pos2 = off2;
+        n++;
+    }
+    if (n > 5) {
+        *offset1_ptr = pos1;
+        *offset2_ptr = pos2;
+        if (pos1 - save1 == pos2 - save2) {
+            put_status(s1, "Skipped %d bytes", pos1 - save1);
+        } else {
+            put_status(s1, "Skipped %d and %d bytes", pos1 - save1, pos2 - save2);
+        }
+        return;
+    }
+    // Try and find identical lines up to MAX_LINE_SYNC - 2 lines apart
+    pos1 = eb_goto_bol(b1, save1);
+    pos2 = eb_goto_bol(b2, save2);
+    for (i = 0; i < MAX_LINE_SYNC; i++) {
+        chk1[i] = eb_checksum_line(b1, p1[i] = pos1, &pos1);
+        chk2[i] = eb_checksum_line(b2, p2[i] = pos2, &pos2);
+    }
+    for (i = 1; i < 2 * MAX_LINE_SYNC; i++) {
+        for (j = 0; j <= i && j < MAX_LINE_SYNC - 2; j++) {
+            int i1 = j;
+            int i2 = i - j;
+            if (i2 < MAX_LINE_SYNC - 2
+            &&  chk1[i1] == chk2[i2] && chk1[i1 + 1] == chk2[i2 + 1] && chk1[i1 + 2] == chk2[i2 + 2]) {
+                int d = 0;
+                if (i1 == 0) d = save1 - p1[i1];
+                if (i2 == 0) d = save2 - p2[i2];
+                *offset1_ptr = p1[i1] + d;
+                *offset2_ptr = p2[i2] + d;
+                if (i1 == i2) {
+                    put_status(s1, "Skipped %d lines", i1);
+                } else {
+                    put_status(s1, "Skipped %d and %d lines", i1, i2);
+                }
+                return;
+            }
         }
     }
-    while (pos1 > save1 && pos2 > save2
-       &&  eb_prevc(s1->b, pos1, &off1) == eb_prevc(s2->b, pos2, &off2)) {
-           pos1 = off1;
-           pos2 = off2;
-    }
-    *offset1_ptr = pos1;
-    *offset2_ptr = pos2;
+    put_status(s1, "Could not resynchronize");
 }
 
 static char *utf8_char32_to_string(char *buf, char32_t c) {
@@ -357,8 +390,6 @@ void do_compare_windows(EditState *s, int argval)
         if (resync) {
             int save1 = s1->offset, save2 = s2->offset;
             compare_resync(s1, s2, save1, save2, &s1->offset, &s2->offset);
-            put_status(s, "Skipped %d and %d bytes",
-                       s1->offset - save1, s2->offset - save2);
         } else {
             put_status(s, "%s%s%sDifference: '%s' [0x%02X] <-> '%s' [0x%02X]",
                        comment1, comment2, comment3,
