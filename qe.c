@@ -6668,6 +6668,7 @@ static void qe_key_process(QEmacsState *qs, int key)
             return;
     }
     put_status(s, "&");     /* Erase pending keystrokes and message */
+    put_status(s, "&|");    /* Erase diag message */
 
     /* Special case for escape: we transform it as meta so
        that unix users are happy ! */
@@ -9779,6 +9780,7 @@ void do_refresh(EditState *s1)
     }
     /* invalidate status line */
     qs->status_shadow[0] = '\0';
+    qs->diag_shadow[0] = '\0';
 
     if (resized) {
         /* CG: should compute column count w/ default count */
