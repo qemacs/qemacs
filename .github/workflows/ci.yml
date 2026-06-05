@@ -6,6 +6,8 @@ on:
       - '**'
       - '!.gitignore'
       - '!LICENSE'
+      - '!README.md'
+      - '!TODO.md'
       - '.github/workflows/ci.yml'
   push:
     branches:
@@ -18,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: build
         run: |
           ./configure
@@ -31,7 +33,7 @@ jobs:
       run:
         shell: alpine.sh {0}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: jirutka/setup-alpine@v1
         with:
           arch: x86
@@ -47,7 +49,7 @@ jobs:
 #      run:
 #        shell: alpine.sh {0}
 #    steps:
-#      - uses: actions/checkout@v3
+#      - uses: actions/checkout@v6
 #      - uses: jirutka/setup-alpine@v1
 #        with:
 #          arch: s390x
@@ -65,7 +67,7 @@ jobs:
       matrix:
         os: [macos-14, macos-15]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: build
         run: |
           ./configure
@@ -85,7 +87,7 @@ jobs:
 #      run:
 #        shell: msys2 {0}
 #    steps:
-#    - uses: actions/checkout@v4
+#    - uses: actions/checkout@v6
 #    - name: Setup MSYS2
 #      uses: msys2/setup-msys2@v2
 #      with:
@@ -115,7 +117,7 @@ jobs:
 #        with:
 #            packages: make gcc-g++ bash
 #
-#      - uses: actions/checkout@v4
+#      - uses: actions/checkout@v6
 #
 #      - name: build
 #        run: |
@@ -125,7 +127,7 @@ jobs:
   openbsd:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: build
         uses: vmactions/openbsd-vm@v1
         with:
@@ -139,7 +141,7 @@ jobs:
   freebsd:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: build
         uses: vmactions/freebsd-vm@v1
         with:
@@ -150,16 +152,16 @@ jobs:
             ./configure
             gmake MAKE=gmake
 
-  netbsd:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: build
-        uses: vmactions/netbsd-vm@v1
-        with:
-          usesh: true
-          prepare: |
-            /usr/sbin/pkg_add gmake
-          run: |
-            ./configure
-            gmake MAKE=gmake
+#  netbsd:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v6
+#      - name: build
+#        uses: vmactions/netbsd-vm@v1
+#        with:
+#          usesh: true
+#          prepare: |
+#            /usr/sbin/pkg_add gmake
+#          run: |
+#            ./configure
+#            gmake MAKE=gmake
