@@ -1,7 +1,7 @@
 /*
  * TCL language mode for QEmacs.
  *
- * Copyright (c) 2025 Charlie Gordon.
+ * Copyright (c) 2025-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -343,7 +343,7 @@ dispatch_colstate:
 
 static int tcl_mode_probe(ModeDef *mode, ModeProbeData *p) {
     if (match_extension(p->filename, mode->extensions)
-    ||  strstart(p->filename, "tclIndex", NULL))
+    ||  match_filename(p->filename, mode->filenames))
         return 85;
 
     if (strstr(cs8(p->buf), "package require Tk")
@@ -361,9 +361,10 @@ static int tcl_mode_probe(ModeDef *mode, ModeProbeData *p) {
 static ModeDef tcl_mode = {
     .name = "Tcl",
     .extensions = "tcl",
+    .filenames = "tclIndex",
     .keywords = tcl_keywords,
-    .colorize_func = tcl_colorize_line,
     .mode_probe = tcl_mode_probe,
+    .colorize_func = tcl_colorize_line,
 };
 
 static int tcl_init(QEmacsState *qs) {

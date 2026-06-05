@@ -2,7 +2,7 @@
  * XML text mode for QEmacs.
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2014-2024 Charlie Gordon.
+ * Copyright (c) 2014-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -180,6 +180,9 @@ static int xml_mode_probe(ModeDef *mode, ModeProbeData *p1)
 {
     const u8 *p;
 
+    if (match_extension(p1->filename, mode->extensions))
+        return 70;
+
     p = p1->buf;
     while (qe_isspace(*p))
         p++;
@@ -194,6 +197,7 @@ static int xml_mode_probe(ModeDef *mode, ModeProbeData *p1)
 
 ModeDef xml_mode = {
     .name = "xml",
+    .extensions = "xml",
     .mode_probe = xml_mode_probe,
     .colorize_func = xml_colorize_line,
 };

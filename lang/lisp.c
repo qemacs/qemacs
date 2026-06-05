@@ -1,7 +1,7 @@
 /*
  * Lisp Source mode for QEmacs.
  *
- * Copyright (c) 2000-2024 Charlie Gordon.
+ * Copyright (c) 2000-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -461,17 +461,6 @@ static void lisp_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = colstate;
 }
 
-static int elisp_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    /* check file name or extension */
-    if (match_extension(p->filename, mode->extensions)
-    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)
-    ||  strstart(p->filename, ".emacs", NULL))
-        return 80;
-
-    return 1;
-}
-
 ModeDef lisp_mode = {
     .name = "Lisp",
     .extensions = "ll|li|lh|lo|lm|lisp|ls9",
@@ -485,9 +474,9 @@ ModeDef lisp_mode = {
 static ModeDef elisp_mode = {
     .name = "ELisp",
     .extensions = "el",
+    .filenames = ".emacs",
     .keywords = elisp_keywords,
     .types = elisp_types,
-    .mode_probe = elisp_mode_probe,
     .colorize_func = lisp_colorize_line,
     .colorize_flags = LISP_LANG_ELISP,
     .fallback = &lisp_mode,

@@ -2169,6 +2169,12 @@ list pointed to by `extlist`.
 * Initial dots do not account as extension delimiters.
 * `.` and `..` do not have an empty extension, nor do they match `||`
 
+### `int match_filename(const char *filename, const char *namespec);`
+
+Return `true` iff the filename appears in `|` separated
+list pointed to by `namespec`.
+* Initial and final `|` are ignored as well as `||`.
+
 ### `int match_shell_handler(const char *p, const char *list);`
 
 Return `true` iff the command name invoked by the `#!` line pointed to by `p`

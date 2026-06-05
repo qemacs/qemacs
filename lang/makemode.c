@@ -1,7 +1,7 @@
 /*
  * Makefile mode for QEmacs.
  *
- * Copyright (c) 2000-2024 Charlie Gordon.
+ * Copyright (c) 2000-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -136,17 +136,6 @@ static void makefile_colorize_line(QEColorizeContext *cp,
     }
 }
 
-static int makefile_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    /* check file name or extension */
-    if (match_extension(p->filename, mode->extensions)
-    ||  stristart(p->filename, "makefile", NULL)
-    ||  stristart(p->filename, "gnumakefile", NULL))
-        return 70;
-
-    return 1;
-}
-
 static int makefile_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
@@ -160,7 +149,7 @@ static int makefile_mode_init(EditState *s, EditBuffer *b, int flags)
 static ModeDef makefile_mode = {
     .name = "Makefile",
     .extensions = "mak|make|mk|gmk",
-    .mode_probe = makefile_mode_probe,
+    .filenames = "makefile|gnumakefile",
     .mode_init = makefile_mode_init,
     .colorize_func = makefile_colorize_line,
 };
@@ -243,20 +232,10 @@ static void cmake_colorize_line(QEColorizeContext *cp,
     }
 }
 
-static int cmake_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    /* check file name or extension */
-    if (match_extension(p->filename, mode->extensions)
-    ||  stristart(p->filename, "cmakelists.txt", NULL))
-        return 70;
-
-    return 1;
-}
-
 static ModeDef cmake_mode = {
     .name = "CMake",
     .extensions = "cmake",
-    .mode_probe = cmake_mode_probe,
+    .filenames = "cmakelists.txt",
     .colorize_func = cmake_colorize_line,
 };
 

@@ -66,6 +66,7 @@ char *make_user_path(char *buf, int buf_size, const char *path);
 char *reduce_filename(char *dest, int size, const char *filename);
 char *file_load(const char *filename, int max_size, int *sizep);
 int match_extension(const char *filename, const char *extlist);
+int match_filename(const char *filename, const char *namespec);
 int match_shell_handler(const char *p, const char *list);
 // XXX: should move these to cutils?
 int remove_slash(char *buf);
