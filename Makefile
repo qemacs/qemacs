@@ -426,6 +426,10 @@ $(BINDIR)/%$(EXE): tools/%.c
 	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
+%$(EXE): %.c Makefile
+	$(echo) CC -o $@ $^
+	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $<
+
 #
 # build ligature table
 #
