@@ -2,7 +2,7 @@
  * Color / CSS Utilities for qemacs.
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2000-2024 Charlie Gordon.
+ * Copyright (c) 2000-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal

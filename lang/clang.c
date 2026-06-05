@@ -3019,10 +3019,8 @@ static const char qs_types[] = {
 static int qs_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (match_extension(p->filename, mode->extensions)
-    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)) {
-        return 80;
-    }
-    if (strequal(p->filename, ".qerc")
+    ||  match_filename(p->filename, mode->filenames)
+    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)
     ||  strstr(p->real_filename, "/.qe/config"))
         return 80;
 
@@ -3033,6 +3031,7 @@ static ModeDef qscript_mode = {
     .name = "QScript",
     .alt_name = "qs",
     .extensions = "qe|qs",
+    .filenames = ".qerc",
     .shell_handlers = "qscript|qs|qsn",
     .mode_probe = qs_mode_probe,
     .colorize_func = js_colorize_line,

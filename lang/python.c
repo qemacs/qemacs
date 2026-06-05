@@ -1,7 +1,7 @@
 /*
  * Python language mode for QEmacs.
  *
- * Copyright (c) 2000-2024 Charlie Gordon.
+ * Copyright (c) 2000-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -351,16 +351,6 @@ static ModeDef rapydscript_mode = {
 
 /*---- Bazel mode: a build system with a Python-like syntax ----*/
 
-static int bazel_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    /* check file name or extension */
-    if (match_extension(p->filename, mode->extensions)
-    ||  strstart(p->filename, "WORKSPACE", NULL))
-        return 70;
-
-    return 1;
-}
-
 static int bazel_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
@@ -374,8 +364,8 @@ static int bazel_mode_init(EditState *s, EditBuffer *b, int flags)
 static ModeDef bazel_mode = {
     .name = "Bazel",
     .extensions = "bzl|bazel",
+    .filenames = "WORKSPACE",
     .keywords = python_keywords,
-    .mode_probe = bazel_mode_probe,
     .mode_init = bazel_mode_init,
     .colorize_func = python_colorize_line,
     .colorize_flags = PYTHON_BAZEL,

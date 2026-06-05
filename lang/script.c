@@ -1,7 +1,7 @@
 /*
  * Shell script mode for QEmacs.
  *
- * Copyright (c) 2000-2024 Charlie Gordon.
+ * Copyright (c) 2000-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -279,7 +279,7 @@ static int shell_script_mode_probe(ModeDef *mode, ModeProbeData *p)
         return 82;
     }
 
-    if (stristart(p->filename, ".profile", NULL)) {
+    if (match_filename(p->filename, mode->filenames)) {
         /* XXX: Should check the user login shell */
         return 80;
     }
@@ -298,6 +298,7 @@ static ModeDef sh_mode = {
     .name = "ShellScript",
     .alt_name = "sh",
     .extensions = "sh",
+    .filenames = ".profile",
     .shell_handlers = "sh",
     .mode_probe = shell_script_mode_probe,
     .colorize_func = shell_script_colorize_line,
@@ -307,6 +308,7 @@ static ModeDef sh_mode = {
 static ModeDef bash_mode = {
     .name = "bash",
     .extensions = "bash",
+    .filenames = ".bashrc|.bash_history",
     .shell_handlers = "bash",
     .mode_probe = shell_script_mode_probe,
     .colorize_func = shell_script_colorize_line,

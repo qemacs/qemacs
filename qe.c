@@ -81,6 +81,7 @@ static int default_mode_init(EditState *s, EditBuffer *b, int flags) { return 0;
 static int generic_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (match_extension(p->filename, mode->extensions)
+    ||  match_filename(p->filename, mode->filenames)
     ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)) {
         return 80;
     }
@@ -108,10 +109,11 @@ ModeDef *qe_find_mode_filename(QEmacsState *qs, const char *filename, int flags)
     ModeDef *m;
 
     for (m = qs->first_mode; m; m = m->next) {
-        // XXX: should have a filenames field to match basenames
-        if ((m->flags & flags) == flags
-        &&  match_extension(filename, m->extensions)) {
-            break;
+        if ((m->flags & flags) == flags) {
+            if (match_extension(filename, m->extensions)
+            ||  match_filename(filename, m->filenames)) {
+                break;
+            }
         }
     }
     return m;

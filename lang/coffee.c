@@ -1,7 +1,7 @@
 /*
  * Coffee script language mode for QEmacs.
  *
- * Copyright (c) 2000-2024 Charlie Gordon.
+ * Copyright (c) 2000-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -355,22 +355,12 @@ static void coffee_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static int coffee_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    if (match_extension(p->filename, mode->extensions)
-    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)
-    ||  stristart(p->filename, "Cakefile", NULL)) {
-        return 80;
-    }
-    return 1;
-}
-
 static ModeDef coffee_mode = {
     .name = "CoffeeScript",
     .alt_name = "coffee",
     .extensions = "coffee",
+    .filenames = "Cakefile",
     .shell_handlers = "coffee",
-    .mode_probe = coffee_mode_probe,
     .keywords = coffee_keywords,
     .colorize_func = coffee_colorize_line,
 };

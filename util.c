@@ -487,6 +487,7 @@ int match_extension(const char *filename, const char *extlist) {
     if (len == 0)
         return 0;
 
+    // XXX: need syntax to select case ignore and multiple patterns
     for (p = q = extlist;; p++) {
         int c = *p;
         if (c == '|' || c == '\0') {
@@ -497,10 +498,44 @@ int match_extension(const char *filename, const char *extlist) {
                     return 1;
                 }
             }
-            if (c == '|')
-                q = p + 1;
-            else
+            if (c == '\0')
                 break;
+            q = p + 1;
+        }
+    }
+    return 0;
+}
+
+int match_filename(const char *filename, const char *namespec) {
+    /*@API utils
+       Return `true` iff the filename appears in `|` separated
+       list pointed to by `namespec`.
+     * Initial and final `|` are ignored as well as `||`.
+     */
+    const char *base, *p, *q;
+    int len;
+
+    if (!namespec)
+        return 0;
+
+    base = get_basename(filename);
+    len = strlen(base);
+    if (len == 0)
+        return 0;
+
+    // XXX: need syntax to select case ignore and multiple patterns
+    for (p = q = namespec;; p++) {
+        int c = *p;
+        if (c == '|' || c == '\0') {
+            int len1 = p - q;
+            if (len1 != 0) {
+                // XXX: accept trailing `*` or richer regex
+                if (len == len1 && !qe_memicmp(base, q, len1))
+                    return 1;
+            }
+            if (c == '\0')
+                break;
+            q = p + 1;
         }
     }
     return 0;

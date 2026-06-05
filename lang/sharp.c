@@ -1,7 +1,7 @@
 /*
  * Sharp mode (generic unix script colorizer) modes for QEmacs.
  *
- * Copyright (c) 2000-2024 Charlie Gordon.
+ * Copyright (c) 2000-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -88,8 +88,7 @@ static int sharp_mode_probe(ModeDef *mode, ModeProbeData *pd)
 {
     const char *p = cs8(pd->buf);
 
-    if (stristart(pd->filename, ".gitignore", NULL)
-    ||  stristart(pd->filename, ".clang-format", NULL))
+    if (match_filename(pd->filename, mode->filenames))
         return 70;
 
     while (qe_isspace(*p))
@@ -105,6 +104,7 @@ static int sharp_mode_probe(ModeDef *mode, ModeProbeData *pd)
 
 static ModeDef sharp_mode = {
     .name = "sharp",
+    .filenames = ".gitignore|.clang-format|COMMIT_EDITMSG",
     .mode_probe = sharp_mode_probe,
     .colorize_flags = 0,
     .colorize_func = sharp_colorize_line,
@@ -125,17 +125,9 @@ static ModeDef yaml_mode = {
 
 /* Very simple colorizer: comments, strings, config */
 
-static int recipe_mode_probe(ModeDef *mode, ModeProbeData *pd)
-{
-    if (stristart(pd->filename, "recipe.txt", NULL))
-        return 70;
-
-    return 1;
-}
-
 static ModeDef recipe_mode = {
     .name = "C2-recipe",
-    .mode_probe = recipe_mode_probe,
+    .filenames = "recipe.txt",
     .colorize_flags = SHARP_STRING1 | SHARP_STRING2 | SHARP_CONFIG,
     .colorize_func = sharp_colorize_line,
 };

@@ -1,7 +1,7 @@
 /*
  * Ruby language mode for QEmacs.
  *
- * Copyright (c) 2000-2024 Charlie Gordon.
+ * Copyright (c) 2000-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -487,21 +487,11 @@ static void ruby_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static int ruby_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    if (match_extension(p->filename, mode->extensions)
-    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)
-    ||  stristart(p->filename, "Rakefile", NULL)) {
-        return 80;
-    }
-    return 1;
-}
-
 static ModeDef ruby_mode = {
     .name = "Ruby",
     .extensions = "rb|gemspec",
+    .filenames = "Rakefile",
     .shell_handlers = "ruby",
-    .mode_probe = ruby_mode_probe,
     .keywords = ruby_keywords,
     .colorize_func = ruby_colorize_line,
 };

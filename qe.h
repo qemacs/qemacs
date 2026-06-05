@@ -852,6 +852,7 @@ struct ModeDef {
     const char *alt_name;       /* alternate name, for the mode setting cmd */
     const char *desc;           /* description of the mode */
     const char *extensions;
+    const char *filenames;
     const char *shell_handlers;
     const char *keywords;       /* list of keywords for a language mode */
     const char *types;          /* list of types for a language mode */
