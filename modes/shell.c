@@ -2789,8 +2789,10 @@ static void do_shell(EditState *e, int argval)
     char curpath[MAX_FILENAME_SIZE];
     EditBuffer *b = NULL;
 
-    if (e->flags & (WF_POPUP | WF_MINIBUF))
+    if (e->flags & (WF_POPUP | WF_MINIBUF)) {
+        put_error(e, "%s", "Please start command in a normal window");
         return;
+    }
 
     /* Start the shell in the default directory of the current window */
     get_default_path(e->b, e->offset, curpath, sizeof curpath);
@@ -2911,8 +2913,10 @@ static void do_man(EditState *s, const char *arg)
     QEmacsState *qs = s->qs;
     EditBuffer *b;
 
-    if (s->flags & (WF_POPUP | WF_MINIBUF))
+    if (s->flags & (WF_POPUP | WF_MINIBUF)) {
+        put_error(s, "%s", "Please start command in a normal window");
         return;
+    }
 
     if (s->flags & WF_POPLEFT) {
         /* avoid messing with the dired pane */
@@ -2951,8 +2955,11 @@ void qe_diff_buffer_with_file(EditState *s, EditBuffer *b)
     const char *tmpdir = getenv("TMPDIR");
     int tmpdir_len;
 
-    if (s->flags & (WF_POPUP | WF_MINIBUF))
+    if (s->flags & (WF_POPUP | WF_MINIBUF)) {
+        put_error(s, "%s", "Please start command in a normal window");
         return;
+    }
+
     if (!*fname)
         return;
 
@@ -3017,8 +3024,10 @@ static void do_ssh(EditState *s, const char *arg)
     QEmacsState *qs = s->qs;
     EditBuffer *b;
 
-    if (s->flags & (WF_POPUP | WF_MINIBUF))
+    if (s->flags & (WF_POPUP | WF_MINIBUF)) {
+        put_error(s, "%s", "Please start command in a normal window");
         return;
+    }
 
     if (s->flags & WF_POPLEFT) {
         /* avoid messing with the dired pane */
@@ -3705,8 +3714,10 @@ static void do_compile(EditState *s, const char *cmd)
     const char *bufname = "*compilation*";
     EditBuffer *b;
 
-    if (s->flags & (WF_POPUP | WF_MINIBUF))
+    if (s->flags & (WF_POPUP | WF_MINIBUF)) {
+        put_error(s, "%s", "Please start command in a normal window");
         return;
+    }
 
     get_default_path(s->b, s->offset, curpath, sizeof curpath);
 
