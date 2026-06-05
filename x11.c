@@ -335,12 +335,13 @@ static int x11_dpy_init(QEditScreen *s, QEmacsState *qs, int w, int h)
     }
 
     xs->xim = XOpenIM(xs->display, NULL, NULL, NULL);
-    xs->xic = XCreateIC(xs->xim, XNInputStyle,
-                        XIMPreeditNothing | XIMStatusNothing,
-                        XNClientWindow, xs->window,
-                        XNFocusWindow, xs->window,
-                        NULL);
-
+    if (xs->xim) {
+        xs->xic = XCreateIC(xs->xim, XNInputStyle,
+                            XIMPreeditNothing | XIMStatusNothing,
+                            XNClientWindow, xs->window,
+                            XNFocusWindow, xs->window,
+                            NULL);
+    }
     xs->wm_delete_window = XInternAtom(xs->display, "WM_DELETE_WINDOW", False);
     XSetWMProtocols(xs->display, xs->window, &xs->wm_delete_window, 1);
 
@@ -472,6 +473,9 @@ static void x11_dpy_close(QEditScreen *s)
 #ifdef CONFIG_XV
     xv_close(s);
 #endif
+
+    if (xs->xic) XDestroyIC(xs->xic);
+    if (xs->xim) XCloseIM(xs->xim);
 
 #ifdef CONFIG_DOUBLE_BUFFER
     XFreePixmap(xs->display, xs->dbuffer);
@@ -1465,18 +1469,17 @@ static void x11_handle_event(void *opaque)
         case KeyPress:
 #ifdef X_HAVE_UTF8_STRING
             /* only present since XFree 4.0.2 */
-            {
+            if (xs->xic) {
                 Status status;
                 len = Xutf8LookupString(xs->xic, &xev.xkey, buf, sizeof(buf),
                                         &keysym, &status);
-            }
-#else
+            } else
+#endif
             {
                 static XComposeStatus status;
                 len = XLookupString(&xev.xkey, buf, sizeof(buf),
                                     &keysym, &status);
             }
-#endif
             key_state = 0;
             if (xev.xkey.state & ShiftMask)
                 key_state = KEY_STATE_SHIFT;
