@@ -8851,19 +8851,22 @@ static int probe_mode(EditState *s, EditBuffer *b,
 
 EditState *qe_find_target_window(EditState *s, int activate) {
     QEmacsState *qs = s->qs;
+    EditBuffer *b = qe_check_buffer(qs, &s->b);
     EditState *e;
 
     /* Find the target window for some commands run from the dired window */
     if (s->flags & WF_POPUP) {
-        e = qe_check_window(s->qs, &s->target_window);
+        e = qe_check_window(qs, &s->target_window);
         if (e) {
-            if (activate && qs->active_window == s)
+            if (activate && qs->active_window == s) {
                 qs->active_window = e;
+                if (b && b->flags & BF_DIRED)
+                    b->flags |= BF_TRANSIENT;
+                edit_close(&s);
+                do_refresh(e);
+            }
+            s = e;
         }
-        s->b->flags |= BF_TRANSIENT;
-        edit_close(&s);
-        s = e;
-        do_refresh(s);
     }
 #ifndef CONFIG_TINY
     if (s && (s->flags & WF_POPLEFT) && s->x1 == 0) {
@@ -9407,7 +9410,7 @@ int qe_check_buffer_file(EditBuffer *b, int mode)
     if (b->data_type && b->data_type != &raw_data_type)
         return CBF_NOT_RAW;
 
-    if (stat(b->filename, &st))
+    if (stat(b->filename, &st) < 0 || !S_ISREG(st.st_mode))
         return CBF_NO_ACCESS;
 
     if (st.st_mtime == b->file_mtime && st.st_size == b->file_size)
@@ -9444,6 +9447,7 @@ int qe_check_buffer_file(EditBuffer *b, int mode)
                     pos += size2;
                     size1 -= size2;
                     eb_insert(b, pos, buf1 + size2, size1);
+                    pos += size1;
                     while ((size1 = fread(buf1, 1, sizeof(buf1), fp)) > 0) {
                         eb_insert(b, pos, buf1, size1);
                         pos += size1;
