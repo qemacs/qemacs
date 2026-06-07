@@ -3753,15 +3753,26 @@ static void do_compile(EditState *s, const char *cmd)
 static void do_next_error(EditState *s, int arg, int dir)
 {
     QEmacsState *qs = s->qs;
-    EditState *e;
+    EditState *e, *e_next;
     EditBuffer *b;
     int offset, found_offset;
     char filename[MAX_FILENAME_SIZE];
     char fullpath[MAX_FILENAME_SIZE];
     buf_t fnamebuf, *fname;
-    int line_num, col_num, len;
+    int line_num, col_num;
     char32_t c;
-    char error_message[128];
+    struct stat sb;
+
+    if (s->flags & (WF_POPUP | WF_MINIBUF)) {
+        put_error(s, "%s", "Please start command in a normal window");
+        return;
+    }
+
+    if (s->flags & WF_POPLEFT) {
+        /* avoid messing with the dired pane */
+        s = find_window(s, KEY_RIGHT, s);
+        qs->active_window = s;
+    }
 
     if (arg != NO_ARG) {
         /* called with a prefix: set the error source to the current buffer */
@@ -3851,8 +3862,6 @@ static void do_next_error(EditState *s, int arg, int dir)
                 goto next_line;
             c = eb_nextc(b, offset, &offset);
         }
-        len = eb_fgets(b, error_message, sizeof(error_message), offset, &offset);
-        error_message[len] = '\0';   /* strip the trailing newline if any */
         if (line_num >= 1) {
             if (line_num != error_state.line_num
             ||  col_num != error_state.col_num
@@ -3867,19 +3876,45 @@ static void do_next_error(EditState *s, int arg, int dir)
         offset = found_offset;
     }
     error_state.offset = found_offset;
-    /* update offsets */
-    for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e->b == b) {
-            e->offset = error_state.offset;
-        }
+
+    for (e = qs->first_window; e != NULL; e = e_next) {
+        e_next = e->next_window;
+        if (e->flags & (WF_POPUP | WF_POPLEFT))
+            edit_close(&e);
     }
 
-    /* CG: Should remove popups, sidepanes, helppanes... */
+    /* check file and go to the error */
+    if (stat(fullpath, &sb) < 0) {
+        // XXX: should prompt for fullpath as a fallback
+        put_error(qs->active_window, "Cannot find error in '%s': %s",
+                  fullpath, strerror(errno));
+    } else
+    if (!S_ISREG(sb.st_mode)) {
+        put_error(qs->active_window, "Cannot find error in '%s': %s",
+                  fullpath, "not a regular file");
+    } else {
+        /* find a window showing the error source
+           buffer, split a new one if none is found  */
+        if ((e = eb_find_window(b, NULL)) == NULL)
+            e = shell_target_window(s, b);
 
-    /* go to the error */
-    /* XXX: should check for file existence */
-    do_find_file(s, fullpath, 0);
-    do_goto_line(qs->active_window, line_num, col_num);
+        /* if there is only one window and is showing the error
+           source buffer then split a new window to find the file in */
+        if (e == s && (s = get_next_window(s, WF_MINIBUF | WF_HIDDEN, 0)) == NULL)
+            s = shell_target_window(e, b);
+
+        /* update error window */
+        e->interactive = 0;
+        e->offset_top = e->offset = error_state.offset;
+        if (qs->shell_buffer_read_only)
+            b->flags |= BF_READONLY;
+
+        /* set and update active window */
+        qs->active_window = s;
+        do_find_file(s, fullpath, 0);
+        do_goto_line(s, line_num, col_num);
+        do_center_cursor(s, 1);
+    }
 
 #if 0  // conflicts with muscle memory (chqrlie)
     if (!qs->first_transient_key) {
@@ -3887,7 +3922,6 @@ static void do_next_error(EditState *s, int arg, int dir)
         qe_register_transient_binding(qs, "previous-error", "M-p");
     }
 #endif
-    put_status(s, "=> %s", error_message);
 }
 
 static int match_digits(const char32_t *buf, int n, char32_t sep) {
