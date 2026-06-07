@@ -1967,6 +1967,8 @@ static void do_describe_buffer(EditState *s, int argval)
         buf_puts(desc, " SAVING");
     if (b->flags & BF_DIRED)
         buf_puts(desc, " DIRED");
+    if (b->flags & BF_SHELL)
+        buf_puts(desc, " SHELL");
     if (b->flags & BF_UTF8)
         buf_puts(desc, " UTF8");
     if (b->flags & BF_RAW)

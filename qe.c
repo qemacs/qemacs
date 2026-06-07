@@ -4849,7 +4849,7 @@ static int syntax_get_colorized_line(QEColorizeContext *cp,
         line++;
         if (line < s->colorize_nb_valid_lines)
             s->colorize_nb_valid_lines = line;
-        eb_delete_properties(b, s->colorize_max_valid_offset, INT_MAX);
+        eb_delete_properties(b, s->colorize_max_valid_offset, INT_MAX, 0);
         s->colorize_max_valid_offset = INT_MAX;
     }
 
@@ -8605,7 +8605,8 @@ void do_kill_buffer(EditState *s, const char *bufname, int force)
                             kill_process_confirm_cb, md);
         } else {
             /* if modified and associated to a filename, then ask */
-            if (!force && b->modified && b->filename[0] != '\0') {
+            if (!force && !(b->flags & (BF_DIRED | BF_SHELL))
+            && b->modified && b->filename[0] != '\0') {
                 qe_stop_macro(qs);
                 snprintf(buf, sizeof(buf),
                          "Buffer %s modified; kill anyway? (yes or no) ", bufname);
@@ -9578,7 +9579,8 @@ static void quit_examine_buffers(QuitState *is)
 
     while (is->b != NULL) {
         b = is->b;
-        if (!(b->flags & BF_SYSTEM) && b->filename[0] != '\0' && b->modified) {
+        if (!(b->flags & (BF_SYSTEM | BF_DIRED | BF_SHELL))
+        && b->filename[0] != '\0' && b->modified) {
             switch (is->state) {
             case QS_ASK:
                 /* XXX: display cursor */

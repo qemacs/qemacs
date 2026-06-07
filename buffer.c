@@ -833,7 +833,7 @@ void eb_free(EditBuffer **bp)
             qe_free(&cb);
         }
 
-        eb_delete_properties(b, 0, INT_MAX);
+        eb_delete_properties(b, 0, INT_MAX, 1);
         eb_cache_remove(b);
         /* eb_clear frees b->log_buffer.
          * it should also call eb_free_style_buffer(b)
@@ -2834,7 +2834,7 @@ QEProperty *eb_find_property(EditBuffer *b, int offset, int offset2, int type) {
     return found;
 }
 
-void eb_delete_properties(EditBuffer *b, int offset, int offset2) {
+void eb_delete_properties(EditBuffer *b, int offset, int offset2, int force) {
     QEProperty *p;
     QEProperty **pp;
 
@@ -2842,7 +2842,7 @@ void eb_delete_properties(EditBuffer *b, int offset, int offset2) {
         return;
 
     for (pp = &b->property_list; (p = *pp) != NULL && p->offset < offset2;) {
-        if (p->offset >= offset && p->offset < offset2) {
+        if ((!(p->type & QE_PROP_SKIP) || force) && p->offset >= offset) {
             *pp = (*pp)->next;
             if (p->type & QE_PROP_FREE) {
                 qe_free(&p->data);
