@@ -45,6 +45,7 @@
 static ModeDef shell_mode, pager_mode;
 
 #define MAX_CSI_PARAMS  16
+#define MAX_OSC_SIZE    512 + MAX_FILENAME_SIZE
 
 enum QETermState {
     QE_TERM_STATE_NORM,
@@ -84,6 +85,8 @@ typedef struct ShellState {
     unsigned char term_buf[256];
     int term_len, term_pos;
     int utf8_len;
+    char osc_buf[MAX_OSC_SIZE];
+    int osc_len;
     EditBuffer *b;
     EditBuffer *b_color; /* color buffer, one byte per char */
     const char *ka1, *ka3, *kb2, *kc1, *kc3, *kcbt, *kspd;
@@ -97,7 +100,6 @@ typedef struct ShellState {
     const char *caption;  /* process caption for exit message */
     int shell_flags;
     int last_char;  /* last char sent to the process */
-    char curpath[MAX_FILENAME_SIZE]; /* should keep a list with validity ranges */
 } ShellState;
 
 typedef struct ShellError {
@@ -126,8 +128,6 @@ static ShellError error_state = {
 #define SR_REFRESH      2
 #define SR_SILENT       4
 static void do_shell_refresh(EditState *e, int flags);
-static char *shell_get_curpath(EditBuffer *b, int offset,
-                               char *buf, int buf_size);
 
 static void shell_close(ShellState *s);
 
@@ -1419,6 +1419,7 @@ static unsigned char const sco_color[16] = {
 
 static void qe_term_emulate(ShellState *s, int c)
 {
+    QEmacsState *qs = s->b->qs;
     int i, param1, param2, len, offset, offset1, offset2;
     ShellPos pos;
     char buf1[10];
@@ -1489,7 +1490,7 @@ static void qe_term_emulate(ShellState *s, int c)
             break;
         case 7:     /* BEL  Bell (Ctrl-G). */
             // XXX: should check for visible-bell
-            put_status(s->b->qs->active_window, "Ding!");
+            put_status(qs->active_window, "Ding!");
             break;
         case 8:     /* BS   Backspace (Ctrl-H). */
             //TRACE_PRINTF(s, "BS: ");
@@ -1673,6 +1674,7 @@ static void qe_term_emulate(ShellState *s, int c)
         case ']':   // Operating System Command (OSC is 0x9d).
             s->params[0] = 0;
             s->esc2 = 0;
+            s->osc_len = 0;
             s->state = QE_TERM_STATE_OSC1;
             break;
         case '^':   // Privacy Message (PM  is 0x9e).
@@ -1829,7 +1831,6 @@ static void qe_term_emulate(ShellState *s, int c)
         s->state = QE_TERM_STATE_STRING;
         /* fall thru */
     case QE_TERM_STATE_STRING:
-        /* CG: should store the string */
         /* Stop string on CR or LF, for protection */
         if ((c == '\012' || c == '\015') && s->params[0] != 1337) {
             s->state = QE_TERM_STATE_NORM;
@@ -1838,10 +1839,20 @@ static void qe_term_emulate(ShellState *s, int c)
         }
         /* Stop string on \a (^G) or ST (ESC \) */
         if (!(c == '\007' || c == 0234 || (s->lastc == 27 && c == '\\'))) {
-            /* XXX: should store the string for specific cases */
             s->lastc = c;
+            /* skip ';' following OSC number */
+            if (s->osc_len > 0 || (c != ';')) {
+                if (s->osc_len < countof(s->osc_buf) - 1)
+                    s->osc_buf[s->osc_len++] = c;
+            }
             break;
         }
+
+        /* if stopped on (ESC \) strip trailing ESC */
+        if (s->osc_len > 0 && s->osc_buf[s->osc_len - 1] == 27)
+            s->osc_len -= 1;
+
+        s->osc_buf[s->osc_len] = '\0';
         s->state = QE_TERM_STATE_NORM;
         /* OSC / PM / APC / DCS string has been received. Should handle these cases:
            - OSC 0; Pt ST  Change Icon Name and Window Title to Pt.
@@ -1889,7 +1900,62 @@ static void qe_term_emulate(ShellState *s, int c)
            xterm has a file download and image display protocol:
            - OSC 1337; Pt ST
          */
-        TRACE_PRINTF(s, "unhandled string: %.*s", min_int(s->term_pos, 20), s->term_buf);
+        switch (s->params[0]) {
+        case 7:
+            {
+                char cwd[MAX_FILENAME_SIZE];
+                buf_t cwdbuf[1];
+                int pos = 7; /* first character after "file://" */
+
+                if (!strstart(s->osc_buf, "file://", NULL)) {
+                    put_error(qs->active_window,
+                              "term_emulate: OSC 7 URI must start with 'file://'");
+                    break;
+                }
+
+                /* skip hostname if any */
+                while (pos < s->osc_len && s->osc_buf[pos] != '/')
+                    pos++;
+
+                if (pos >= s->osc_len) {
+                    put_error(qs->active_window,
+                              "term_emulate: missing path in OSC 7 URI: '%s'", s->osc_buf);
+                    break;
+                }
+                /* decode URI path */
+                buf_init(cwdbuf, cwd, sizeof(cwd));
+                while (pos < s->osc_len) {
+                    if (s->osc_buf[pos] == '%'
+                    && pos + 2 < s->osc_len
+                    && qe_isxdigit(s->osc_buf[pos + 1])
+                    && qe_isxdigit(s->osc_buf[pos + 2]))
+                    {
+                        buf_put_byte(cwdbuf, ((qe_digit_value(s->osc_buf[pos + 1]) << 4)
+                                           + qe_digit_value(s->osc_buf[pos + 2])));
+                        pos += 3;
+                    } else {
+                        buf_put_byte(cwdbuf, s->osc_buf[pos]);
+                        pos += 1;
+                    }
+                }
+                if (!strequal(s->b->filename, cwd)) {
+                    /* XXX: properties placed at end of buffer move forward whenever
+                       output is appended, causing successive cwd properties to share
+                       the same position instead of marking where cwd was observed. */
+                    int offset = s->b->offset - 1;
+                    if (offset > 0) { /* defer first property addition */
+                        if (!s->b->property_list && *s->b->filename)
+                            eb_add_property(s->b, 0, QE_PROP_CWD, qe_strdup(s->b->filename));
+                        eb_add_property(s->b, offset, QE_PROP_CWD, qe_strdup(cwd));
+                    }
+                    pstrcpy(unconst(char *)s->b->filename, sizeof(s->b->filename), cwd);
+                }
+            }
+            break;
+        default:
+            TRACE_PRINTF(s, "unhandled string: %s", s->osc_buf);
+            break;
+        }
         break;
     case QE_TERM_STATE_CSI:
         if (c >= '<' && c <= '?') {
@@ -2493,7 +2559,6 @@ static void shell_read_cb(void *opaque)
                 b->mark = s->cur_prompt;
             }
         }
-        shell_get_curpath(b, s->cur_offset, s->curpath, sizeof(s->curpath));
     } else {
         int pos = b->total_size;
         int threshold = 3 << 20;    /* 3MB for large pictures */
@@ -2706,6 +2771,8 @@ EditBuffer *qe_new_shell_buffer(QEmacsState *qs, EditBuffer *b0, EditState *e,
     }
     shell_flags &= ~(SF_REUSE_BUFFER | SF_ERASE_BUFFER);
 
+    if (path)
+        pstrcpy(unconst(char *)b->filename, sizeof(b->filename), path);
     eb_set_buffer_name(b, bufname); /* ensure that the name is unique */
     if (shell_flags & SF_COLOR) {
         eb_create_style_buffer(b, BF_STYLE_COMP);
@@ -3276,11 +3343,6 @@ static void do_shell_newline(EditState *e)
     struct timespec ts;
 
     if (e->interactive) {
-        ShellState *s = shell_get_state(e, 1);
-
-        if (s) {
-            shell_get_curpath(e->b, e->offset, s->curpath, sizeof(s->curpath));
-        }
         shell_write_char(e, '\r');
         /* give the process a chance to handle the input */
         ts.tv_sec = 0;
@@ -3553,66 +3615,11 @@ static void do_shell_toggle_input(EditState *e)
     }
 }
 
-/* get current directory from prompt on current line */
-/* XXX: should extend behavior to handle more subtile cases */
-static char *shell_get_curpath(EditBuffer *b, int offset,
-                               char *buf, int buf_size)
-{
-    char line[1024];
-    char curpath[MAX_FILENAME_SIZE];
-    int start, stop0, stop, i, len, offset1;
-
-    offset = eb_goto_bol(b, offset);
-again:
-    len = eb_fgets(b, line, sizeof(line), offset, &offset1);
-    line[len] = '\0';   /* strip the trailing newline if any */
-
-    start = stop = stop0 = 0;
-    for (i = 0; i < len;) {
-        char c = line[i++];
-        if (c == '#' || c == '$' || c == '>') {
-            stop = stop0;
-            break;
-        }
-        if (c == ':' && line[i] != '\\'
-        &&  !(line[i] == '/' && line[i + 1] == '/')
-        &&  !(line[i] == '/' && line[i + 1] == '*'))
-            start = i;
-        if (c == ' ') {
-            if (!start || start == i - 1)
-                start = i;
-        } else {
-            stop0 = i;
-        }
-    }
-    if (stop > start) {
-        line[stop] = '\0';
-        /* XXX: should use a lower level function to avoid potential recursion */
-        canonicalize_absolute_path(NULL, curpath, sizeof curpath, line + start);
-        if (is_directory(curpath)) {
-            append_slash(curpath, sizeof curpath);
-            return pstrcpy(buf, buf_size, curpath);
-        }
-    }
-    /* XXX: limit backlook? */
-    if (offset > 0) {
-        offset = eb_prev_line(b, offset);
-        goto again;
-    }
-    return NULL;
-}
-
 static char *shell_get_default_path(EditBuffer *b, int offset,
                                     char *buf, int buf_size)
 {
-#if 0
-    ShellState *s = qe_get_buffer_mode_data(b, &shell_mode, NULL);
-
-    if (s && (s->curpath[0] || shell_get_curpath(b, offset, s->curpath, sizeof(s->curpath)))) {
-        return pstrcpy(buf, buf_size, s->curpath);
-    }
-#endif
-    return shell_get_curpath(b, offset, buf, buf_size);
+    QEProperty *p = eb_find_property(b, 0, offset, QE_PROP_CWD);
+    return pstrcpy(buf, buf_size, p ? p->data : b->filename);
 }
 
 static void shell_kill_process_confirm_cb(void *opaque, char *reply, CompletionDef *completion)

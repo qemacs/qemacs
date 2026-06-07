@@ -643,7 +643,9 @@ extern EditBufferDataType raw_data_type;
 struct QEProperty {
     int offset;
 #define QE_PROP_FREE  1
+#define QE_PROP_SKIP  4
 #define QE_PROP_TAG   3
+#define QE_PROP_CWD   13
     int type;
     void *data;
     QEProperty *next;
@@ -652,7 +654,7 @@ struct QEProperty {
 void eb_add_property(EditBuffer *b, int offset, int type, void *data);
 QEProperty *eb_find_property(EditBuffer *b, int offset, int offset2, int type);
 void eb_add_tag(EditBuffer *b, int offset, const char *s);
-void eb_delete_properties(EditBuffer *b, int offset, int offset2);
+void eb_delete_properties(EditBuffer *b, int offset, int offset2, int force);
 
 /* qe module handling */
 
