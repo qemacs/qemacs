@@ -2448,6 +2448,7 @@ static void shell_read_cb(void *opaque)
     EditBuffer *b;
     unsigned char buf[16 * 1024];
     int len, i, save_readonly;
+    int prev_offset;
 
     if (!s || s->base.mode != &shell_mode)
         return;
@@ -2467,6 +2468,7 @@ static void shell_read_cb(void *opaque)
     /* Suspend BF_READONLY flag to allow shell output to readonly buffer */
     save_readonly = b->flags & BF_READONLY;
     b->flags &= ~BF_READONLY;
+    prev_offset = b->offset = b->total_size;
     b->last_log = 0;
 
     if (s->shell_flags & SF_COLOR) {
@@ -2514,8 +2516,10 @@ static void shell_read_cb(void *opaque)
     }
 
     EditState *e = qs->active_window;
-    if (e->b == b && !e->interactive && qs->last_cmd_func == (CmdFunc)do_eof)
-        e->offset = b->total_size;
+    if (e->b == b) {
+        if ((e->offset == prev_offset) || (qs->last_cmd_func == (CmdFunc)do_eof))
+            e->offset = b->total_size;
+    }
 
     /* now we do some refresh (should just invalidate?) */
     qe_display(qs);
@@ -2620,30 +2624,29 @@ static void shell_close(ShellState *s)
                      s->caption, strsignal(WTERMSIG(status)));
         }
         if (*buf != '\0') {
-            int save_readonly = s->b->flags & BF_READONLY;
+            int save_readonly = b->flags & BF_READONLY;
             int prev_offset;
 
             e = qs->active_window;
-
             if (!(s->shell_flags & SF_INTERACTIVE))
                 put_status(e, "%s", buf);
 
             /* Flush output to buffer, bypassing readonly flag */
-            s->b->flags &= ~BF_READONLY;
+            b->flags &= ~BF_READONLY;
 
             prev_offset = b->offset = b->total_size;
             eb_printf(b, "\n%s at %s", buf, time_str);
 
             if (e->b == b) {
-                if ((!e->interactive && qs->last_cmd_func == (CmdFunc)do_eof)
-                ||  (e->offset == prev_offset)) {
+                if (e->interactive || (e->offset == prev_offset)
+                || (qs->last_cmd_func == (CmdFunc)do_eof)) {
                     e->offset = b->total_size;
                 }
             }
 
             if (save_readonly) {
-                s->b->modified = 0;
-                s->b->flags |= BF_READONLY;
+                b->modified = 0;
+                b->flags |= BF_READONLY;
             }
         }
     }
@@ -2655,7 +2658,7 @@ static void shell_close(ShellState *s)
     }
 
     for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e->b == s->b) {
+        if (e->b == b) {
             if (s->shell_flags & SF_AUTO_CODING)
                 do_set_auto_coding(e, 0);
             if (s->shell_flags & SF_AUTO_MODE)
