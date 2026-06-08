@@ -174,7 +174,7 @@ static int eb_skip_spaces(EditBuffer *b, int offset, int *offsetp)
 
 static uint32_t eb_checksum_line(EditBuffer *b, int offset, int *offsetp)
 {
-    uint32_t checksum = 0;
+    uint32_t checksum = 0U - (offset == b->total_size);
     char32_t c;
 
     while ((c = eb_nextc(b, offset, &offset)) != '\n') {
@@ -191,7 +191,7 @@ static void compare_resync(EditState *s1, EditState *s2,
     EditBuffer *b1 = s1->b;
     EditBuffer *b2 = s2->b;
     int pos1, pos2, off1, off2;
-    enum { MAX_LINE_SYNC = 64 };
+    enum { MAX_BYTE_SYNC = 5, MAX_LINE_SYNC = 64 };
     int p1[MAX_LINE_SYNC];
     int p2[MAX_LINE_SYNC];
     uint32_t chk1[MAX_LINE_SYNC];
@@ -208,7 +208,19 @@ static void compare_resync(EditState *s1, EditState *s2,
         pos2 = off2;
         n++;
     }
-    if (n > 5) {
+    if (n < MAX_BYTE_SYNC) {
+        // Try and find identical lines up to MAX_LINE_SYNC - 2 lines apart
+        off1 = eb_goto_bol(b1, save1);
+        off2 = eb_goto_bol(b2, save2);
+        for (i = 0; i < MAX_LINE_SYNC; i++) {
+            chk1[i] = eb_checksum_line(b1, p1[i] = off1, &off1);
+            chk2[i] = eb_checksum_line(b2, p2[i] = off2, &off2);
+        }
+        if (chk1[1] == chk2[1] && chk1[2] == chk2[2] && chk1[3] == chk2[3])
+            n = MAX_BYTE_SYNC;
+    }
+    if (n >= MAX_BYTE_SYNC) {
+        // Isolated line change: resync on same line
         *offset1_ptr = pos1;
         *offset2_ptr = pos2;
         if (pos1 - save1 == pos2 - save2) {
@@ -218,13 +230,7 @@ static void compare_resync(EditState *s1, EditState *s2,
         }
         return;
     }
-    // Try and find identical lines up to MAX_LINE_SYNC - 2 lines apart
-    pos1 = eb_goto_bol(b1, save1);
-    pos2 = eb_goto_bol(b2, save2);
-    for (i = 0; i < MAX_LINE_SYNC; i++) {
-        chk1[i] = eb_checksum_line(b1, p1[i] = pos1, &pos1);
-        chk2[i] = eb_checksum_line(b2, p2[i] = pos2, &pos2);
-    }
+    // Compute minimum change set
     for (i = 1; i < 2 * MAX_LINE_SYNC; i++) {
         for (j = 0; j <= i && j < MAX_LINE_SYNC - 2; j++) {
             int i1 = j;
