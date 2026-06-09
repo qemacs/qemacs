@@ -3575,6 +3575,7 @@ static void apply_style(QEStyleDef *stp, QETermStyle style)
     QEStyleDef *s;
 
     if (style & QE_TERM_COMPOSITE) {
+        QEColor fg_color, bg_color;
         int fg = QE_TERM_GET_FG(style);
         int bg = QE_TERM_GET_BG(style);
         if (style & QE_TERM_BOLD) {
@@ -3590,9 +3591,12 @@ static void apply_style(QEStyleDef *stp, QETermStyle style)
             stp->font_style |= QE_FONT_STYLE_ITALIC;
         if (style & QE_TERM_BLINK)
             stp->font_style |= QE_FONT_STYLE_BLINK;
-        // FIXME: should support transparent background
-        stp->fg_color = qe_unmap_color(fg, QE_TERM_FG_COLORS);
-        stp->bg_color = qe_unmap_color(bg, QE_TERM_BG_COLORS);
+        fg_color = qe_unmap_color(fg, QE_TERM_FG_COLORS);
+        if (fg_color != COLOR_TRANSPARENT)
+            stp->fg_color = fg_color;
+        bg_color = qe_unmap_color(bg, QE_TERM_BG_COLORS);
+        if (bg_color != COLOR_TRANSPARENT)
+            stp->bg_color = bg_color;
     } else {
         s = &qe_styles[style & QE_STYLE_NUM];
         if (s->fg_color != COLOR_TRANSPARENT)
@@ -3616,7 +3620,7 @@ static void apply_style(QEStyleDef *stp, QETermStyle style)
 void get_style(EditState *e, QEStyleDef *stp, QETermStyle style)
 {
     /* get root default style */
-    *stp = qe_styles[0];
+    *stp = qe_styles[QE_STYLE_DEFAULT];
 
     /* apply window default style */
     if (e && e->default_style != 0)
@@ -4054,7 +4058,7 @@ static void flush_line(DisplayState *ds,
     if (ds->do_disp == DISP_PRINT
     &&  ds->y + line_height >= 0
     &&  ds->y < e->ytop + e->height) {
-        QEStyleDef styledef, default_style;
+        QEStyleDef styledef;
         int no_display = 0;
 
         /* test if display needed */
@@ -4077,7 +4081,7 @@ static void flush_line(DisplayState *ds,
                 QELineShadow *ls;
                 uint64_t crc;
 
-                crc = compute_crc(fragments, sizeof(*fragments) * nb_fragments, 0);
+                crc = compute_crc(fragments, sizeof(*fragments) * nb_fragments, ds->line_style);
                 crc = compute_crc(ds->line_chars, sizeof(*ds->line_chars) * ds->line_index, crc);
                 ls = &e->line_shadow[ds->line_num];
                 if (ls->y != ds->y || ls->x != ds->x_line
@@ -4094,7 +4098,16 @@ static void flush_line(DisplayState *ds,
         }
         if (!no_display) {
             /* display */
-            get_style(e, &default_style, QE_STYLE_DEFAULT);
+            QEStyleDef default_style;
+#if 1
+            get_style(e, &default_style, ds->line_style);
+#else
+            default_style = qe_styles[QE_STYLE_DEFAULT];
+            if (e && e->default_style != 0)
+                apply_style(&default_style, e->default_style);
+            if (ds->line_style)
+                apply_style(&default_style, ds->line_style);
+#endif
             x = ds->x_start;
             y = ds->y;
 
@@ -4111,7 +4124,13 @@ static void flush_line(DisplayState *ds,
             // XXX: handle curline_style and other line styles
             for (i = 0; i < nb_fragments && x < x1; i++) {
                 frag = &fragments[i];
+#if 0
                 get_style(e, &styledef, frag->style);
+#else
+                styledef = default_style;
+                if (frag->style)
+                    apply_style(&styledef, frag->style);
+#endif
                 // XXX: should not fill if transparent
                 fill_rectangle(screen, e->xleft + x, e->ytop + y,
                                frag->width, line_height, styledef.bg_color);
@@ -4137,7 +4156,13 @@ static void flush_line(DisplayState *ds,
                 frag = &fragments[i];
                 x += frag->width;
                 if (x > 0) {
+#if 0
                     get_style(e, &styledef, frag->style);
+#else
+                    styledef = default_style;
+                    if (frag->style)
+                        apply_style(&styledef, frag->style);
+#endif
                     font = select_font(screen,
                                        styledef.font_style, styledef.font_size);
                     draw_text(screen, font,
@@ -4884,6 +4909,7 @@ static int syntax_get_colorized_line(QEColorizeContext *cp,
     }
     cp->combine_stop = len - bom;
     cp->cur_pos -= bom;
+    cp->mode_flags = s->colorize_mode->flags;
     cp_colorize_line(cp, cp->buf, bom, len, cp->sbuf, s->colorize_mode);
     cp->cur_pos += bom;
     /* buf[len] has char '\0' but may hold style, force buf ending */
@@ -4908,9 +4934,10 @@ static int syntax_get_colorized_line(QEColorizeContext *cp,
             offset = eb_next(b, offset);
         }
     }
-    if (!(s->colorize_mode->flags & MODEF_NO_TRAILING_BLANKS)) {
+    if (!(cp->mode_flags & MODEF_NO_TRAILING_BLANKS)) {
         /* Mark trailing blanks as errors if cursor is not at end of line */
-        for (i = len; i > 0 && qe_isblank(cp->buf[i - 1]) && i != cp->cur_pos; i--) {
+        int start = bom + cp->combine_skip;
+        for (i = len; i > start && qe_isblank(cp->buf[i - 1]) && i != cp->cur_pos; i--) {
             cp->sbuf[i - 1] = QE_STYLE_BLANK_HILITE;
         }
     }
@@ -5109,14 +5136,13 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
             if (s->offset < offset0 || offset == offset0
             ||  (offset0 == s->b->total_size && eb_peek_prevc(s->b, offset0) != '\n')) {
                 /* XXX: only if qs->active_window == s ? */
-                int i;
-                for (i = 0; i < colored_nb_chars; i++)
-                    cp->sbuf[i] = s->curline_style;
+                cp->line_style = s->curline_style;
             }
         }
     }
 #endif
 
+    ds->line_style = cp->line_style;
     bd = embeds + 1;
     char_index = 0;
     for (;;) {

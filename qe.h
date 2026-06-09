@@ -278,9 +278,12 @@ struct QEColorizeContext {
     u8 reallocated;
     u8 truncated;
     int combine_start, combine_stop; /* region for combine_static_colorized_line() */
+    int combine_skip;   /* initial characters to skip (diff marks) */
+    QETermStyle line_style;
+    int mode_flags;
     int cur_pos;   /* position of cursor in line or -1 if outside line */
     int buf_size;
-    char32_t  *buf;
+    char32_t *buf;
     QETermStyle *sbuf;
     char32_t buf0[COLORED_LINE_SIZE];
     QETermStyle sbuf0[COLORED_LINE_SIZE];
@@ -1312,6 +1315,7 @@ struct DisplayState {
     int eol_reached;
     EditState *edit_state;
     QETermStyle style;   /* current style for display_printf... */
+    QETermStyle line_style; /* style of the current line... */
 
 #if 0
     QEFont *font;
@@ -1886,7 +1890,9 @@ void do_show_bindings(EditState *s, const char *cmd_name);
 void do_describe_bindings(EditState *s, int argval);
 void do_apropos(EditState *s, const char *str);
 
-int qe_term_get_style(const char *str, QETermStyle *style);
+int qe_term_get_style(QETermStyle *style, const char *str);
+int qe_term_style_string(char *dest, size_t size, QETermStyle style);
+int qe_styledef_string(char *dest, size_t size, const QEStyleDef *stp);
 int color_print_entry(CompleteState *cp, EditState *s, const char *name);
 int style_print_entry(CompleteState *cp, EditState *s, const char *name);
 
