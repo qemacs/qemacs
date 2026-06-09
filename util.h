@@ -673,6 +673,7 @@ static inline int buf_puts(buf_t *bp, const char *str) {
     return buf_write(bp, str, strlen(str));
 }
 
+int buf_put_word(buf_t *bp, const char *str);
 int buf_printf(buf_t *bp, const char *fmt, ...) qe__attr_printf(2,3);
 int buf_putc_utf8(buf_t *bp, char32_t c);
 

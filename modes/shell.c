@@ -3895,6 +3895,37 @@ static int match_string(const char32_t *buf, int n, const char *str) {
     return (str[i] == '\0') ? i : 0;
 }
 
+// Try and match diff marks. Accept patch style and default diff style
+static int match_diff(const char32_t *buf, int n) {
+    int i = 0;
+
+    // Accept lines starting with @@ (patch style location lines)
+    if (n > 2 && buf[0] == '@' && buf[1] == '@')
+        return 1;
+
+    // Accept --- (diff style block separators)
+    if (n == 3 && buf[0] == '-' && buf[1] == '-' && buf[2] == '-')
+        return 1;
+
+    // Accept lines matching [0-9]+[adc][0-9]+(,[0-9]+)? (diff style location lines)
+    if (!qe_isdigit(buf[i])) return 0;
+    while (qe_isdigit(buf[++i]))
+        continue;
+    if (i == n || (buf[i] != 'a' && buf[i] != 'd' && buf[i] != 'c'))
+        return 0;
+    if (!qe_isdigit(buf[++i])) return 0;
+    while (qe_isdigit(buf[++i]))
+        continue;
+    if (i == n) return 1;
+    if (buf[i] != ',') return 0;
+    if (!qe_isdigit(buf[++i])) return 0;
+    while (qe_isdigit(buf[++i]))
+        continue;
+    if (i == n) return 1;
+
+    return 0;
+}
+
 static int shell_grab_filename(const char32_t *buf, int n,
                                char *dest, int size, int filter)
 {
@@ -3960,13 +3991,22 @@ void shell_colorize_line(QEColorizeContext *cp,
     /* detect match lines for known languages and colorize accordingly */
     char filename[MAX_FILENAME_SIZE];
     ModeDef *m;
-    int i = 0, start = 0, style = 0;
+    int i = 0, start = 0;
 
     if (qe_isspace(str[0])) {
         if (cp->colorize_state & STATE_SHELL_SKIP)
             start = 1;
     } else {
         /* Detect patches and colorize according to filename */
+        if ((cp->colorize_state & STATE_SHELL_KEEP) && match_diff(str, n)) {  /* patch/diff location lines */
+            /* reset current multiline state */
+            cp->colorize_state &= STATE_SHELL_MASK;
+            if (cp->colorize_state & STATE_SHELL_MODE) {
+                cp->line_style = QE_STYLE_DIFF_MARK;
+                cp->combine_stop = 0;
+            }
+            return;
+        } else
         if (str[0] == '+' || str[0] == '-') {
             if (match_string(str, n, "+++ ") || match_string(str, n, "--- ")) {
                 /* extract filename, strip some known prefixes and suffixes */
@@ -3987,13 +4027,17 @@ void shell_colorize_line(QEColorizeContext *cp,
                 shell_grab_filename(p, q - p, filename, countof(filename), FALSE);
                 cp->colorize_state = qe_shell_find_mode(cp->s->qs, filename);
                 cp->colorize_state |= STATE_SHELL_SKIP | STATE_SHELL_KEEP;
-                SET_STYLE(sbuf, 0, n, QE_STYLE_DIFF_HEAD);
+                cp->line_style = QE_STYLE_DIFF_HEAD;
                 cp->combine_stop = 0;
                 return;
             } else {
-                // XXX: combine colorized code with background color
-                style = (str[0] == '-') ? QE_STYLE_DIFF_OLD : QE_STYLE_DIFF_NEW;
-                start = 1;
+                if (cp->colorize_state & STATE_SHELL_SKIP) {
+                    if (str[0] == '-')
+                        cp->line_style = QE_STYLE_DIFF_OLD;
+                    else
+                        cp->line_style = QE_STYLE_DIFF_NEW;
+                    start = 1;
+                }
             }
         } else
         if (str[0] == '<' || str[0] == '>') {
@@ -4003,15 +4047,7 @@ void shell_colorize_line(QEColorizeContext *cp,
                 return;
         } else
         if (match_string(str, n, "diff ") || match_string(str, n, "Only in ")) {
-            return;
-        } else
-        if (match_string(str, n, "@@")) {  /* patch/diff location lines */
-            /* reset current multiline state */
-            cp->colorize_state &= STATE_SHELL_MASK;
-            if (cp->colorize_state & STATE_SHELL_MODE) {
-                SET_STYLE(sbuf, 0, n, QE_STYLE_DIFF_MARK);
-                cp->combine_stop = 0;
-            }
+            // XXX if in colored output, should use cp->line_style = QE_STYLE_DIFF_OLD
             return;
         } else
         if (match_string(str, n, "==> ") && match_string(str + n - 4, 4, " <==")) {
@@ -4019,35 +4055,42 @@ void shell_colorize_line(QEColorizeContext *cp,
             shell_grab_filename(str + 4, n - 8, filename, countof(filename), FALSE);
             cp->colorize_state = qe_shell_find_mode(cp->s->qs, filename);
             cp->colorize_state |= STATE_SHELL_KEEP;
-            SET_STYLE(sbuf, 0, n, QE_STYLE_DIFF_HEAD);
+            cp->line_style = QE_STYLE_DIFF_HEAD;
             cp->combine_stop = 0;
             return;
         } else {
             /* Detect compiler messages and colorize according to filename */
             while (i < n) {
-                int w;
+                int w = 0;
                 char32_t c = str[i];
                 if (qe_isspace(c)) {
                     i++;
                     if (match_string(str + i, n - i, "> ")
                     ||  match_string(str + i, n - i, "$ ")) {
+                        /* Detect invocations of file commands */
                         static const char * const commands[] = {
                             "diff ", "head ", "tail ", "cat ", NULL
                         };
                         int k;
-                        /* Detect invocations of diff, grep, d... */
                         i += 2;
-                        /* This looks like a prompt: reset the current mode */
-                        //cp->colorize_state = 0;
                         for (k = 0; commands[k]; k++) {
-                            if ((w = match_string(str + i, n - i, commands[k])) != 0) {
-                                i += w;
-                                shell_grab_filename(str + i, n - i, filename, countof(filename), FALSE);
+                            if ((w = match_string(str + i, n - i, commands[k])) != 0)
+                                break;
+                        }
+                        if (w) {
+                            for (i += w; i < n; i++) {
+                                if (qe_isspace(str[i]))
+                                    continue;
+                                i += shell_grab_filename(str + i, n - i, filename, countof(filename), FALSE);
+                                if (*filename == '-')
+                                    continue;
                                 cp->colorize_state = qe_shell_find_mode(cp->s->qs, filename);
-                                cp->colorize_state |= STATE_SHELL_KEEP;
-                                start = n;
-                                return;
+                                if (cp->colorize_state) {
+                                    cp->colorize_state |= STATE_SHELL_KEEP;
+                                    return;
+                                }
                             }
+                            return;
                         }
                     }
                 } else {
@@ -4058,7 +4101,8 @@ void shell_colorize_line(QEColorizeContext *cp,
                         if (p != NULL && p > filename && p[-1] != ' ') {
                             /* This looks like a prompt: reset the current mode */
                             cp->colorize_state = 0;
-                            return;
+                            i += w;
+                            continue;
                         }
                     }
                     if (w <= 0) {
@@ -4100,27 +4144,20 @@ void shell_colorize_line(QEColorizeContext *cp,
     }
     if ((cp->colorize_state & STATE_SHELL_MODE)
     &&  (m = mode_cache[cp->colorize_state & STATE_SHELL_MODE]) != NULL) {
-        if (style) {
-            SET_STYLE(sbuf, 0, n, style);
-            cp->combine_stop = 0;
+        int save_state = cp->colorize_state;
+        cp->colorize_state >>= STATE_SHELL_SHIFT;
+        cp->partial_file++;
+        cp->mode_flags = m->flags;
+        cp_colorize_line(cp, str, start, n, sbuf, m);
+        cp->partial_file--;
+        if (save_state & STATE_SHELL_KEEP) {
+            cp->colorize_state <<= STATE_SHELL_SHIFT;
+            cp->colorize_state |= save_state & STATE_SHELL_MASK;
         } else {
-            int save_state = cp->colorize_state;
-            cp->colorize_state >>= STATE_SHELL_SHIFT;
-            cp->partial_file++;
-            cp_colorize_line(cp, str, start, n, sbuf, m);
-            cp->partial_file--;
-            if (save_state & STATE_SHELL_KEEP) {
-                cp->colorize_state <<= STATE_SHELL_SHIFT;
-                cp->colorize_state |= save_state & STATE_SHELL_MASK;
-            } else {
-                cp->colorize_state = 0;
-            }
-            cp->combine_stop = start;
+            cp->colorize_state = 0;
         }
-        /* Colorize trailing blanks if colorizing shell output */
-        for (i = n; i > start && qe_isblank(str[i - 1]); i--) {
-            SET_STYLE1(sbuf, i - 1, QE_STYLE_BLANK_HILITE);
-        }
+        cp->combine_stop = start;
+        cp->combine_skip = start; // restrict trailing blank colorizer
     } else {
         cp->colorize_state = 0;
     }

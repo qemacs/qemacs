@@ -197,6 +197,7 @@ QVarType qe_get_variable(EditState *s, const char *name,
 {
     const VarDef *vp;
     int num = 0;
+    QETermStyle style = 0;
     const char *str = NULL;
     const void *ptr;
     const char *endp;
@@ -264,12 +265,21 @@ QVarType qe_get_variable(EditState *s, const char *name,
             pstrcpy(buf, size, str);
         break;
     case VAR_NUMBER:
-    case VAR_STYLE:
         memcpy(&num, ptr, sizeof(num));
         if (pnum)
             *pnum = num;
         else
-            snprintf(buf, size, "%d", num);
+            snprintf(buf, size, "%d  0x%x", num, (unsigned)num);
+        break;
+    case VAR_STYLE:
+        memcpy(&style, ptr, sizeof(style));
+        if (pnum) {
+            *pnum = (int)style;
+        } else {
+            int len = snprintf(buf, size, "0x%x  (", style);
+            len += qe_term_style_string(buf + len, size - len, num);
+            snprintf(buf + len, size - len, ")");
+        }
         break;
     default:
         if (size > 0)
@@ -296,7 +306,7 @@ static QVarType qe_variable_set_value_style(EditState *s, VarDef *vp, void *ptr,
                                             const char *value, int num)
 {
     QETermStyle style = num;
-    if (value && qe_term_get_style(value, &style)) {
+    if (value && qe_term_get_style(&style, value)) {
         const char *p;
         style = strtol_c(value, &p, 0);
         if (*p)
@@ -420,10 +430,14 @@ void do_show_variable(EditState *s, const char *name)
 {
     char buf[MAX_FILENAME_SIZE];
 
-    if (qe_get_variable(s, name, buf, sizeof(buf), NULL, 1) == VAR_UNKNOWN)
+    switch (qe_get_variable(s, name, buf, sizeof(buf), NULL, 1)) {
+    case VAR_UNKNOWN:
         put_error(s, "No variable %s", name);
-    else
+        break;
+    default:
         put_status(s, "%s -> %s", name, buf);
+        break;
+    }
 }
 
 void do_set_variable(EditState *s, const char *name, const char *value)

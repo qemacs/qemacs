@@ -280,6 +280,17 @@ Encode a sequence of keys as a qemacs strings into a fixed length buffer
 Return the number of bytes produced in the destination array,
 not counting the null terminator.
 
+### `int buf_put_word(buf_t *bp, const char *str);`
+
+Append a word to a fixed length buffer. Insert a space
+if buffer is not empty.
+
+* argument `bp` a valid pointer to fixed length buffer
+
+* argument `str` a valid pointer to a C string
+
+Return the number of bytes actually written.
+
 ### `int buf_putc_utf8(buf_t *bp, char32_t c);`
 
 Encode a codepoint in UTF-8 at the end of a fixed length buffer.

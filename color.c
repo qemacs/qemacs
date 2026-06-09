@@ -1111,6 +1111,12 @@ unsigned int qe_map_color(QEColor color, QEColor const *colors, int count, int *
 {
     int i, cmin, dmin, d;
 
+    if (color == COLOR_TRANSPARENT) {
+        if (dist)
+            *dist = 0;
+        return 0x800;
+    }
+
     color &= 0xFFFFFF;  /* mask off the alpha channel */
 
     if (count >= 0x1000000) {
@@ -1221,7 +1227,7 @@ unsigned int qe_map_color(QEColor color, QEColor const *colors, int count, int *
                 }
                 if (dmin) {
                     for (i = 0; i < nb_custom_colors; i++) {
-                        if (custom_colors[i] == color) {
+                        if (custom_colors[i] == (color | 0xFF000000)) {
                             cmin = i + 0x800 + (i & 256) * 6;
                             dmin = 0;
                             break;
@@ -1258,7 +1264,7 @@ QEColor qe_unmap_color(int color, int count) {
         }
         if ((color & 0x700) == 0) {
             /* 0x800 indicates a custom palette entry */
-            return custom_colors[color & 255] | 0xFF000000;
+            return custom_colors[color & 255];
         }
         if ((color & 0xf00) < 0xf00) {
             /* 14 256-level color ramps */
@@ -1271,7 +1277,7 @@ QEColor qe_unmap_color(int color, int count) {
             return QERGB(r, g, b);
         } else {
             /* 0xf00 indicates the second half of the custom palette */
-            return custom_colors[color - 0xe00] | 0xFF000000;
+            return custom_colors[color - 0xe00];
         }
     }
     /* explicit RGB color with full alpha channel */
@@ -1284,7 +1290,7 @@ static int add_custom_color(QEColor color) {
         qe_map_color(color, xterm_colors, 8192, &dist);
         if (dist && nb_custom_colors < countof(custom_colors)) {
             index = nb_custom_colors++;
-            custom_colors[index] = color & 0x00FFFFFF;
+            custom_colors[index] = color | 0xFF000000;
         }
     }
     return index;
@@ -1292,6 +1298,7 @@ static int add_custom_color(QEColor color) {
 
 int colors_init(void) {
     int i;
+    custom_colors[nb_custom_colors++] = COLOR_TRANSPARENT;
     for (i = 0; i < nb_default_colors; i++) {
         /* register colors in the custom palette (if not found) */
         add_custom_color(default_colors[i].color);

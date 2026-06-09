@@ -2156,6 +2156,20 @@ int buf_write(buf_t *bp, const void *src, int size)
     return n;
 }
 
+int buf_put_word(buf_t *bp, const char *str)
+{
+    /*@API buf
+       Append a word to a fixed length buffer. Insert a space
+       if buffer is not empty.
+       @argument `bp` a valid pointer to fixed length buffer
+       @argument `str` a valid pointer to a C string
+       @return the number of bytes actually written.
+     */
+    int n = 0;
+    if (bp->pos) n = buf_put_byte(bp, ' ');
+    return n + buf_puts(bp, str);
+}
+
 int buf_printf(buf_t *bp, const char *fmt, ...)
 {
     /*@API buf

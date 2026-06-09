@@ -63,14 +63,14 @@
               QERGB(0x00, 0x00, 0x00), QERGB(0xff, 0x00, 0x00), 0, 0)
 
     /* diff/patch styles */
-    STYLE_DEF(QE_STYLE_DIFF_HEAD, "diff-head", /* bright white */
-              QERGB(0xff, 0xff, 0xff), COLOR_TRANSPARENT, 0, 0)
-    STYLE_DEF(QE_STYLE_DIFF_MARK, "diff-mark", /* grey88 on blue */
-              QERGB(0xc0, 0xc0, 0xc0), QERGB(0x00, 0x00, 0x40), 0, 0)
-    STYLE_DEF(QE_STYLE_DIFF_OLD, "diff-old", /* bright white on red */
-              QERGB(0xff, 0xff, 0xff), QERGB(0x40, 0x00, 0x00), 0, 0)
-    STYLE_DEF(QE_STYLE_DIFF_NEW, "diff-new", /* bright white on green */
-              QERGB(0xff, 0xff, 0xff), QERGB(0x00, 0x40, 0x00), 0, 0)
+    STYLE_DEF(QE_STYLE_DIFF_HEAD, "diff-head", /* bold bright white */
+              QERGB(0xff, 0xff, 0xff), COLOR_TRANSPARENT, QE_FONT_STYLE_BOLD, 0)
+    STYLE_DEF(QE_STYLE_DIFF_MARK, "diff-mark", /* bold grey88 on blue */
+              QERGB(0xc0, 0xc0, 0xc0), QERGB(0x00, 0x00, 0x40), QE_FONT_STYLE_BOLD, 0)
+    STYLE_DEF(QE_STYLE_DIFF_OLD, "diff-old", /* default on dark red */
+              COLOR_TRANSPARENT, QERGB(0x40, 0x00, 0x00), 0, 0)
+    STYLE_DEF(QE_STYLE_DIFF_NEW, "diff-new", /* default on dark green */
+              COLOR_TRANSPARENT, QERGB(0x00, 0x40, 0x00), 0, 0)
 
     /* HTML coloring styles */
     STYLE_DEF(QE_STYLE_HTML_COMMENT, "html-comment", /* #f84400 */
