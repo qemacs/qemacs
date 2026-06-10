@@ -32,10 +32,24 @@ This is the TODO list for qemacs
 * disable messages from commands if non-interactive (eg: `set-variable`)
 * bfs: builtin file system for embedded extensions and files
    Jasspa bfs is way too complicated, make simpler system
+* rename symbols: not sure this is useful?
+  - `QEmacsState` -> `QEState`, `DisplayState` -> `QEDisplay`, `DisplayType`
+  - `EditState` -> `QEWindow`, `TextFragment`
+  - `EditBuffer` -> `QEBuffer`, `Page` -> `QEPage`
+  - `EditBufferCallbackList` -> `QEBufferCallbackList`
+  - `EditBufferDataType` -> `QEBufferDataType`
+  - `LogBuffer` -> `QELogBuffer`, `LogOperation` -> `QELogOp`
+  - `ModeDef` -> `QEModeDef`, `ModeProbeData`, `QEModeProbeData`
+  - `KeyDef` -> `QEKeyDef`, `InputMethod` -> `QEInputMethod`
+  - `CmdFunc`, `CmdSig`, `CmdArg`, `CmdDefArray`...
+  - `HistoryEntry`, `VarDef`, `Equivalent`
+  - `ISearchState` -> `QESearchState`
+  - `CompletionDef` -> `QECompletionDef`, `CompleteState` -> `QECompleteState`
+  - `UNIT_SIZE` -> `QE_WINDOW_VIRTUAL_SIZE`
 
 ## Buffers
 
-* add buffer commands and point update commands
+* add buffer commands and point update commands, ie: functions that take an `EditBuffer` instead of an `EditState` and return an offset instead of updating point in the window.
 * [BUG] share mmapped pages correctly
 * splitting pages should fall on 32-bit boundaries (difficult)
 * handle broken charset sequences across page boundaries
@@ -43,8 +57,10 @@ This is the TODO list for qemacs
 * synced virtual buffers with restricted range
 * unsynced virtual buffers with restricted range and specific mode/charset
 * add `active_mark` and `active_region` flags in window/buffer states
-* `save-some-buffers` command on `C-x s`
 * implement `narrow_start̀` and `narrow_end`
+* `save-some-buffers` command on `C-x s`: save modified file-visiting buffers, asks user about each one.
+* `rename-buffer` on `C-x x r`
+* `revert-buffer`: replace current buffer text with the text of the visited file on disk.
 
 ## Files
 
@@ -52,11 +68,11 @@ This is the TODO list for qemacs
 * minimize edit list in `qe_check_buffer_file()` when new version is loaded
 * remanent annotations on files and buffers
 * add hook on file change
-* handle files starting with re:
+* handle files starting with re: (???)
 * check file permissions.
 * fix `s->offset` reset to 0 upon `C-x C-f newfile ENT C-x 2 C-x b ENT`
 * `insert-file`: load via separate buffer with charset conversion
-* `qe_load_file` should split screen evenly for `LF_SPLIT_SCREEN` flag
+* `qe_load_file` should split screen evenly for `LF_SPLIT_SCREEN` flag.
 * [Idea] save file to non existent path -> create path.
 * [Idea] find-file: gist:snippet
 * Missing commands:
@@ -107,6 +123,8 @@ This is the TODO list for qemacs
 
 ## Windows
 
+* add configuration or other user method to control whether commands that load new contents use the current window, another window, split the current window or even use a popup to display the new buffer.
+* fix stacked popup windows
 * keep a list of windows in `EditBuffer`
 * keep the last active window when detaching a buffer, just make it invisible.
   - easy if deleting the last window that shows the buffer
@@ -125,8 +143,6 @@ This is the TODO list for qemacs
 * `kill-buffer` should delete popup and popleft window
 * layout: change coordinate system to 1000 based with optional sidebars
 * improve layout scheme for better scalability.
-* `next-buffer` on `C-x C-right, C-x >, f12` Move to the next buffer.
-* `previous-buffer` on `C-x C-left, C-x <, f11` Move to the next buffer.
 * lingering windows
 * clean window deletion mess:
   * avoid problems with popups (`kill_buffer`, `delete_window`)

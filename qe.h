@@ -101,7 +101,7 @@ typedef struct QEProperty QEProperty;
 #define MAX_BUFFERNAME_SIZE  256        /* Size for a buffer name buffer */
 #define MAX_CMDNAME_SIZE     32         /* Size for a command name buffer */
 
-#define UNIT_SIZE (1 << 10) /* window corrdinates ratio */
+#define UNIT_SIZE (1 << 10)     /* Window coordinates ratio */
 
 extern const char str_version[];
 extern const char str_credits[];
