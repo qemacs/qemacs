@@ -2856,6 +2856,55 @@ static EditBuffer *try_show_buffer(EditState **sp, const char *bufname)
 
 static void do_shell(EditState *e, int argval)
 {
+    /*@CMD shell
+       ### `shell(int argval)`
+
+       Start a shell buffer or move to the last shell buffer used.
+       If a argval is provided and equal to one, the command attempts
+       to switch to an existing, active shell buffer. If the process has
+       already terminated, it will restart the shell in the original directory.
+       If no shell buffer exists, or argval is not equal to one, it starts a
+       new shell in the default directory of the current window.
+
+       ### Current Working Directory Synchronization
+
+       QEmacs supports tracking the current working directory of the shell
+       through OSC 7 escape sequences. This allows commands such as
+       `next-error` to resolve relative file names against the directory
+       reported by the shell.
+
+       To enable this feature, add an OSC 7 hook to your shell's startup
+       file. The examples below emit an OSC 7 sequence before each prompt
+       when running inside QEmacs:
+
+       **Bash:**
+       ```bash
+       if [ "$TERM_PROGRAM" = "qemacs" ]; then
+           export PROMPT_COMMAND='echo -ne "\e]7;file://${PWD}\a"'
+       fi
+       ```
+       **Zsh:**
+       ```zsh
+       if [ "$TERM_PROGRAM" = "qemacs" ]; then
+           function precmd() {
+               builtin print -Pn "\e]7;file://${PWD}\a"
+           }
+       fi
+       ```
+       **Fish:**
+       ```fish
+       if test "$TERM_PROGRAM" = "qemacs"
+           function sync_qemacs_shell --on-event=fish_prompt
+               printf "\e]7;file://$PWD\a"
+           end
+       end
+       ```
+       Other shells can be configured similarly by emitting:
+       `ESC ] 7 ; file://cwd BEL`
+
+       whenever the prompt is displayed or the current working
+       directory changes.
+     */
     char curpath[MAX_FILENAME_SIZE];
     EditBuffer *b = NULL;
 
