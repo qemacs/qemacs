@@ -8517,7 +8517,7 @@ EditBuffer *qe_get_buffer_from_index(QEmacsState *qs, int index, int mask, int v
 void do_buffer_navigation(EditState *s, int argval, int dir)
 {
     QEmacsState *qs = s->qs;
-    int buffer_index, buffer_count;
+    int buffer_index, buffer_count, new_index;
     EditBuffer *b;
 
     /* ignore command from the minibuffer and popups */
@@ -8525,18 +8525,20 @@ void do_buffer_navigation(EditState *s, int argval, int dir)
         return;
 
     buffer_index = qe_count_buffers(qs, s->b, &buffer_count, BF_SYSTEM, 0);
-    /* no action if single non system buffer */
-    if (buffer_count <= 1)
+    if (buffer_count < 1)
         return;
     if (!qs->first_transient_key) {
         put_status(s, "Buffer navigation, repeat with <left> and <right>");
         qe_register_transient_binding(qs, "next-buffer", "right, C-right");
         qe_register_transient_binding(qs, "previous-buffer", "left, C-left");
     }
-    buffer_index = (buffer_index + argval * dir) % buffer_count;
-    b = qe_get_buffer_from_index(qs, buffer_index, BF_SYSTEM, 0);
-    if (b)
-        switch_to_buffer(s, b);
+    argval = argval * dir % buffer_count;
+    new_index = (buffer_index + argval + buffer_count) % buffer_count;
+    if (new_index != buffer_index) {
+        b = qe_get_buffer_from_index(qs, new_index, BF_SYSTEM, 0);
+        if (b)
+            switch_to_buffer(s, b);
+    }
 }
 
 void do_toggle_read_only(EditState *s)
