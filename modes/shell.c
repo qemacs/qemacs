@@ -4063,10 +4063,11 @@ static int shell_grab_filename(const char32_t *buf, int n,
     return i;
 }
 
-#define STATE_SHELL_SHIFT  7
+#define STATE_SHELL_SHIFT  8
 #define STATE_SHELL_MODE   0x001F
 #define STATE_SHELL_SKIP   0x0020
 #define STATE_SHELL_KEEP   0x0040
+#define STATE_SHELL_TAG    0x0080
 #define STATE_SHELL_MASK   ((1 << STATE_SHELL_SHIFT) - 1)
 
 static ModeDef *mode_cache[STATE_SHELL_MODE + 1];
@@ -4220,25 +4221,26 @@ void shell_colorize_line(QEColorizeContext *cp,
                     c = str[i];
                     if (c == '(') {
                         /* this is an old style filename position */
+                        i += 1;
                         i += match_digits(str + i, n - i, ')');
                         i += (str[i] == ':');
-                        cp->colorize_state = mc;
+                        cp->colorize_state = mc | STATE_SHELL_TAG;
                         start = i;
                         break;
                     }
                     /* colorize compiler and grep -[ABC] output */
                     if (c == ':' || (c == '-' && qe_isdigit(str[i + 1]))) {
                         /* this is a compiler message */
+                        i += 1;
                         i += match_digits(str + i, n - i, c); /* line number */
                         i += match_digits(str + i, n - i, c); /* optional col number */
                         start = i;
-                        cp->colorize_state = mc;
+                        cp->colorize_state = mc | STATE_SHELL_TAG;
                         if (match_string(str + i, n - i, " error:")
                         ||  match_string(str + i, n - i, " note:")
                         ||  match_string(str + i, n - i, " warning:")) {
                             /* clang diagnostic, will colorize the next line */
                             start = n;
-                            return;
                         }
                         break;
                     }
@@ -4260,7 +4262,12 @@ void shell_colorize_line(QEColorizeContext *cp,
         } else {
             cp->colorize_state = 0;
         }
-        cp->combine_stop = start;
+        if (save_state & STATE_SHELL_TAG) {
+            SET_STYLE(sbuf, 0, i, QE_STYLE_ERROR_LOCATION);
+            cp->combine_stop = 0;
+        } else {
+            cp->combine_stop = start;
+        }
         cp->combine_skip = start; // restrict trailing blank colorizer
     } else {
         cp->colorize_state = 0;
