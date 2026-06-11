@@ -25,6 +25,10 @@
               QERGB(0x00, 0x00, 0x00), QERGB(0xf8, 0xd8, 0xb0), 0, 0)
     STYLE_DEF(QE_STYLE_SELECTION, "selection", /* white on blue */
               QERGB(0xff, 0xff, 0xff), QERGB(0x00, 0x00, 0xff), 0, 0)
+    STYLE_DEF(QE_STYLE_ERROR_LOCATION, "error-location",
+              QERGB(0xff, 0xff, 0xff), COLOR_TRANSPARENT,
+              QE_FONT_STYLE_BOLD, 0)
+
 
     /* Generic syntax coloring styles */
     STYLE_DEF(QE_STYLE_COMMENT, "comment", /* #f84400 */
