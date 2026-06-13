@@ -580,11 +580,13 @@ void do_set_emulation(EditState *s, const char *name) {
     if (strequal(name, "epsilon")) {
         qe_register_emulation_bindings(qs, epsilon_bindings);
         qs->emulation_flags = 1;
+        qs->shell_command_other_window = 0;
         qs->flag_split_window_change_focus = 1;
     } else
     if (strequal(name, "emacs") || strequal(name, "xemacs")) {
         qe_register_emulation_bindings(qs, emacs_bindings);
         qs->emulation_flags = 0;
+        qs->shell_command_other_window = 1;
         qs->flag_split_window_change_focus = 0;
     } else
     if (strequal(name, "gosmacs")) {
@@ -3453,7 +3455,7 @@ void text_mode_line(EditState *s, buf_t *out)
         buf_printf(out, "--<%d", -s->x_disp[0]);
     if (s->x_disp[1])
         buf_printf(out, "-->%d", -s->x_disp[1]);
-    tag = eb_find_property(s->b, 0, s->offset + 1, QE_PROP_TAG);
+    tag = eb_find_property(s->b, 0, s->offset, QE_PROP_TAG, NULL);
     if (tag)
         buf_printf(out, "--%s", (char*)tag->data);
 #if 0
@@ -4079,9 +4081,9 @@ static void flush_line(DisplayState *ds,
             }
             if (ds->line_num < e->shadow_nb_lines && !disable_crc) {
                 QELineShadow *ls;
-                uint64_t crc;
+                uint64_t crc = ds->line_style + e->region_style * 0x100L + e->default_style * 0x10000L;
 
-                crc = compute_crc(fragments, sizeof(*fragments) * nb_fragments, ds->line_style);
+                crc = compute_crc(fragments, sizeof(*fragments) * nb_fragments, crc);
                 crc = compute_crc(ds->line_chars, sizeof(*ds->line_chars) * ds->line_index, crc);
                 ls = &e->line_shadow[ds->line_num];
                 if (ls->y != ds->y || ls->x != ds->x_line
@@ -4849,7 +4851,7 @@ static int syntax_get_colorized_line(QEColorizeContext *cp,
         line++;
         if (line < s->colorize_nb_valid_lines)
             s->colorize_nb_valid_lines = line;
-        eb_delete_properties(b, s->colorize_max_valid_offset, INT_MAX, 0);
+        eb_delete_properties(b, s->colorize_max_valid_offset, INT_MAX, QE_PROP_TAG);
         s->colorize_max_valid_offset = INT_MAX;
     }
 
@@ -8605,8 +8607,8 @@ void do_kill_buffer(EditState *s, const char *bufname, int force)
                             kill_process_confirm_cb, md);
         } else {
             /* if modified and associated to a filename, then ask */
-            if (!force && !(b->flags & (BF_DIRED | BF_SHELL))
-            && b->modified && b->filename[0] != '\0') {
+            if (!force && b->modified
+            &&  !(b->flags & (BF_DIRED | BF_SHELL)) && b->filename[0] != '\0') {
                 qe_stop_macro(qs);
                 snprintf(buf, sizeof(buf),
                          "Buffer %s modified; kill anyway? (yes or no) ", bufname);
@@ -9579,8 +9581,8 @@ static void quit_examine_buffers(QuitState *is)
 
     while (is->b != NULL) {
         b = is->b;
-        if (!(b->flags & (BF_SYSTEM | BF_DIRED | BF_SHELL))
-        && b->filename[0] != '\0' && b->modified) {
+        if (b->modified && b->filename[0] != '\0'
+        &&  !(b->flags & (BF_SYSTEM | BF_DIRED | BF_SHELL))) {
             switch (is->state) {
             case QS_ASK:
                 /* XXX: display cursor */

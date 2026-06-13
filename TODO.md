@@ -321,7 +321,6 @@ This is the TODO list for qemacs
 * pass argval and pagewise to `do_scroll_up_down()` or split command
 * files: fix `SPC` / `TAB` distinct behaviors on **~/comp/project/gnachman/**
 * basic: update default settings to `indent_tabs_mode = 0`, `indent_width = 4`, my-colors
-* basic: add property lists in buffer and window for default directory and similar properties (override)
 * basic: reset last command when executing macro
 * basic: make `do_word_right`, `do_word_left`, `do_bol`, `do_eol`... return new offset
 * basic: use visual movement for left, right, up, down and character based for `C-b C-f C-n C-p`
