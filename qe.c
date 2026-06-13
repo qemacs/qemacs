@@ -3509,7 +3509,7 @@ void display_window_borders(EditState *e)
                 int right_w = qs->border_width;
 
                 fill_rectangle(qs->screen, x, y, width, top_h, color);
-                fill_rectangle(qs->screen, x, y + bottom_h,
+                fill_rectangle(qs->screen, x, y + top_h,
                                left_w, height - top_h - bottom_h, color);
                 fill_rectangle(qs->screen, x + width - right_w, y + top_h,
                                right_w, height - top_h - bottom_h, color);
@@ -9740,7 +9740,7 @@ void do_refresh(EditState *s1)
         qs->border_width = 1;
     } else {
         qs->separator_width = 4;
-        qs->border_width = 3; /* XXX: adapt to display type */
+        qs->border_width = 4; /* XXX: adapt to display type */
     }
 
     width = qs->screen->width;
