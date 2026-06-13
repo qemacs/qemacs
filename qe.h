@@ -642,19 +642,24 @@ extern EditBufferDataType raw_data_type;
 
 struct QEProperty {
     int offset;
-#define QE_PROP_FREE  1
-#define QE_PROP_SKIP  4
-#define QE_PROP_TAG   3
-#define QE_PROP_CWD   13
-    int type;
+#define QE_PROP_FREE  1  // p->data should be freed
+#define QE_PROP_DUP   2  // data should be duplicated with strdup
+#define QE_PROP_KEEP  4  // property is not removed in delete_range
+#define QE_PROP_MARK  8  // property offset is not adjusted on exact match
+    int flags : 16;
+#define QE_PROP_TAG   1  // a source tag
+#define QE_PROP_CWD   2  // a current directory in a shell buffer
+#define QE_PROP_ALL   3
+    int type : 16;
     void *data;
     QEProperty *next;
 };
 
-void eb_add_property(EditBuffer *b, int offset, int type, void *data);
-QEProperty *eb_find_property(EditBuffer *b, int offset, int offset2, int type);
+QEProperty *eb_add_property(EditBuffer *b, int offset, int type, int flags, const void *data);
+int eb_del_property(EditBuffer *b, QEProperty *prop);
+QEProperty *eb_find_property(EditBuffer *b, int offset, int offset2, int type, QEProperty *stop);
 void eb_add_tag(EditBuffer *b, int offset, const char *s);
-void eb_delete_properties(EditBuffer *b, int offset, int offset2, int force);
+void eb_delete_properties(EditBuffer *b, int offset, int offset2, int mask);
 
 /* qe module handling */
 
@@ -1990,6 +1995,7 @@ void shell_colorize_line(QEColorizeContext *cp,
 #define SF_AUTO_CODING   0x04
 #define SF_AUTO_MODE     0x08
 #define SF_BUFED_MODE    0x10
+#define SF_NO_DRAG       0x20
 #define SF_REUSE_BUFFER  0x1000
 #define SF_ERASE_BUFFER  0x2000
 EditBuffer *qe_new_shell_buffer(QEmacsState *qs, EditBuffer *b0, EditState *e,

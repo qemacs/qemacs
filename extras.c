@@ -1923,7 +1923,7 @@ static void do_describe_buffer(EditState *s, int argval)
     if (!b1)
         return;
 
-    eb_putc(b1, '\n');
+    eb_printf(b1, "Buffer fields:\n");
 
     eb_printf(b1, "        name: %s\n", b->name);
     eb_printf(b1, "    filename: %s\n", b->filename);
@@ -2010,7 +2010,7 @@ static void do_describe_buffer(EditState *s, int argval)
         u8 iobuf[4096];
         int count[256];
         int total_size = b->total_size;
-        int offset, c, i, col, max_count, count_width;
+        int offset, c, i, col, len, max_count, count_width;
         int word_char, word_count, nb_chars, line, column;
 
         eb_get_pos(b, &line, &column, total_size);
@@ -2045,6 +2045,31 @@ static void do_describe_buffer(EditState *s, int argval)
         eb_printf(b1, "       words: %d\n", word_count);
         eb_printf(b1, "       lines: %d\n", line + (column > 0));
 
+        if (b->property_list) {
+            QEProperty *p;
+
+            eb_printf(b1, "\nBuffer property list:\n");
+
+            for (p = b->property_list; p; p = p->next) {
+                eb_printf(b1, " %7d  %c%c%c  ", p->offset,
+                          (p->flags & QE_PROP_FREE) ? 'F' : ' ',
+                          (p->flags & QE_PROP_KEEP) ? 'K' : ' ',
+                          (p->flags & QE_PROP_MARK) ? 'M' : ' ');
+                switch (p->type) {
+                case QE_PROP_TAG:
+                    eb_printf(b1, "tag  %s", (char*)p->data);
+                    break;
+                case QE_PROP_CWD:
+                    eb_printf(b1, "cwd  %s", (char*)p->data);
+                    break;
+                default:
+                    eb_printf(b1, "%3d  %p", p->type, p->data);
+                    break;
+                }
+                eb_putc(b1, '\n');
+            }
+        }
+
         eb_printf(b1, "\nByte stats:\n");
 
         for (col = i = 0; i < 256; i++) {
@@ -2055,10 +2080,15 @@ static void do_describe_buffer(EditState *s, int argval)
             if (i > 0 && i < 0x7f) {
                 char cbuf[8];
                 byte_quote(cbuf, sizeof cbuf, i);
-                col += eb_printf(b1, "'%s'", cbuf);
+                len = eb_printf(b1, "'%s'", cbuf);
             } else {
-                col += eb_printf(b1, "0x%02x", (unsigned)i);
+                len = eb_printf(b1, "0x%02x", (unsigned)i);
             }
+            while (len < 4) {
+                eb_putc(b1, ' ');
+                len++;
+            }
+            col += len;
             if (col >= 60) {
                 eb_putc(b1, '\n');
                 col = 0;
@@ -2104,7 +2134,7 @@ static void do_describe_window(EditState *s, int argval)
     if (!b1)
         return;
 
-    eb_putc(b1, '\n');
+    eb_printf(b1, "Window fields:\n");
 
     w = 28;
     eb_printf(b1, "%*s: %d, %d\n", w, "xleft, ytop", s->xleft, s->ytop);
@@ -2201,7 +2231,7 @@ static void do_describe_screen(EditState *e, int argval)
     if (!b1)
         return;
 
-    eb_putc(b1, '\n');
+    eb_printf(b1, "Screen fields:\n");
 
     w = 16;
     eb_printf(b1, "%*s: %s\n", w, "dpy.name", s->dpy.name);

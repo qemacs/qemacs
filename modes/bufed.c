@@ -245,13 +245,7 @@ static void bufed_build_list(EditState *s, BufedState *bs)
                 b->cur_style = BUFED_STYLE_DIRECTORY;
             else
                 b->cur_style = BUFED_STYLE_FILENAME;
-            if (b1->flags & BF_SHELL) {
-                get_default_path(b1, b1->offset, path, sizeof(path));
-                make_user_path(path, sizeof(path), path);
-                get_dirname(path, sizeof(path), path);
-            } else {
-                make_user_path(path, sizeof(path), b1->filename);
-            }
+            make_user_path(path, sizeof(path), b1->filename);
             eb_put_filename(b, path, bs->pf_flags);
             b->cur_style = style0;
         }

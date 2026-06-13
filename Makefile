@@ -416,7 +416,7 @@ $(OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 endif # ifneq(,$(TARGET))
 
 libqhtml: force
-	$(MAKE) -C libqhtml all
+	$(MAKE) -w -C libqhtml all
 
 #
 # Host utilities
@@ -650,7 +650,7 @@ TAGS: force
 
 # autotest target
 test:
-	$(MAKE) -C tests test
+	$(MAKE) -w -C tests test
 
 colortest:
 	tests/16colors.pl

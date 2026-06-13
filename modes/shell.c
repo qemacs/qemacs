@@ -57,6 +57,11 @@ enum QETermState {
     QE_TERM_STATE_STRING,
 };
 
+typedef struct ShellCwdEntry {
+    QEProperty *prop;
+    int error_count;
+} ShellCwdEntry;
+
 typedef struct ShellState {
     QEModeData base;
     /* buffer state */
@@ -100,14 +105,18 @@ typedef struct ShellState {
     const char *caption;  /* process caption for exit message */
     int shell_flags;
     int last_char;  /* last char sent to the process */
+    int cwd_stack_depth;
+    ShellCwdEntry cwd_stack[16];
 } ShellState;
 
 typedef struct ShellError {
     int offset;
+    int msg_offset;
     int line_num;
     int col_num;
     char buffer[MAX_BUFFERNAME_SIZE];
     char filename[MAX_FILENAME_SIZE];
+    char message[128];
 } ShellError;
 
 typedef struct ShellKillContext {
@@ -130,6 +139,8 @@ static ShellError error_state = {
 static void do_shell_refresh(EditState *e, int flags);
 
 static void shell_close(ShellState *s);
+static int shell_check_curpath(ShellState *s, int offset, int c);
+static int match_error(EditBuffer *b, int start_offset, ShellError *dest);
 
 static void set_error_offset(EditBuffer *b, int offset)
 {
@@ -137,6 +148,20 @@ static void set_error_offset(EditBuffer *b, int offset)
     error_state.offset = offset - 1;
     error_state.line_num = error_state.col_num = -1;
     *error_state.filename = '\0';
+    error_state.msg_offset = offset;
+    *error_state.message = '\0';
+}
+
+static QEProperty *shell_add_cwd(EditBuffer *b, int offset, const char *cwd, int force) {
+    // Always set the buffer filename for bufed
+    pstrcpy(unconst(char *)b->filename, countof(b->filename), cwd);
+    if (!force) {
+        QEProperty *last = eb_find_property(b, 0, offset, QE_PROP_CWD, NULL);
+        if (last && strequal(last->data, cwd))
+            return NULL;
+    }
+    return eb_add_property(b, offset, QE_PROP_CWD,
+                           QE_PROP_DUP | QE_PROP_KEEP | QE_PROP_MARK, cwd);
 }
 
 #define PTYCHAR1 "pqrstuvwxyzabcde"
@@ -1528,10 +1553,10 @@ static void qe_term_emulate(ShellState *s, int c)
                     /* add a new line */
                     /* CG: XXX: ignoring charset */
                     qe_term_set_style(s);
-                    offset += eb_insert_char32(s->b, offset, '\n');
-                    s->cur_offset = offset;
+                    offset1 = offset + eb_insert_char32(s->b, offset, '\n');
+                    s->cur_offset = offset1;
                     /* update current screen_top */
-                    qe_term_get_pos(s, offset, &x, &y);
+                    qe_term_get_pos(s, offset1, &x, &y);
                 } else {
                     // XXX: test if cursor is on last row and append a newline
                     // XXX: potential style issue if appending a newline
@@ -1539,6 +1564,10 @@ static void qe_term_emulate(ShellState *s, int c)
                 }
             }
             s->b->last_log = 0; /* close undo record */
+            if (c == 10 && (s->shell_flags & SF_INTERACTIVE) && !s->grab_keys) {
+                // Track directory from make -w -C messages and error messages
+                shell_check_curpath(s, offset, c);
+            }
             break;
         case 13:    /* CR   Carriage Return (Ctrl-M). */
             /* move to visual beginning of line */
@@ -1611,6 +1640,12 @@ static void qe_term_emulate(ShellState *s, int c)
                     len = 1;
                 }
                 s->cur_offset = qe_term_overwrite(s, offset, 1, buf1, len);
+
+                // Track directory from shell prompt
+                if ((c == '#' || c == '$' || c == '>')
+                &&  (s->shell_flags & SF_INTERACTIVE) && !s->grab_keys) {
+                    shell_check_curpath(s, offset, c);
+                }
             } else {
                 TRACE_MSG(s, "control");
             }
@@ -1905,55 +1940,40 @@ static void qe_term_emulate(ShellState *s, int c)
             {
                 char cwd[MAX_FILENAME_SIZE];
                 buf_t cwdbuf[1];
-                int pos = 7; /* first character after "file://" */
+                const char *p;
 
-                if (!strstart(s->osc_buf, "file://", NULL)) {
+                if (!strstart(s->osc_buf, "file://", &p)) {
                     put_error(qs->active_window,
                               "term_emulate: OSC 7 URI must start with 'file://'");
                     break;
                 }
 
                 /* skip hostname if any */
-                while (pos < s->osc_len && s->osc_buf[pos] != '/')
-                    pos++;
+                while (*p && *p != '/')
+                    p++;
 
-                if (pos >= s->osc_len) {
+                if (!*p) {
                     put_error(qs->active_window,
                               "term_emulate: missing path in OSC 7 URI: '%s'", s->osc_buf);
                     break;
                 }
                 /* decode URI path */
                 buf_init(cwdbuf, cwd, sizeof(cwd));
-                while (pos < s->osc_len) {
-                    if (s->osc_buf[pos] == '%'
-                    && pos + 2 < s->osc_len
-                    && qe_isxdigit(s->osc_buf[pos + 1])
-                    && qe_isxdigit(s->osc_buf[pos + 2]))
-                    {
-                        buf_put_byte(cwdbuf, ((qe_digit_value(s->osc_buf[pos + 1]) << 4)
-                                           + qe_digit_value(s->osc_buf[pos + 2])));
-                        pos += 3;
+                while (*p) {
+                    if (*p == '%' && qe_isxdigit(p[1]) && qe_isxdigit(p[2])) {
+                        buf_put_byte(cwdbuf, qe_digit_value(p[1]) * 16 + qe_digit_value(p[2]));
+                        p += 3;
                     } else {
-                        buf_put_byte(cwdbuf, s->osc_buf[pos]);
-                        pos += 1;
+                        buf_put_byte(cwdbuf, *p);
+                        p += 1;
                     }
                 }
-                if (!strequal(s->b->filename, cwd)) {
-                    /* XXX: properties placed at end of buffer move forward whenever
-                       output is appended, causing successive cwd properties to share
-                       the same position instead of marking where cwd was observed. */
-                    int offset = s->b->offset - 1;
-                    if (offset > 0) { /* defer first property addition */
-                        if (!s->b->property_list && *s->b->filename)
-                            eb_add_property(s->b, 0, QE_PROP_CWD, qe_strdup(s->b->filename));
-                        eb_add_property(s->b, offset, QE_PROP_CWD, qe_strdup(cwd));
-                    }
-                    pstrcpy(unconst(char *)s->b->filename, sizeof(s->b->filename), cwd);
-                }
+                append_slash(cwd, countof(cwd));
+                shell_add_cwd(s->b, s->b->offset, cwd, 0);
             }
             break;
         default:
-            TRACE_PRINTF(s, "unhandled string: %s", s->osc_buf);
+            TRACE_PRINTF(s, "unhandled string: %.*s", min_int(s->osc_len, 32), s->osc_buf);
             break;
         }
         break;
@@ -2581,7 +2601,7 @@ static void shell_read_cb(void *opaque)
     }
 
     EditState *e = qs->active_window;
-    if (e->b == b) {
+    if (e->b == b && !(s->shell_flags & SF_NO_DRAG)) {
         if ((e->offset == prev_offset) || (qs->last_cmd_func == (CmdFunc)do_eof))
             e->offset = b->total_size;
     }
@@ -2752,6 +2772,7 @@ EditBuffer *qe_new_shell_buffer(QEmacsState *qs, EditBuffer *b0, EditState *e,
     EditBuffer *b;
     const char *lang;
     int cols, rows;
+    char curpath[MAX_FILENAME_SIZE];
 
     if (!b0 && (shell_flags & SF_REUSE_BUFFER)) {
         b0 = qe_find_buffer_name(qs, bufname);
@@ -2771,8 +2792,19 @@ EditBuffer *qe_new_shell_buffer(QEmacsState *qs, EditBuffer *b0, EditState *e,
     }
     shell_flags &= ~(SF_REUSE_BUFFER | SF_ERASE_BUFFER);
 
-    if (path)
-        pstrcpy(unconst(char *)b->filename, sizeof(b->filename), path);
+    // Set up filename and initial directory property
+    if (path) {
+        pstrcpy(curpath, countof(curpath), path);
+    } else
+    if (e) {
+        get_default_path(e->b, e->offset, curpath, countof(curpath));
+    } else {
+        *curpath = '\0';
+        getcwd(curpath, countof(curpath));
+    }
+    append_slash(curpath, countof(curpath));
+    shell_add_cwd(b, 0, curpath, 1);
+
     eb_set_buffer_name(b, bufname); /* ensure that the name is unique */
     if (shell_flags & SF_COLOR) {
         eb_create_style_buffer(b, BF_STYLE_COMP);
@@ -2860,7 +2892,7 @@ static void do_shell(EditState *e, int argval)
        ### `shell(int argval)`
 
        Start a shell buffer or move to the last shell buffer used.
-       If a argval is provided and equal to one, the command attempts
+       Unless an argument different from one is provided, the command attempts
        to switch to an existing, active shell buffer. If the process has
        already terminated, it will restart the shell in the original directory.
        If no shell buffer exists, or argval is not equal to one, it starts a
@@ -3021,6 +3053,9 @@ static EditState *shell_target_window(EditState *e, EditBuffer *b)
         }
     }
 
+    if (e1 == NULL)
+        e1 = e;
+
     switch_to_buffer(e1, b);
     return e1;
 }
@@ -3052,7 +3087,7 @@ static void do_man(EditState *s, const char *arg)
         return;
 
     /* create new buffer */
-    b = qe_new_shell_buffer(qs, NULL, s, bufname, NULL, NULL, cmd, SF_COLOR);
+    b = qe_new_shell_buffer(qs, NULL, s, bufname, NULL, NULL, cmd, SF_COLOR | SF_NO_DRAG);
     if (!b)
         return;
 
@@ -3115,7 +3150,7 @@ void qe_diff_buffer_with_file(EditState *s, EditBuffer *b)
 #endif
     snprintf(bufname, sizeof(bufname), "*Diff %s*", fname);
 
-    b1 = qe_new_shell_buffer(qs, NULL, s, bufname, NULL, NULL, cmd, SF_COLOR);
+    b1 = qe_new_shell_buffer(qs, NULL, s, bufname, NULL, NULL, cmd, SF_COLOR | SF_NO_DRAG);
     if (!b1) {
         unlink(tmpdir);
         return;
@@ -3664,10 +3699,105 @@ static void do_shell_toggle_input(EditState *e)
     }
 }
 
+/* check shell output for prompt and track current directory */
+static int shell_check_curpath(ShellState *s, int offset, int trigger)
+{
+    char line[1024];
+    char curpath[MAX_FILENAME_SIZE];
+    EditBuffer *b = s->b;
+    int bol, start, stop0, stop, i, len, offset1;
+
+    bol = eb_goto_bol(b, offset);
+    len = eb_fgets(b, line, countof(line), bol, &offset1);
+    line[len] = '\0';   /* strip the trailing newline if any */
+
+    if (trigger == '\n') {
+        // Track make -w -C messages about temporary directory excursion
+        const char *p;
+        if ((p = strstr(line, "Entering directory ")) != NULL) {
+            // Push new directory onto the stack and add a property
+            ShellCwdEntry *cwdp;
+            p += strlen("Entering directory ");
+            if (*p == '`') p++;
+            start = p - line;
+            for (stop = start; line[stop] && line[stop] != '\''; stop++)
+                continue;
+            line[stop] = '\0';
+            canonicalize_absolute_buffer_path(s->b, bol, curpath, countof(curpath), p);
+            append_slash(curpath, countof(curpath));
+            if (s->cwd_stack_depth == countof(s->cwd_stack)) {
+                memmove(s->cwd_stack, s->cwd_stack + 1,
+                        sizeof(*s->cwd_stack) * (countof(s->cwd_stack) - 1));
+                s->cwd_stack_depth--;
+            }
+            cwdp = &s->cwd_stack[s->cwd_stack_depth++];
+            cwdp->error_count = 0;
+            cwdp->prop = shell_add_cwd(b, offset1, curpath, 1);
+            return 1;
+        }
+        if ((p = strstr(line, "Leaving directory ")) != NULL) {
+            // Pop directory from the stack and delete the property if no errors
+            if (s->cwd_stack_depth) {
+                ShellCwdEntry *cwdp = &s->cwd_stack[--s->cwd_stack_depth];
+                QEProperty *prev = eb_find_property(b, 0, cwdp->prop->offset,
+                                                    QE_PROP_CWD, cwdp->prop);
+                if (prev) {
+                    if (!cwdp->error_count)
+                        eb_del_property(b, cwdp->prop);
+                    shell_add_cwd(b, offset1, prev->data, 0);
+                }
+            }
+            return 1;
+        }
+        // Check for error message:
+        // - maybe parse errors at this time to track error location
+        //   for files that are loaded already, especially if the buffer
+        //   is out of sync with the corresponding file.
+        if (match_error(b, bol, NULL)) {
+            if (s->cwd_stack_depth) {
+                s->cwd_stack[--s->cwd_stack_depth].error_count += 1;
+            }
+            return 1;
+        }
+        return 0;
+    }
+
+    // Parse shell prompt for current directory
+    start = stop = stop0 = 0;
+    for (i = 0; i < len;) {
+        char c = line[i++];
+        if (c == '#' || c == '$' || c == '>') {
+            stop = stop0;
+            break;
+        }
+        if (c == ':' && line[i] != '\\'
+        &&  !(line[i] == '/' && line[i + 1] == '/')
+        &&  !(line[i] == '/' && line[i + 1] == '*'))
+            start = i;
+        if (c == ' ') {
+            if (!start || start == i - 1)
+                start = i;
+        } else {
+            stop0 = i;
+        }
+    }
+    if (stop > start) {
+        line[stop] = '\0';
+        /* XXX: should use a lower level function to avoid potential recursion */
+        canonicalize_absolute_path(NULL, curpath, countof(curpath), line + start);
+        if (is_directory(curpath)) {
+            append_slash(curpath, countof(curpath));
+            shell_add_cwd(b, bol, curpath, 0);
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static char *shell_get_default_path(EditBuffer *b, int offset,
                                     char *buf, int buf_size)
 {
-    QEProperty *p = eb_find_property(b, 0, offset, QE_PROP_CWD);
+    QEProperty *p = eb_find_property(b, 0, offset, QE_PROP_CWD, NULL);
     return pstrcpy(buf, buf_size, p ? p->data : b->filename);
 }
 
@@ -3806,17 +3936,91 @@ static void do_compile(EditState *s, const char *cmd)
     set_error_offset(b, 0);
 }
 
+/* Scan a buffer for an error message or a grep location */
+static int match_error(EditBuffer *b, int start_offset, ShellError *dest)
+{
+    char filename[MAX_FILENAME_SIZE];
+    char fullpath[MAX_FILENAME_SIZE];
+    buf_t fname[1];
+    int line_num, col_num, len;
+    int offset = start_offset;
+    char32_t c;
+
+    /* parse filename:linenum:message */
+    /* and:  filename(linenum[, col]) ...: ... */
+
+    /* extract filename */
+    buf_init(fname, filename, countof(filename));
+    for (;;) {
+        c = eb_nextc(b, offset, &offset);
+        if (c == '\n' || c == '\t' || c == ' ')
+            return 0;
+        if (c == ':' || c == '(')
+            break;
+        buf_putc_utf8(fname, c);
+    }
+
+    /* extract line number */
+    for (line_num = 0;;) {
+        c = eb_nextc(b, offset, &offset);
+        if (c == ':' || c == ',' || c == '.' || c == ')')
+            break;
+        if (!qe_isdigit(c))
+            return 0;
+        line_num = line_num * 10 + c - '0';
+    }
+    if (line_num < 1)
+        return 0;
+
+    /* extract optional column number */
+    col_num = 0;
+    if (c == ':' || c == ',' || c == '.') {
+        int offset0 = offset;
+        char32_t c0 = c;
+        for (;;) {
+            c = eb_nextc(b, offset, &offset);
+            if (c == ' ') continue;
+            if (!qe_isdigit(c))
+                break;
+            col_num = col_num * 10 + c - '0';
+        }
+        if (col_num == 0) {
+            offset = offset0;
+            c = c0;
+        }
+    }
+    while (c != ':') {
+        if (c == '\n')
+            return 0;
+        c = eb_nextc(b, offset, &offset);
+    }
+    if (dest) {
+        canonicalize_absolute_buffer_path(b, start_offset,
+                                          fullpath, countof(fullpath),
+                                          filename);
+        if (line_num != dest->line_num
+        ||  col_num != dest->col_num
+        ||  !strequal(fullpath, dest->filename)) {
+            dest->offset = start_offset;
+            dest->msg_offset = offset;
+            dest->line_num = line_num;
+            dest->col_num = col_num;
+            pstrcpy(dest->filename, countof(dest->filename), fullpath);
+            len = eb_fgets(b, dest->message, countof(dest->message),
+                           offset, &offset);
+            dest->message[len] = '\0';   /* strip the trailing newline if any */
+            return 2;  // new error
+        }
+    }
+    return 1; // has error
+}
+
 static void do_next_error(EditState *s, int arg, int dir)
 {
     QEmacsState *qs = s->qs;
     EditState *e, *e_next;
     EditBuffer *b;
-    int offset, found_offset;
-    char filename[MAX_FILENAME_SIZE];
-    char fullpath[MAX_FILENAME_SIZE];
-    buf_t fnamebuf, *fname;
-    int line_num, col_num;
-    char32_t c;
+    int offset;
     struct stat sb;
 
     if (s->flags & (WF_POPUP | WF_MINIBUF)) {
@@ -3870,68 +4074,24 @@ static void do_next_error(EditState *s, int arg, int dir)
             }
             offset = eb_prev_line(b, offset);
         }
-        found_offset = offset;
-        /* parse filename:linenum:message */
-        /* and:  filename(linenum[, col]) ...: ... */
-
-        /* extract filename */
-        fname = buf_init(&fnamebuf, filename, countof(filename));
-        for (;;) {
-            c = eb_nextc(b, offset, &offset);
-            if (c == '\n' || c == '\t' || c == ' ')
-                goto next_line;
-            if (c == ':' || c == '(')
-                break;
-            buf_putc_utf8(fname, c);
+        if (match_error(b, offset, &error_state) > 1) {
+            // found a new error
+            break;
         }
-
-        /* XXX: should find directory backward from error offset */
-        canonicalize_absolute_buffer_path(b, found_offset,
-                                          fullpath, sizeof(fullpath), filename);
-
-        /* extract line number */
-        for (line_num = col_num = 0;;) {
-            c = eb_nextc(b, offset, &offset);
-            if (c == ':' || c == ',' || c == '.' || c == ')')
-                break;
-            if (!qe_isdigit(c))
-                goto next_line;
-            line_num = line_num * 10 + c - '0';
-        }
-        if (c == ':' || c == ',' || c == '.') {
-            int offset0 = offset;
-            char32_t c0 = c;
-            for (;;) {
-                c = eb_nextc(b, offset, &offset);
-                if (c == ' ') continue;
-                if (!qe_isdigit(c))
-                    break;
-                col_num = col_num * 10 + c - '0';
-            }
-            if (col_num == 0) {
-                offset = offset0;
-                c = c0;
-            }
-        }
-        while (c != ':') {
-            if (c == '\n')
-                goto next_line;
-            c = eb_nextc(b, offset, &offset);
-        }
-        if (line_num >= 1) {
-            if (line_num != error_state.line_num
-            ||  col_num != error_state.col_num
-            ||  !strequal(fullpath, error_state.filename)) {
-                error_state.line_num = line_num;
-                error_state.col_num = col_num;
-                pstrcpy(error_state.filename, sizeof(error_state.filename), fullpath);
-                break;
-            }
-        }
-      next_line:
-        offset = found_offset;
     }
-    error_state.offset = found_offset;
+
+    /* check file and go to the error */
+    if (stat(error_state.filename, &sb) < 0) {
+        // XXX: should prompt for fullpath as a fallback
+        put_error(qs->active_window, "Cannot find error in '%s': %s",
+                  error_state.filename, strerror(errno));
+        return;
+    } else
+    if (!S_ISREG(sb.st_mode)) {
+        put_error(qs->active_window, "Cannot find error in '%s': %s",
+                  error_state.filename, "not a regular file");
+        return;
+    }
 
     for (e = qs->first_window; e != NULL; e = e_next) {
         e_next = e->next_window;
@@ -3939,38 +4099,30 @@ static void do_next_error(EditState *s, int arg, int dir)
             edit_close(&e);
     }
 
-    /* check file and go to the error */
-    if (stat(fullpath, &sb) < 0) {
-        // XXX: should prompt for fullpath as a fallback
-        put_error(qs->active_window, "Cannot find error in '%s': %s",
-                  fullpath, strerror(errno));
-    } else
-    if (!S_ISREG(sb.st_mode)) {
-        put_error(qs->active_window, "Cannot find error in '%s': %s",
-                  fullpath, "not a regular file");
-    } else {
-        /* find a window showing the error source
-           buffer, split a new one if none is found  */
-        if ((e = eb_find_window(b, NULL)) == NULL)
-            e = shell_target_window(s, b);
+    /* find a window showing the error source buffer,
+       split a new one if none is found  */
+    if ((e = eb_find_window(b, NULL)) == NULL && qs->shell_command_other_window) {
+        e = shell_target_window(s, b);
 
-        /* if there is only one window and is showing the error
-           source buffer then split a new window to find the file in */
+        /* if there is only one window whoing the error source buffer
+           then find or split a new window to find the file in */
         if (e == s && (s = get_next_window(s, WF_MINIBUF | WF_HIDDEN, 0)) == NULL)
             s = shell_target_window(e, b);
+    }
 
-        /* update error window */
+    if (e) {
+        /* update error window to show the error at top */
         e->interactive = 0;
         e->offset_top = e->offset = error_state.offset;
         if (qs->shell_buffer_read_only)
             b->flags |= BF_READONLY;
-
-        /* set and update active window */
-        qs->active_window = s;
-        do_find_file(s, fullpath, 0);
-        do_goto_line(s, line_num, col_num);
-        do_center_cursor(s, 1);
     }
+
+    /* set and update active window */
+    qs->active_window = s;
+    do_find_file(s, error_state.filename, 0);
+    do_goto_line(s, error_state.line_num, error_state.col_num);
+    do_center_cursor(s, 1);
 
 #if 0  // conflicts with muscle memory (chqrlie)
     if (!qs->first_transient_key) {
@@ -3978,6 +4130,7 @@ static void do_next_error(EditState *s, int arg, int dir)
         qe_register_transient_binding(qs, "previous-error", "M-p");
     }
 #endif
+    put_status(s, "=> %s", error_state.message);
 }
 
 static int match_digits(const char32_t *buf, int n, char32_t sep) {
@@ -4063,11 +4216,10 @@ static int shell_grab_filename(const char32_t *buf, int n,
     return i;
 }
 
-#define STATE_SHELL_SHIFT  8
+#define STATE_SHELL_SHIFT  7
 #define STATE_SHELL_MODE   0x001F
 #define STATE_SHELL_SKIP   0x0020
 #define STATE_SHELL_KEEP   0x0040
-#define STATE_SHELL_TAG    0x0080
 #define STATE_SHELL_MASK   ((1 << STATE_SHELL_SHIFT) - 1)
 
 static ModeDef *mode_cache[STATE_SHELL_MODE + 1];
@@ -4096,11 +4248,21 @@ void shell_colorize_line(QEColorizeContext *cp,
     /* detect match lines for known languages and colorize accordingly */
     char filename[MAX_FILENAME_SIZE];
     ModeDef *m;
-    int i = 0, start = 0;
+    int i, start = 0, stop = n;
 
     if (qe_isspace(str[0])) {
-        if (cp->colorize_state & STATE_SHELL_SKIP)
-            start = 1;
+        /* patch style common lines */
+        if (cp->colorize_state & STATE_SHELL_SKIP) {
+            start = stop = 1;
+        } else {
+            /* clang line number prefix */
+            for (i = 0; i < 8; i++) {
+                if (str[i] != ' ' && !qe_isdigit(str[i]))
+                    break;
+            }
+            if (str[i] == '|' && str[i + 1] == ' ')
+                start = stop = i + 2;
+        }
     } else {
         /* Detect patches and colorize according to filename */
         if ((cp->colorize_state & STATE_SHELL_KEEP) && match_diff(str, n)) {  /* patch/diff location lines */
@@ -4142,12 +4304,13 @@ void shell_colorize_line(QEColorizeContext *cp,
                     else
                         cp->line_style = QE_STYLE_DIFF_NEW;
                     start = 1;
+                    stop = 0;
                 }
             }
         } else
         if (str[0] == '<' || str[0] == '>') {
             if (str[1] == ' ')
-                start = 2;
+                start = stop = 2;
             else
                 return;
         } else
@@ -4165,7 +4328,7 @@ void shell_colorize_line(QEColorizeContext *cp,
             return;
         } else {
             /* Detect compiler messages and colorize according to filename */
-            while (i < n) {
+            for (i = 0; i < n;) {
                 int w = 0;
                 char32_t c = str[i];
                 if (qe_isspace(c)) {
@@ -4224,8 +4387,10 @@ void shell_colorize_line(QEColorizeContext *cp,
                         i += 1;
                         i += match_digits(str + i, n - i, ')');
                         i += (str[i] == ':');
-                        cp->colorize_state = mc | STATE_SHELL_TAG;
+                        cp->colorize_state = mc;
                         start = i;
+                        stop = 0;
+                        SET_STYLE(sbuf, 0, i, QE_STYLE_ERROR_LOCATION);
                         break;
                     }
                     /* colorize compiler and grep -[ABC] output */
@@ -4235,12 +4400,15 @@ void shell_colorize_line(QEColorizeContext *cp,
                         i += match_digits(str + i, n - i, c); /* line number */
                         i += match_digits(str + i, n - i, c); /* optional col number */
                         start = i;
-                        cp->colorize_state = mc | STATE_SHELL_TAG;
+                        cp->colorize_state = mc;
+                        stop = 0;
+                        SET_STYLE(sbuf, 0, i, QE_STYLE_ERROR_LOCATION);
                         if (match_string(str + i, n - i, " error:")
                         ||  match_string(str + i, n - i, " note:")
                         ||  match_string(str + i, n - i, " warning:")) {
-                            /* clang diagnostic, will colorize the next line */
-                            start = n;
+                            /* compiler diagnostic, will colorize subsequent lines */
+                            cp->colorize_state |= STATE_SHELL_KEEP;
+                            return;
                         }
                         break;
                     }
@@ -4262,12 +4430,7 @@ void shell_colorize_line(QEColorizeContext *cp,
         } else {
             cp->colorize_state = 0;
         }
-        if (save_state & STATE_SHELL_TAG) {
-            SET_STYLE(sbuf, 0, i, QE_STYLE_ERROR_LOCATION);
-            cp->combine_stop = 0;
-        } else {
-            cp->combine_stop = start;
-        }
+        cp->combine_stop = stop;
         cp->combine_skip = start; // restrict trailing blank colorizer
     } else {
         cp->colorize_state = 0;

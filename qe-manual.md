@@ -177,7 +177,7 @@ FILENAME.
 ### `shell(int argval)`
 
 Start a shell buffer or move to the last shell buffer used.
-If a argval is provided and equal to one, the command attempts
+Unless an argument different from one is provided, the command attempts
 to switch to an existing, active shell buffer. If the process has
 already terminated, it will restart the shell in the original directory.
 If no shell buffer exists, or argval is not equal to one, it starts a

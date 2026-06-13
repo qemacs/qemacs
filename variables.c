@@ -203,7 +203,6 @@ QVarType qe_get_variable(EditState *s, const char *name,
     const char *endp;
 
     /* find standard variable and user variables */
-    // XXX: should also have window, buffer, mode properties?
     vp = qe_find_variable(s->qs, name);
     if (!vp) {
         /* Try environment */

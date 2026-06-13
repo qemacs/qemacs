@@ -833,11 +833,11 @@ void eb_free(EditBuffer **bp)
             qe_free(&cb);
         }
 
-        eb_delete_properties(b, 0, INT_MAX, 1);
+        eb_delete_properties(b, 0, INT_MAX, QE_PROP_ALL);
         eb_cache_remove(b);
         /* eb_clear frees b->log_buffer.
          * it should also call eb_free_style_buffer(b)
-         * and eb_delete_properties(b, 0, INT_MAX);
+         * and eb_delete_properties(b, 0, INT_MAX, QE_PROP_ALL);
          */
         eb_clear(b);
 
@@ -2766,66 +2766,101 @@ static void eb_plist_callback(EditBuffer *b, void *opaque, int edge,
     /* update properties */
     if (op == LOGOP_INSERT) {
         for (p = b->property_list; p; p = p->next) {
-            if (p->offset >= offset)
+            if (p->offset >= offset) {
+                if (p->offset == offset && (p->flags & QE_PROP_MARK))
+                    continue;
                 p->offset += size;
+            }
         }
     } else
     if (op == LOGOP_DELETE) {
         for (pp = &b->property_list; (p = *pp) != NULL;) {
             if (p->offset >= offset) {
+                if (p->offset == offset && (p->flags & QE_PROP_MARK))
+                    continue;
                 if (p->offset < offset + size) {
                     /* property is anchored inside block: remove it */
-                    *pp = (*pp)->next;
-                    if (p->type & QE_PROP_FREE) {
-                        qe_free(&p->data);
+                    if (!(p->flags & QE_PROP_KEEP)) {
+                        *pp = p->next;
+                        if (p->flags & QE_PROP_FREE) {
+                            qe_free(&p->data);
+                        }
+                        qe_free(&p);
+                        continue;
                     }
-                    qe_free(&p);
+                    p->offset = offset;
                     continue;
                 }
                 p->offset -= size;
             }
-            pp = &(*pp)->next;
+            pp = &p->next;
         }
     }
 }
 
-void eb_add_property(EditBuffer *b, int offset, int type, void *data) {
+QEProperty *eb_add_property(EditBuffer *b, int offset, int type, int flags, const void *data) {
     QEProperty *p;
     QEProperty **pp;
+    int extra = 0;
+
+    if (flags & QE_PROP_DUP) {
+        extra = strlen(data) + 1;
+        flags &= ~QE_PROP_FREE;
+    }
 
     if (!b->property_list) {
         eb_add_callback(b, eb_plist_callback, NULL, 0);
     }
 
     /* insert property in ascending order of offset */
-    for (pp = &b->property_list; (p = *pp) != NULL; pp = &(*pp)->next) {
+    for (pp = &b->property_list; (p = *pp) != NULL; pp = &p->next) {
         if (p->offset > offset)
             break;
     }
 
-    p = qe_mallocz(QEProperty);
+    p = qe_mallocz_hack(QEProperty, extra);
     p->offset = offset;
     p->type = type;
-    p->data = data;
+    p->flags = flags;
+    if (extra)
+        data = memcpy(p + 1, data, extra);
+    p->data = unconst(void*)data;
     p->next = *pp;
-    *pp = p;
+    return *pp = p;
+}
+
+int eb_del_property(EditBuffer *b, QEProperty *prop) {
+    QEProperty *p;
+    QEProperty **pp;
+
+    for (pp = &b->property_list; (p = *pp) != NULL; pp = &p->next) {
+        if (p == prop) {
+            *pp = p->next;
+            if (p->flags & QE_PROP_FREE) {
+                qe_free(&p->data);
+            }
+            qe_free(&p);
+            return 1;
+        }
+    }
+    return 0;
 }
 
 void eb_add_tag(EditBuffer *b, int offset, const char *s) {
     QEProperty *p;
 
-    /* prevent tag duplicates */
-    for (p = b->property_list; p != NULL; p = p->next) {
+    /* prevent tag duplicates with exact same offset */
+    for (p = b->property_list; p && p->offset <= offset; p = p->next) {
         if (p->offset == offset && p->type == QE_PROP_TAG && strequal(p->data, s))
             return;
     }
-    eb_add_property(b, offset, QE_PROP_TAG, qe_strdup(s));
+    eb_add_property(b, offset, QE_PROP_TAG, QE_PROP_DUP, s);
 }
 
-QEProperty *eb_find_property(EditBuffer *b, int offset, int offset2, int type) {
+QEProperty *eb_find_property(EditBuffer *b, int offset, int offset2, int type, QEProperty *stop) {
     QEProperty *found = NULL;
     QEProperty *p;
-    for (p = b->property_list; p && p->offset < offset2; p = p->next) {
+    for (p = b->property_list; p && p != stop && p->offset < offset2; p = p->next) {
         if (p->offset >= offset && p->type == type) {
             /* return the last property between offset and offset2 */
             found = p;
@@ -2834,7 +2869,7 @@ QEProperty *eb_find_property(EditBuffer *b, int offset, int offset2, int type) {
     return found;
 }
 
-void eb_delete_properties(EditBuffer *b, int offset, int offset2, int force) {
+void eb_delete_properties(EditBuffer *b, int offset, int offset2, int mask) {
     QEProperty *p;
     QEProperty **pp;
 
@@ -2842,14 +2877,14 @@ void eb_delete_properties(EditBuffer *b, int offset, int offset2, int force) {
         return;
 
     for (pp = &b->property_list; (p = *pp) != NULL && p->offset < offset2;) {
-        if ((!(p->type & QE_PROP_SKIP) || force) && p->offset >= offset) {
-            *pp = (*pp)->next;
-            if (p->type & QE_PROP_FREE) {
+        if (p->offset >= offset && p->offset < offset2 && (p->type & mask)) {
+            *pp = p->next;
+            if (p->flags & QE_PROP_FREE) {
                 qe_free(&p->data);
             }
             qe_free(&p);
         } else {
-            pp = &(*pp)->next;
+            pp = &p->next;
         }
     }
     if (!b->property_list) {
