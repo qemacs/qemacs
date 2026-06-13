@@ -2776,8 +2776,10 @@ static void eb_plist_callback(EditBuffer *b, void *opaque, int edge,
     if (op == LOGOP_DELETE) {
         for (pp = &b->property_list; (p = *pp) != NULL;) {
             if (p->offset >= offset) {
-                if (p->offset == offset && (p->flags & QE_PROP_MARK))
+                if (p->offset == offset && (p->flags & QE_PROP_MARK)) {
+                    pp = &p->next;
                     continue;
+                }
                 if (p->offset < offset + size) {
                     /* property is anchored inside block: remove it */
                     if (!(p->flags & QE_PROP_KEEP)) {
@@ -2789,6 +2791,7 @@ static void eb_plist_callback(EditBuffer *b, void *opaque, int edge,
                         continue;
                     }
                     p->offset = offset;
+                    pp = &p->next;
                     continue;
                 }
                 p->offset -= size;
