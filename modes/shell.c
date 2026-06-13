@@ -4099,14 +4099,15 @@ static void do_next_error(EditState *s, int arg, int dir)
             edit_close(&e);
     }
 
-    /* find a window showing the error source buffer,
-       split a new one if none is found  */
-    if ((e = eb_find_window(b, NULL)) == NULL && qs->shell_command_other_window) {
-        e = shell_target_window(s, b);
-
-        /* if there is only one window whoing the error source buffer
+    /* find a window showing the error source
+       buffer, split a new one if none is found */
+    e = eb_find_window(b, NULL);
+    if (qs->shell_command_other_window) {
+        if (e == NULL)
+            e = shell_target_window(s, b);
+        /* if there is only one window showing the error source buffer
            then find or split a new window to find the file in */
-        if (e == s && (s = get_next_window(s, WF_MINIBUF | WF_HIDDEN, 0)) == NULL)
+        if (e == s && !(s = get_next_window(s, WF_MINIBUF | WF_HIDDEN, 0)))
             s = shell_target_window(e, b);
     }
 
