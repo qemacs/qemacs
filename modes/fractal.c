@@ -1248,7 +1248,7 @@ static void do_mandelbrot_test(EditState *s, int argval) {
 static const CmdDef fractal_global_commands[] = {
     CMD2( "mandelbrot-test", "C-h m",
           "Explore the Mandelbrot set in fractal-mode",
-          do_mandelbrot_test, ESi, "p")
+          do_mandelbrot_test, ESi, "#" "p")
 };
 
 static int fractal_init(QEmacsState *qs)

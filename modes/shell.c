@@ -2940,10 +2940,8 @@ static void do_shell(EditState *e, int argval)
     char curpath[MAX_FILENAME_SIZE];
     EditBuffer *b = NULL;
 
-    if (e->flags & (WF_POPUP | WF_MINIBUF)) {
-        put_error(e, "%s", "Please start command in a normal window");
+    if (e->flags & (WF_POPUP | WF_MINIBUF))
         return;
-    }
 
     /* Start the shell in the default directory of the current window */
     get_default_path(e->b, e->offset, curpath, sizeof curpath);
@@ -3067,10 +3065,8 @@ static void do_man(EditState *s, const char *arg)
     QEmacsState *qs = s->qs;
     EditBuffer *b;
 
-    if (s->flags & (WF_POPUP | WF_MINIBUF)) {
-        put_error(s, "%s", "Please start command in a normal window");
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
-    }
 
     if (s->flags & WF_POPLEFT) {
         /* avoid messing with the dired pane */
@@ -3109,10 +3105,8 @@ void qe_diff_buffer_with_file(EditState *s, EditBuffer *b)
     const char *tmpdir = getenv("TMPDIR");
     int tmpdir_len;
 
-    if (s->flags & (WF_POPUP | WF_MINIBUF)) {
-        put_error(s, "%s", "Please start command in a normal window");
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
-    }
 
     if (!*fname)
         return;
@@ -3178,10 +3172,8 @@ static void do_ssh(EditState *s, const char *arg)
     QEmacsState *qs = s->qs;
     EditBuffer *b;
 
-    if (s->flags & (WF_POPUP | WF_MINIBUF)) {
-        put_error(s, "%s", "Please start command in a normal window");
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
-    }
 
     if (s->flags & WF_POPLEFT) {
         /* avoid messing with the dired pane */
@@ -3903,10 +3895,8 @@ static void do_compile(EditState *s, const char *cmd)
     const char *bufname = "*compilation*";
     EditBuffer *b;
 
-    if (s->flags & (WF_POPUP | WF_MINIBUF)) {
-        put_error(s, "%s", "Please start command in a normal window");
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
-    }
 
     get_default_path(s->b, s->offset, curpath, sizeof curpath);
 
@@ -4023,10 +4013,8 @@ static void do_next_error(EditState *s, int arg, int dir)
     int offset;
     struct stat sb;
 
-    if (s->flags & (WF_POPUP | WF_MINIBUF)) {
-        put_error(s, "%s", "Please start command in a normal window");
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
-    }
 
     if (s->flags & WF_POPLEFT) {
         /* avoid messing with the dired pane */
@@ -4514,7 +4502,7 @@ static const CmdDef shell_commands[] = {
 static const CmdDef shell_global_commands[] = {
     CMD2( "shell", "C-x RET RET, C-x LF LF",
           "Start a shell buffer or move to the last shell buffer used",
-          do_shell, ESi, "p")
+          do_shell, ESi, "#" "p")
     CMD2( "shell-command", "M-!",
           "Run a shell command and display a new buffer with its collected output",
           do_shell_command, ESs,
@@ -4522,32 +4510,32 @@ static const CmdDef shell_global_commands[] = {
     CMD2( "interactive-shell-command", "",
           "Run a shell command interactively and display a new buffer with its collected output",
           do_interactive_shell_command, ESs,
-          "s{Interactive shell command: }|interactive-shell-command|")
+          "#" "s{Interactive shell command: }|interactive-shell-command|")
     CMD2( "ssh", "",
           "Start a shell buffer with a new remote shell connection",
           do_ssh, ESs,
-          "s{Open connection to (host or user@host: }|ssh|")
+          "#" "s{Open connection to (host or user@host: }|ssh|")
     CMD2( "compile", "C-x C-e",
           "Run a compiler command and display a new buffer with its collected output",
           do_compile, ESs,
-          "s{Compile command: }|compile|")
+          "#" "s{Compile command: }|compile|")
     CMD2( "make", "C-x m",
           "Run make and display a new buffer with its collected output",
           do_compile, ESs,
-          "@{make}")
+          "#" "@{make}")
     CMD2( "man", "",
           "Run man for a command and display a new buffer with its collected output",
           do_man, ESs,
-          "s{Show man page for: }|man|")
+          "#" "s{Show man page for: }|man|")
     CMD3( "next-error", "C-x C-n, C-x `, M-g n, M-g M-n",
           "Move to the next error from the last shell command output",
-          do_next_error, ESii, "P" "v", +1)
+          do_next_error, ESii, "#" "P" "v", +1)
     CMD3( "previous-error", "C-x C-p, M-g p, M-g M-p",
           "Move to the previous error from the last shell command output",
-          do_next_error, ESii, "P" "v", -1)
-    CMD0( "diff-buffer-with-file", "C-c C-d, C-c =",
+          do_next_error, ESii, "#" "P" "v", -1)
+    CMD2( "diff-buffer-with-file", "C-c C-d, C-c =",
           "Show differences between the buffer in the current window and its file",
-          do_diff_buffer_with_file)
+          do_diff_buffer_with_file, ES, "#")
 };
 
 static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)

@@ -5567,8 +5567,9 @@ int qe_get_prototype(const CmdDef *d, char *buf, int size) {
 
     /* construct argument type list */
     r = d->spec;
-    if (*r == '*') {
-        r++;    /* buffer modification indicator */
+    /* skip buffer modification indicator and popup inhibitor */
+    while (*r == '*' || *r == '#') {
+        r++;
     }
 
     while (parse_arg(&r, &cas) > 0) {
@@ -5632,11 +5633,22 @@ void exec_command(EditState *s, const CmdDef *d, int argval, int key)
         qe_trace_bytes(qs, d->name, -1, EB_TRACE_COMMAND);
 
     argdesc = d->spec;
-    if (*argdesc == '*') {
-        argdesc++;
-        if (s->b->flags & BF_READONLY) {
-            put_error(s, "Buffer is read only");
-            return;
+    for (;;) {
+        if (*argdesc == '*') {
+            argdesc++;
+            if (s->b->flags & BF_READONLY) {
+                put_error(s, "Buffer is read only");
+                return;
+            }
+        } else
+        if (*argdesc == '#') {
+            argdesc++;
+            if (s->flags & (WF_POPUP | WF_MINIBUF)) {
+                put_error(s, "Command '%s' requires a regular window", d->name);
+                return;
+            }
+        } else {
+            break;
         }
     }
 
@@ -11523,27 +11535,27 @@ static const CmdDef basic_commands[] = {
     CMD3( "find-file", "C-x C-f",
           "Load a file into a new buffer and/or display it in the current window",
           do_find_file, ESsi,
-          "s{Find file: }[file]|file|"
+          "#" "s{Find file: }[file]|file|"
           "v", 0) /* u? */
     CMD3( "find-file-other-window", "C-x M-f",
           "Load a file into a new buffer and/or display it in a new window",
           do_find_file_other_window, ESsi,
-          "s{Find file: }[file]|file|"
+          "#" "s{Find file: }[file]|file|"
           "v", 0) /* u? */
     CMD3( "find-alternate-file", "C-x C-v",
           "Load a new file into the current buffer and/or display it in the current window",
           do_find_alternate_file, ESsi,
-          "s{Find alternate file: }[file]|file|"
+          "#" "s{Find alternate file: }[file]|file|"
           "v", 0) /* u? */
     CMD3( "find-file-noselect", "",
           "Load a file into a new buffer",
           do_find_file_noselect, ESsi,
-          "s{Find file: }[file]|file|"
+          "#" "s{Find file: }[file]|file|"
           "v", 0) /* u? */
     CMD2( "insert-file", "C-x i",
           "Insert the contents of a file at point",
           do_insert_file, ESs, "*"
-          "s{Insert file: }[file]|file|") /* u? */
+          "#" "s{Insert file: }[file]|file|") /* u? */
     CMD0( "save-buffer", "C-x C-s",
           "Save the buffer contents to the associated file if modified",
           do_save_buffer) /* u? */
@@ -11559,7 +11571,7 @@ static const CmdDef basic_commands[] = {
     CMD2( "switch-to-buffer", "C-x b",
           "Change the buffer attached to the current window",
           do_switch_to_buffer, ESs,
-          "s{Switch to buffer: }[buffer]|buffer|")
+          "#" "s{Switch to buffer: }[buffer]|buffer|")
     CMD3( "kill-buffer", "C-x k",
           "Remove a named buffer",
           do_kill_buffer, ESsi,
@@ -11567,10 +11579,10 @@ static const CmdDef basic_commands[] = {
           "v", 0)
     CMD2( "next-buffer", "C-x C-right",
           "Switch to the next buffer",
-          do_buffer_navigation, ESi, "p")
+          do_buffer_navigation, ESi, "#" "p")
     CMD2( "previous-buffer", "C-x C-left",
           "Switch to the previous buffer",
-          do_buffer_navigation, ESi, "q")
+          do_buffer_navigation, ESi, "#" "q")
     CMD0( "toggle-read-only", "C-x C-q, C-c %",
           "Toggle the read-only flag of the current buffer",
           do_toggle_read_only)
@@ -11652,7 +11664,7 @@ static const CmdDef basic_commands[] = {
     CMD2( "edit-last-kbd-macro", "C-x *, C-x C-k C-e, C-x C-k e",
           "Edit the last keyboard macro",
           do_edit_last_kbd_macro, ESs,
-          "s{Macro keys: }|macrokeys|")
+          "#" "s{Macro keys: }|macrokeys|")
     CMD2( "name-last-kbd-macro", "C-x C-k C-n, C-x C-k n",
           "Define a named command from the last keyboard macro",
           do_name_last_kbd_macro, ESs,
@@ -11660,7 +11672,7 @@ static const CmdDef basic_commands[] = {
     CMD2( "insert-kbd-macro", "C-x C-k i",
           "Insert in buffer the definition of kbd macro MACRONAME, as qescript code",
           do_insert_kbd_macro, ESs,
-          "*s{Macro name: }[command]")
+          "#" "*s{Macro name: }[command]")
     CMD2( "read-kbd-macro", "C-x C-k r",
           "Read the region as a keyboard macro definition",
           do_read_kbd_macro, ESii, "m" "d")
@@ -11710,34 +11722,34 @@ static const CmdDef basic_commands[] = {
     /*---------------- Window handling ----------------*/
 
     /* should merge these functions */
-    CMD0( "other-window", "C-x o",
+    CMD2( "other-window", "C-x o",
           "Move the focus to another window",
-          do_other_window)
-    CMD0( "next-window", "C-x n",
+          do_other_window, ES, "#")
+    CMD2( "next-window", "C-x n",
           "Move the focus to the next window",
-          do_other_window)
-    CMD0( "previous-window", "C-x p",
+          do_other_window, ES, "#")
+    CMD2( "previous-window", "C-x p",
           "Move the focus to the previous window",
-          do_previous_window)
-    CMD0( "window-swap-states", "C-x /",
+          do_previous_window, ES, "#")
+    CMD2( "window-swap-states", "C-x /",
           "Swap the states of the current and next windows",
-          do_window_swap_states)
+          do_window_swap_states, ES, "#")
 #ifndef CONFIG_TINY
     CMD1( "center-cursor", "M-C-l",
           "Center the window contents at point",
           do_center_cursor, 1)
-    CMD1( "find-window-up", "C-x up",
+    CMD3( "find-window-up", "C-x up",
           "Move the focus to the window above the current one",
-          do_find_window, KEY_UP)
-    CMD1( "find-window-down", "C-x down",
+          do_find_window, ESi, "#" "v", KEY_UP)
+    CMD3( "find-window-down", "C-x down",
           "Move the focus to the window below the current one",
-          do_find_window, KEY_DOWN)
-    CMD1( "find-window-left", "C-x left",
+          do_find_window, ESi, "#" "v", KEY_DOWN)
+    CMD3( "find-window-left", "C-x left",
           "Move the focus to the window to the left of the current one",
-          do_find_window, KEY_LEFT)
-    CMD1( "find-window-right", "C-x right",
+          do_find_window, ESi, "#" "v", KEY_LEFT)
+    CMD3( "find-window-right", "C-x right",
           "Move the focus to the window to the right of the current one",
-          do_find_window, KEY_RIGHT)
+          do_find_window, ESi, "#" "v", KEY_RIGHT)
     CMD2( "scroll-left", "M-(",
           "Shift the window contents to the left",
           do_scroll_left_right, ESi, "q")
@@ -11751,31 +11763,33 @@ static const CmdDef basic_commands[] = {
     CMD1( "delete-window", "C-x 0, CLOSE",
           "Delete the current window",
           do_delete_window, 0)
-    CMD1( "delete-other-windows", "C-x 1",
+    CMD3( "delete-other-windows", "C-x 1",
           "Delete all other windows",
-          do_delete_other_windows, 0)
-    CMD1( "delete-all-windows", "",
+          do_delete_other_windows, ESi, "#" "v", 0)
+    // XXX: should be flagged as non interactive
+    CMD3( "delete-all-windows", "",
           "Delete all windows",
-          do_delete_other_windows, 1)
-    CMD1( "hide-window", "",
+          do_delete_other_windows, ESi, "#" "v", 1)
+    CMD3( "hide-window", "",
           "Hide the current window",
-          do_hide_window, 1)
+          do_hide_window, ESi, "#" "v", 1)
     CMD0( "delete-hidden-windows", "",
           "Delete the hidden windows",
           do_delete_hidden_windows)
     CMD3( "split-window-vertically", "C-x 2",
           "Split the current window top and bottom",
-          do_split_window, ESii, "P" "v", SW_STACKED)
+          do_split_window, ESii, "#" "P" "v", SW_STACKED)
     CMD3( "split-window-horizontally", "C-x 3",
           "Split the current window side by side",
-          do_split_window, ESii, "P" "v", SW_SIDE_BY_SIDE)
-    CMD0( "toggle-full-screen", "C-c f",
+          do_split_window, ESii, "#" "P" "v", SW_SIDE_BY_SIDE)
+    CMD2( "toggle-full-screen", "C-c f",
           "Toggle full screen display (on graphics displays)",
-          do_toggle_full_screen)
+          do_toggle_full_screen, ES, "#")
     CMD0( "toggle-mode-line", "C-c m",
           "Toggle mode-line display",
           do_toggle_mode_line)
 #ifdef CONFIG_SESSION
+    // XXX: should be flagged as non interactive
     CMD2( "create-window", "",
           "Create a new window with a specified layout",
           do_create_window, ESss,
@@ -11935,19 +11949,19 @@ static const CmdDef basic_commands[] = {
     CMD2( "set-mode", "",
           "Set an editing mode",
           do_set_mode, ESs,
-          "s{Set mode: }[mode]")
+          "#" "s{Set mode: }[mode]")
     CMD1( "set-auto-coding", "",
           "",
           do_set_auto_coding, 1)
-    CMD1( "set-auto-mode", "",
+    CMD3( "set-auto-mode", "",
           "Select the best mode",
-          do_set_next_mode, 0)
+          do_set_next_mode, ESi, "#" "v", 0)
     CMD2( "set-next-mode", "M-m",
           "Select the next mode appropriate for the current buffer",
-          do_set_next_mode, ESi, "p")
+          do_set_next_mode, ESi, "#" "p")
     CMD2( "set-previous-mode", "",
           "Select the previous mode appropriate for the current buffer",
-          do_set_next_mode, ESi, "q")
+          do_set_next_mode, ESi, "#" "q")
 
     /* tab & indent */
     CMD2( "set-tab-width", "",
@@ -11971,7 +11985,7 @@ static const CmdDef basic_commands[] = {
     CMD3( "load-file-from-path", "C-c C-f",
           "Load a resource file from the QEPATH",
           do_load_file_from_path, ESsi,
-          "s{Load file from path: }[resource]|file|"
+          "#" "s{Load file from path: }[resource]|file|"
           "v", 0)
     CMD2( "load-config-file", "",
           "Load a configuration file from the QEPATH",
