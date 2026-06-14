@@ -880,8 +880,10 @@ void do_isearch(EditState *s, int argval, int dir) {
     QEmacsState *qs = s->qs;
 
     /* prevent search from minibuffer */
-    if (s->flags & WF_MINIBUF)
+    if (s->flags & WF_MINIBUF) {
+        dpy_sound_bell(s->screen);
         return;
+    }
 
     is = set_search_state(s, argval, dir);
     if (is != NULL) {

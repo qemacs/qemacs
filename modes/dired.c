@@ -1969,7 +1969,7 @@ static const CmdDef dired_commands[] = {
 static const CmdDef dired_global_commands[] = {
     CMD2( "dired", "C-x C-d",
           "Display the directory window and start dired mode",
-          do_dired, ESi, "P")
+          do_dired, ESi, "#" "P")
 };
 
 #if 0
@@ -2141,12 +2141,12 @@ static int filelist_mode_init(EditState *s, EditBuffer *b, int flags)
 }
 
 static const CmdDef filelist_commands[] = {
-    CMD0( "filelist-select", "RET, LF, right",
+    CMD2( "filelist-select", "RET, LF, right",
           "Select the current entry",
-          do_other_window)
-    CMD0( "filelist-tab", "TAB",
+          do_other_window, ES, "#")
+    CMD2( "filelist-tab", "TAB",
           "Select the current entry",
-          do_other_window)
+          do_other_window, ES, "#")
     /* filelist-abort should restore previous buffer in right-window
      * or at least exit preview mode */
     CMD1( "filelist-abort", "C-g",
@@ -2157,7 +2157,7 @@ static const CmdDef filelist_commands[] = {
 static const CmdDef filelist_global_commands[] = {
     CMD2( "filelist", "",
           "Run the filelist-mode on the current region",
-          do_filelist, ESi, "p")
+          do_filelist, ESi, "#" "p")
 };
 
 static int filelist_init(QEmacsState *qs)

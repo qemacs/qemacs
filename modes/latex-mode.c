@@ -325,7 +325,7 @@ static const CmdDef latex_commands[] = {
     CMD2( "TeX-command-master", "C-c C-c",
           "Run the latex process",
           do_latex, ESs,
-          "s{Command: (default LaTeX) }[latex]|latex|")
+          "#" "s{Command: (default LaTeX) }[latex]|latex|")
 };
 
 static ModeDef latex_mode = {

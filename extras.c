@@ -3364,11 +3364,11 @@ static const CmdDef extra_commands[] = {
 
     CMD2( "compare-windows", "M-=",
           "Compare windows, optionally ignoring white space, comments and case",
-          do_compare_windows, ESi, "p")
+          do_compare_windows, ESi, "#" "p")
     CMD3( "compare-files", "C-x RET C-l",
           "Compare file and other version in parent directory",
           do_compare_files, ESsi,
-          "s{Compare file: }[file]|file|"
+          "#" "s{Compare file: }[file]|file|"
           "v", 0) /* p? */
     CMD2( "define-equivalent", "",
           "Define equivalent strings for compare-windows",
