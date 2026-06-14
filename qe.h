@@ -1570,7 +1570,7 @@ void display_mode_line(EditState *s);
 int edit_set_mode(EditState *s, ModeDef *m);
 void qe_set_next_mode(EditState *s, int n, int status);
 void do_set_next_mode(EditState *s, int n);
-void do_buffer_navigation(EditState *s, int dir, int argval);
+void do_buffer_navigation(EditState *s, int n);
 
 /* loading files */
 void do_exit_qemacs(EditState *s, int argval);
