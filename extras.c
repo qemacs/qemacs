@@ -2055,6 +2055,10 @@ static void do_describe_buffer(EditState *s, int argval)
         buf_puts(desc, " DIRED");
     if (b->flags & BF_SHELL)
         buf_puts(desc, " SHELL");
+    if (b->flags & BF_HELP)
+        buf_puts(desc, " HELP");
+    if (b->flags & BF_ERROR)
+        buf_puts(desc, " ERROR");
     if (b->flags & BF_UTF8)
         buf_puts(desc, " UTF8");
     if (b->flags & BF_RAW)
