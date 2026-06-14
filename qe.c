@@ -8516,7 +8516,7 @@ EditBuffer *qe_get_buffer_from_index(QEmacsState *qs, int index, int mask, int v
 
 /* Find the n-th non-system buffer from the specified buffer in a given
    direction. Set up repeat map */
-void do_buffer_navigation(EditState *s, int argval, int dir)
+void do_buffer_navigation(EditState *s, int n)
 {
     QEmacsState *qs = s->qs;
     int buffer_index, buffer_count, new_index;
@@ -8534,8 +8534,7 @@ void do_buffer_navigation(EditState *s, int argval, int dir)
         qe_register_transient_binding(qs, "next-buffer", "right, C-right");
         qe_register_transient_binding(qs, "previous-buffer", "left, C-left");
     }
-    argval = argval * dir % buffer_count;
-    new_index = (buffer_index + argval + buffer_count) % buffer_count;
+    new_index = (buffer_index + n % buffer_count + buffer_count) % buffer_count;
     if (new_index != buffer_index) {
         b = qe_get_buffer_from_index(qs, new_index, BF_SYSTEM, 0);
         if (b)
@@ -11571,12 +11570,12 @@ static const CmdDef basic_commands[] = {
           do_kill_buffer, ESsi,
           "s{Kill buffer: }[buffer]|buffer|"
           "v", 0)
-    CMD3( "next-buffer", "C-x C-right",
+    CMD2( "next-buffer", "C-x C-right",
           "Switch to the next buffer",
-          do_buffer_navigation, ESii, "p" "v", 1)
-    CMD3( "previous-buffer", "C-x C-left",
+          do_buffer_navigation, ESi, "p")
+    CMD2( "previous-buffer", "C-x C-left",
           "Switch to the previous buffer",
-          do_buffer_navigation, ESii, "p" "v", -1)
+          do_buffer_navigation, ESi, "q")
     CMD0( "toggle-read-only", "C-x C-q, C-c %",
           "Toggle the read-only flag of the current buffer",
           do_toggle_read_only)
