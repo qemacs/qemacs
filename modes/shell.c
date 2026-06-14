@@ -42,7 +42,7 @@
 /* XXX: better tab handling */
 /* XXX: send real cursor position (CSI n) */
 
-static ModeDef shell_mode, pager_mode;
+static ModeDef shell_mode, pager_mode, compilation_mode;
 
 #define MAX_CSI_PARAMS  16
 #define MAX_OSC_SIZE    512 + MAX_FILENAME_SIZE
@@ -2750,7 +2750,7 @@ static void shell_close(ShellState *s)
                 qe_set_next_mode(e, 0, 0);
             if (qs->shell_buffer_read_only) {
                 if (s->shell_flags & SF_INTERACTIVE)
-                    edit_set_mode(e, &pager_mode);
+                    edit_set_mode(e, &compilation_mode);
             }
         }
     }
@@ -2994,6 +2994,7 @@ static void do_shell(EditState *e, int argval)
     if (!b)
         return;
 
+    b->flags |= BF_ERROR;
     b->default_mode = &shell_mode;
     switch_to_buffer(e, b);
     /* force interactive mode if restarting */
@@ -3088,7 +3089,6 @@ static void do_man(EditState *s, const char *arg)
         return;
 
     b->data_type_name = "man";
-    b->flags |= BF_READONLY;
     s = shell_target_window(s, b);
     edit_set_mode(s, &pager_mode);
 }
@@ -3154,7 +3154,6 @@ void qe_diff_buffer_with_file(EditState *s, EditBuffer *b)
     snprintf(cmd, sizeof(cmd), "Diff buffer %s", fname);
 
     b1->data_type_name = "diff";
-    b1->flags |= BF_READONLY;
     e = show_popup(s, b1, cmd);
     // XXX: Should use patch mode
     edit_set_mode(e, &pager_mode);
@@ -3862,7 +3861,6 @@ static void do_shell_command(EditState *e, const char *cmd)
     if (!b)
         return;
 
-    b->flags |= BF_READONLY;
     e = shell_target_window(e, b);
     edit_set_mode(e, &pager_mode);
 }
@@ -3919,10 +3917,9 @@ static void do_compile(EditState *s, const char *cmd)
     if (!b)
         return;
 
-    b->flags |= BF_READONLY;
     b->data_type_name = "compile";
     s = shell_target_window(s, b);
-    edit_set_mode(s, &pager_mode);
+    edit_set_mode(s, &compilation_mode);
     set_error_offset(b, 0);
 }
 
@@ -4028,18 +4025,23 @@ static void do_next_error(EditState *s, int arg, int dir)
         set_error_offset(s->b, s->offset);
     }
 
-    /* CG: should have a buffer flag for error source.
-     * first check if current buffer is an error source.
-     * if not, then scan for appropriate error source
-     * in buffer least recently used order
-     */
-
     if ((b = qe_find_buffer_name(qs, error_state.buffer)) == NULL) {
-        if ((b = qe_find_buffer_name(qs, "*compilation*")) == NULL
-        &&  (b = qe_find_buffer_name(qs, "*shell*")) == NULL
-        &&  (b = qe_find_buffer_name(qs, "*errors*")) == NULL) {
-            put_error(s, "No compilation buffer");
-            return;
+        if (s->b->flags & BF_ERROR) {
+            b = s->b;
+        } else {
+            EditBuffer *b1;
+            int atime = -1;
+
+            for (b1 = qs->first_buffer; b1 != NULL; b1 = b1->next) {
+                if ((b1->flags & BF_ERROR) && b1->atime > atime) {
+                    b = b1;
+                    atime = b1->atime;
+                }
+            }
+            if (b == NULL && (b = qe_find_buffer_name(qs, "*errors*")) == NULL) {
+                put_error(s, "No compilation buffer");
+                return;
+            }
         }
         set_error_offset(b, -1);
     }
@@ -4081,11 +4083,8 @@ static void do_next_error(EditState *s, int arg, int dir)
         return;
     }
 
-    for (e = qs->first_window; e != NULL; e = e_next) {
-        e_next = e->next_window;
-        if (e->flags & (WF_POPUP | WF_POPLEFT))
-            edit_close(&e);
-    }
+    if ((e = get_next_window(s, WF_POPLEFT, WF_POPLEFT)))
+        do_delete_window(e, 0);
 
     /* find a window showing the error source
        buffer, split a new one if none is found */
@@ -4571,8 +4570,24 @@ static int pager_mode_init(EditState *e, EditBuffer *b, int flags)
 {
     if (e) {
         e->b->tab_width = 8;
-        /* XXX: should come from mode.default_wrap */
-        e->wrap = WRAP_TRUNCATE;
+        e->wrap = pager_mode.default_wrap;
+    }
+    if (b) {
+        b->modified = 0;
+        b->flags |= BF_READONLY;
+    }
+    return 0;
+}
+
+static int compilation_mode_init(EditState *e, EditBuffer *b, int flags)
+{
+    if (e) {
+        e->b->tab_width = 8;
+        e->wrap = compilation_mode.default_wrap;
+    }
+    if (b) {
+        b->modified = 0;
+        b->flags |= BF_ERROR | BF_READONLY;
     }
     return 0;
 }
@@ -4583,15 +4598,16 @@ static void do_pager_abort(EditState *e)
 
     if (e->mode != &pager_mode) {
         put_error(e, "Not a %s buffer", pager_mode.name);
+        return;
+    }
+
+    b1 = qe_check_buffer(e->qs, &e->last_buffer);
+    if (b1 != NULL) {
+        switch_to_buffer(e, NULL);
+        e->last_buffer = NULL;
+        switch_to_buffer(e, b1);
     } else {
-        b1 = qe_check_buffer(e->qs, &e->last_buffer);
-        if (b1 != NULL) {
-            switch_to_buffer(e, NULL);
-            e->last_buffer = NULL;
-            switch_to_buffer(e, b1);
-        } else {
-            do_delete_window(e, 0);
-        }
+        do_delete_window(e, 0);
     }
 }
 
@@ -4603,6 +4619,60 @@ static const CmdDef pager_commands[] = {
 
 /* additional mode specific bindings */
 static const char * const pager_bindings[] = {
+    "DEL", "scroll-down",
+    "SPC", "scroll-up",
+    "/", "search-forward",
+    NULL
+};
+
+static void do_kill_compilation(EditState *e)
+{
+    ShellState *s;
+    EditBuffer *b = e->b;
+    QEmacsState *qs = e->qs;
+
+    if (e->mode != &compilation_mode) {
+        if (!(b = qe_find_buffer_name(qs, "*compilation*"))) {
+            put_error(e, "No compilation buffer");
+            return;
+        }
+    }
+
+    if ((s = qe_get_buffer_mode_data(b, &shell_mode, NULL)) && s->pid > 0)
+        kill(s->pid, SIGKILL);
+    else
+        put_error(e, "Compilation process is not running");
+}
+
+static void do_goto_error(EditState *s)
+{
+    int offset;
+
+    if (!(s->b->flags & BF_ERROR)) {
+        put_error(s, "Not an error source buffer");
+        return;
+    }
+    offset = eb_goto_bol(s->b, s->offset);
+    if (!match_error(s->b, offset, NULL)) {
+        put_error(s, "No error here");
+    } else {
+        set_error_offset(s->b, offset);
+        do_next_error(s, NO_ARG, +1);
+    }
+}
+
+static const CmdDef compilation_commands[] = {
+    CMD0( "goto-error", "RET, LF", // XXX: mouse click ?
+          "Move to the error matching the current error message at point",
+          do_goto_error)
+    CMD0( "kill-compilation", "C-c C-k",
+          "kill compilation process",
+          do_kill_compilation)
+};
+
+static const char * const compilation_bindings[] = {
+    "n, M-n", "next-error",
+    "p, M-p", "previous-error",
     "DEL", "scroll-down",
     "SPC", "scroll-up",
     "/", "search-forward",
@@ -4647,9 +4717,24 @@ static int shell_init(QEmacsState *qs)
     pager_mode.mode_init = pager_mode_init;
     pager_mode.bindings = pager_bindings;
     pager_mode.colorize_func = shell_colorize_line;
+    pager_mode.default_wrap = WRAP_LINE;
 
     qe_register_mode(qs, &pager_mode, MODEF_NOCMD | MODEF_VIEW);
     qe_register_commands(qs, &pager_mode, pager_commands, countof(pager_commands));
+
+    /* populate and register compilation mode and commands */
+    // XXX: remove this mess: should just inherit with fallback
+    memcpy(&compilation_mode, &text_mode, offsetof(ModeDef, first_key));
+    compilation_mode.name = "compilation";
+    compilation_mode.flags |= MODEF_NO_TRAILING_BLANKS;
+    compilation_mode.mode_probe = NULL;
+    compilation_mode.mode_init = compilation_mode_init;
+    compilation_mode.bindings = compilation_bindings;
+    compilation_mode.colorize_func = shell_colorize_line;
+    compilation_mode.default_wrap = WRAP_LINE;
+
+    qe_register_mode(qs, &compilation_mode, MODEF_NOCMD | MODEF_VIEW);
+    qe_register_commands(qs, &compilation_mode, compilation_commands, countof(compilation_commands));
 
     return 0;
 }

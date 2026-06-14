@@ -385,6 +385,7 @@ typedef struct EditBufferDataType {
 #define BF_IS_LOG   0x10000  /* buffer is a log buffer */
 #define BF_SHELL    0x20000  /* buffer is a shell buffer */
 #define BF_HELP     0x40000  /* buffer is a help buffer */
+#define BF_ERROR    0x80000  /* buffer is an error source buffer */
 /* buffer creation flags */
 #define BC_REUSE   0x100000  /* reuse existing buffer with same name */
 #define BC_CLEAR   0x200000  /* reuse existing buffer and clear it */
