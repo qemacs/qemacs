@@ -8308,7 +8308,7 @@ void do_popup_exit(EditState *s)
 
     if (s->flags & WF_POPUP) {
         edit_close(&s);
-        do_refresh(qs->active_window);
+        do_refresh_complete(qs->active_window);
     } else {
         put_error(s, "Not a popup window");
     }
@@ -8319,29 +8319,24 @@ EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
 {
     QEmacsState *qs = s->qs;
     EditState *e;
-    int w, h, w1, h1;
+    int x, y, w, h, w1, h1;
 
     b->flags |= BF_READONLY | BF_TRANSIENT;
     b->default_mode = &popup_mode;
-
-    /* Update caption and prevent recursion */
-    if (s && (s->flags & WF_POPUP)) {
-        if (s->b != b)
-            switch_to_buffer(s, b);
-        qe_free(&s->caption);
-        if (caption)
-            s->caption = qe_strdup(caption);
-        do_refresh(s);
-        return s;
-    }
 
     /* XXX: generic function to open popup ? */
     w1 = qs->screen->width;
     h1 = qs->screen->height - qs->status_height;
     w = (w1 * 4) / 5;
     h = (h1 * 3) / 4;
+    x = (w1 - w) / 2;
+    y = (h1 - h) / 2;
+    if (s->flags & (WF_POPUP | WF_MINIBUF)) {
+        x += qs->status_height * 2;
+        y += qs->status_height * 2;
+    }
 
-    e = qe_new_window(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
+    e = qe_new_window(b, x, y, w, h, WF_POPUP);
     if (e != NULL) {
         if (caption)
             e->caption = qe_strdup(caption);
