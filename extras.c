@@ -1541,13 +1541,8 @@ void do_apropos(EditState *s, const char *str)
         for (vp = qs->first_variable; vp; vp = vp->next) {
             const char *desc = vp->desc ? vp->desc : "";
             if ((!strstr(vp->name, str)) == extra && (!extra || strstr(desc, str))) {
-                /* print class, name and current value */
-                eb_variable_print_entry(b, vp, s);
-                eb_putc(b, '\n');
-                if (*desc) {
-                    /* print short description */
-                    eb_printf(b, "  %s\n", desc);
-                }
+                /* print class, name, current value and short description */
+                eb_variable_print_entry(b, vp, s, 1);
             }
         }
         stop = b->offset;

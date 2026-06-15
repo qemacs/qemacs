@@ -41,6 +41,15 @@ const char * const var_domain[] = {
     "self",     /* VAR_SELF */
 };
 
+static const char * const var_domain_desc[] = {
+    "Global",   /* VAR_GLOBAL */
+    "State",    /* VAR_STATE */
+    "Buffer",   /* VAR_BUFFER */
+    "Window",   /* VAR_WINDOW */
+    "Mode",     /* VAR_MODE */
+    "Other",    /* VAR_SELF */
+};
+
 static int use_full_version = 1;
 
 static VarDef var_table[] = {
@@ -265,10 +274,22 @@ QVarType qe_get_variable(EditState *s, const char *name,
         break;
     case VAR_NUMBER:
         memcpy(&num, ptr, sizeof(num));
-        if (pnum)
+        if (pnum) {
             *pnum = num;
-        else
-            snprintf(buf, size, "%d  0x%x", num, (unsigned)num);
+        } else
+        if (num < 10) {
+            snprintf(buf, size, "%d", num);
+        } else
+        if (num % (1 << 20) == 0) {
+            snprintf(buf, size, "%d (0x%x, %d MB)",
+                     num, (unsigned)num, num >> 20);
+        } else
+        if (num % (1 << 10) == 0) {
+            snprintf(buf, size, "%d (0x%x, %d KB)",
+                     num, (unsigned)num, num >> 10);
+        } else {
+            snprintf(buf, size, "%d (0x%x)", num, (unsigned)num);
+        }
         break;
     case VAR_STYLE:
         memcpy(&style, ptr, sizeof(style));
@@ -470,15 +491,36 @@ static void do_describe_variable(EditState *s, const char *name) {
         return;
 
     eb_putc(b, '\n');
-    /* print name, class, current value and description */
-    eb_variable_print_entry(b, vp, s);
-    eb_putc(b, '\n');
-    if (vp->desc && *vp->desc) {
-        /* print short description */
-        eb_printf(b, "  %s\n", vp->desc);
-    }
+    /* print name, class, current value and short description */
+    eb_variable_print_entry(b, vp, s, 1);
     // XXX: should look up markdown documentation
     show_popup(s, b, "Help");
+}
+
+static void do_show_all_variables(EditState *s) {
+    EditBuffer *b;
+    VarDef *vp;
+    int i;
+
+    b = new_help_buffer(s);
+    if (!b)
+        return;
+
+    // XXX: should create links to markdown documentation
+    for (i = 0; i < countof(var_domain); i++) {
+        b->cur_style = QE_STYLE_FUNCTION;
+        eb_printf(b, "%s variables:\n", var_domain_desc[i]);
+        b->cur_style = QE_STYLE_DEFAULT;
+        for (vp = s->qs->first_variable; vp; vp = vp->next) {
+            if (vp->domain == i) {
+                /* print name, class, current value and short description */
+                eb_variable_print_entry(b, vp, s, 1);
+            }
+        }
+        eb_putc(b, '\n');
+    }
+
+    show_popup(s, b, "Variables");
 }
 
 void qe_register_variables(QEmacsState *qs, VarDef *vars, int count)
@@ -553,7 +595,7 @@ void qe_save_variables(EditState *s, EditBuffer *b)
     eb_putc(b, '\n');
 }
 
-int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s) {
+int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s, int long_format) {
     char buf[256];
     char typebuf[32];
     const char *type = typebuf;
@@ -581,9 +623,21 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s) {
         type = "var";
         break;
     }
+    len = 0;
+    if (long_format) {
+        len += eb_puts(b, "  ");
+        if (!vp->rw) {
+            b->cur_style = QE_STYLE_KEYWORD;
+            len += eb_puts(b, "const ");
+        }
+        b->cur_style = QE_STYLE_TYPE;
+        len += eb_printf(b, "%s ", type);
+    }
     b->cur_style = QE_STYLE_VARIABLE;
-    len = eb_puts(b, vp->name);
+    len += eb_puts(b, vp->name);
     b->cur_style = QE_STYLE_DEFAULT;
+    if (long_format)
+        len += eb_puts(b, typebuf);
     len += eb_puts(b, " = ");
     qe_get_variable(s, vp->name, buf, sizeof(buf), NULL, 1);
     if (*buf == '\"')
@@ -591,18 +645,29 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s) {
     else
         b->cur_style = QE_STYLE_NUMBER;
     len += eb_puts(b, buf);
-    b->cur_style = QE_STYLE_COMMENT;
-    if (len + 2 <= 40) {
-        b->tab_width = max_int(len + 2, b->tab_width);
-        len += eb_putc(b, '\t');
-    } else {
-        b->tab_width = 40;
-    }
-    len += eb_printf(b, "  %s%s", vp->rw ? "" : "read-only ",
-                     var_domain[vp->domain]);
-    b->cur_style = QE_STYLE_TYPE;
-    len += eb_printf(b, " %s%s", type, typebuf);
     b->cur_style = QE_STYLE_DEFAULT;
+    if (long_format) {
+        eb_putc(b, '\n');
+        if (vp->desc && *vp->desc) {
+            /* print short description */
+            b->cur_style = QE_STYLE_COMMENT;
+            eb_printf(b, "    %s\n", vp->desc);
+            b->cur_style = QE_STYLE_DEFAULT;
+        }
+    } else {
+        b->cur_style = QE_STYLE_COMMENT;
+        if (len + 2 <= 40) {
+            b->tab_width = max_int(len + 2, b->tab_width);
+            len += eb_putc(b, '\t');
+        } else {
+            b->tab_width = 40;
+        }
+        len += eb_printf(b, "  %s%s", vp->rw ? "" : "read-only ",
+                         var_domain[vp->domain]);
+        b->cur_style = QE_STYLE_TYPE;
+        len += eb_printf(b, " %s%s", type, typebuf);
+        b->cur_style = QE_STYLE_DEFAULT;
+    }
     return len;
 }
 
@@ -610,7 +675,7 @@ int variable_print_entry(CompleteState *cp, EditState *s, const char *name) {
     VarDef *vp = qe_find_variable(s->qs, name);
     if (vp) {
         // XXX: should pass the target window
-        return eb_variable_print_entry(s->b, vp, s);
+        return eb_variable_print_entry(s->b, vp, s, 0);
     } else {
         return eb_puts(s->b, name);
     }
@@ -620,6 +685,7 @@ static CompletionDef variable_completion = {
     .name = "variable",
     .enumerate = variable_complete,
     .print_entry = variable_print_entry,
+    .get_entry = command_get_entry,
 };
 
 static void value_complete(CompleteState *cp, CompleteFunc enumerate) {
@@ -656,6 +722,9 @@ static const CmdDef var_commands[] = {
           "Show information for a variable",
           do_describe_variable, ESs,
           "s{Describe variable: }[variable]|variable|")
+    CMD0( "show-all-variables", "C-h C-v",
+          "Show value and information for all variables",
+          do_show_all_variables)
 };
 
 static int variables_init(QEmacsState *qs) {
