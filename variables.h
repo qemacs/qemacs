@@ -50,6 +50,8 @@ enum QVarDomain {
     VAR_SELF,
 };
 
+extern const char * const var_domain[];
+
 typedef struct VarDef VarDef;
 struct VarDef {
     const char *name;
