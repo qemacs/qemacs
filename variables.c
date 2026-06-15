@@ -599,7 +599,7 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s, int long_fo
     char buf[256];
     char typebuf[32];
     const char *type = typebuf;
-    int len;
+    int len = 0;
 
     if (!vp)
         return 0;
@@ -623,7 +623,7 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s, int long_fo
         type = "var";
         break;
     }
-    len = 0;
+
     if (long_format) {
         len += eb_puts(b, "  ");
         if (!vp->rw) {
