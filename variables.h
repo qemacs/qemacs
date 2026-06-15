@@ -50,8 +50,6 @@ enum QVarDomain {
     VAR_SELF,
 };
 
-extern const char * const var_domain[];
-
 typedef struct VarDef VarDef;
 struct VarDef {
     const char *name;
@@ -103,7 +101,7 @@ struct VarDef {
 
 void qe_register_variables(QEmacsState *qs, VarDef *vars, int count);
 void variable_complete(CompleteState *cp, CompleteFunc enumerate);
-int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s);
+int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s, int long_format);
 int variable_print_entry(CompleteState *cp, EditState *s, const char *name);
 
 QVarType qe_get_variable(EditState *s, const char *name,
