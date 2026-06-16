@@ -5918,12 +5918,13 @@ void window_display(EditState *s)
 }
 
 /* display all windows */
-/* XXX: should use correct clipping to avoid popups display hacks */
 void qe_display(QEmacsState *qs)
 {
     EditState *s;
     int has_popups, has_minibuf;
     int start_time, elapsed_time;
+    int invalidate_popups = qs->complete_refresh;
+    static int last_popup_time;
 
     start_time = get_clock_ms();
 
@@ -5947,21 +5948,38 @@ void qe_display(QEmacsState *qs)
         if (s->flags & WF_MINIBUF) {
             has_minibuf++;
         }
+        if (s->b->flags & BF_SHELL) {
+            if (start_time - last_popup_time > 500) {
+                // Poor man's solution to ensuring popup consistency
+                // and display of asynchronous buffer modifications.
+                // XXX: should use correct clipping to avoid this hack
+                invalidate_popups = 1;
+            }
+        }
     }
 
     /* refresh normal windows and minibuf with popup kludge */
     for (s = qs->first_window; s != NULL; s = s->next_window) {
-        if (!(s->flags & WF_POPUP) &&
-            ((s->flags & WF_MINIBUF) || !has_popups || qs->complete_refresh)) {
+        if (s->flags & WF_POPUP)
+            continue;
+        if ((s->flags & WF_MINIBUF) || !has_popups || invalidate_popups) {
             window_display(s);
         }
     }
     /* refresh popups if any */
     if (has_popups) {
+        last_popup_time = start_time;
         for (s = qs->first_window; s != NULL; s = s->next_window) {
             if (s->flags & WF_POPUP) {
                 //if (qs->complete_refresh)
                 //    /* refresh frame */;
+                if (invalidate_popups) {
+                    edit_invalidate(s, 0);
+                    s->borders_invalid = 1;
+                }
+                // force display for overlapping popups
+                // XXX: should use correct clipping to avoid this hack
+                invalidate_popups = 1;
                 window_display(s);
             }
         }
@@ -7266,14 +7284,14 @@ EditState *qe_new_window(EditBuffer *b,
     compute_virtual_window_size(s);
     compute_client_area(s);
 
-    if (flags & WF_POPUP) {
-        /* attach popups at the end of list */
+    if (flags & (WF_POPUP | WF_MINIBUF)) {
+        /* attach popups and minibuf at the end of list */
         e = NULL;
     } else {
         /* link window in window list */
         for (e = qs->first_window; e != NULL; e = e->next_window) {
-            if (e->flags & WF_POPUP) {
-                /* keep popups at the end of list */
+            if (e->flags & (WF_POPUP | WF_MINIBUF)) {
+                /* keep popups and minibuf at the end of list */
                 break;
             }
             if (e->y1 > s->y1 || (e->y1 == s->y1 && e->x1 > s->x1)) {
@@ -8343,10 +8361,18 @@ EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
     h = (h1 * 3) / 4;
     x = (w1 - w) / 2;
     y = (h1 - h) / 2;
-    if (s->flags & (WF_POPUP | WF_MINIBUF)) {
-        x += qs->status_height * 2;
-        y += qs->status_height * 2;
+    if ((s->flags & WF_POPUP) && s->x1 < w1 / 2 && s->y1 < h1 / 2) {
+        x = s->x1 + 3 * s->char_width;
+        y = s->y1 + 2 * qs->status_height;
+    } else
+    if (s->flags & WF_MINIBUF) {
+        x += 3 * s->char_width;
+        y += 2 * qs->status_height;
     }
+    if (x + w > w1)
+        w = w1 - x;
+    if (y + h > h1)
+        h = h1 - y;
 
     e = qe_new_window(b, x, y, w, h, WF_POPUP);
     if (e != NULL) {
@@ -10373,7 +10399,10 @@ void do_describe_key_briefly(EditState *s, const char *keystr, int argval) {
 
 EditBuffer *new_help_buffer(EditState *s)
 {
-    return qe_new_buffer(s->qs, "*Help*", BC_CLEAR | BF_SYSTEM | BF_UTF8 | BF_STYLE1);
+    int flags = BF_SYSTEM | BF_HELP | BF_UTF8 | BF_STYLE1;
+    if (!(s->b->flags & BF_HELP))
+        flags |= BC_CLEAR;
+    return qe_new_buffer(s->qs, "*Help*", flags);
 }
 
 void do_help_for_help(EditState *s)
