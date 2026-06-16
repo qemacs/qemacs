@@ -9747,8 +9747,8 @@ void edit_invalidate(EditState *s, int all)
         EditState *e;
         for (e = s->qs->first_window; e != NULL; e = e->next_window) {
             if (e->b == s->b) {
-                s->modeline_shadow[0] = '\0';
-                s->display_invalid = 1;
+                e->modeline_shadow[0] = '\0';
+                e->display_invalid = 1;
             }
         }
     }
