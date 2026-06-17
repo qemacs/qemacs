@@ -1040,7 +1040,6 @@ static void do_fractal_help(EditState *s)
 {
     FractalState *ms = fractal_get_state(s, 1);
     EditBuffer *b;
-    int w = 16;
 
     if (ms == NULL)
         return;
@@ -1049,37 +1048,38 @@ static void do_fractal_help(EditState *s)
     if (!b)
         return;
 
-    eb_printf(b, "Fractal description:\n\n");
+    eb_print_style(b, DESCRIBE_STYLE_HEAD, "Fractal description:\n\n");
 
-    eb_printf(b, "%*s: %s\n", w, "type", fractal_type[ms->type].name);
-    eb_printf(b, "%*s: %s\n", w, "formula", fractal_type[ms->type].formula);
-    eb_printf(b, "%*s: "MFT"\n", w, "x", ms->x);
-    eb_printf(b, "%*s: "MFT"\n", w, "y", ms->y);
-    eb_printf(b, "%*s: %dx%d\n", w, "size", ms->width, ms->height);
-    eb_printf(b, "%*s: %d\n", w, "zoom", ms->zoom);
-    eb_printf(b, "%*s: %.6g\n", w, "scale", (double)ms->scale);
-    eb_printf(b, "%*s: %d\n", w, "rot", ms->rot);
-    eb_printf(b, "%*s: "MFT"\n", w, "bailout", ms->bailout);
-    eb_printf(b, "%*s: %d\n", w, "maxiter", ms->maxiter);
-    eb_printf(b, "%*s: cb=%d nc=%d shift=%d\n", w, "colors", ms->cb, ms->nc, ms->shift);
+    b->tab_width = 16;
+    eb_print_field(b, "type", "%s\n", fractal_type[ms->type].name);
+    eb_print_field(b, "formula", "%s\n", fractal_type[ms->type].formula);
+    eb_print_field(b, "x", ""MFT"\n", ms->x);
+    eb_print_field(b, "y", ""MFT"\n", ms->y);
+    eb_print_field(b, "size", "%dx%d\n", ms->width, ms->height);
+    eb_print_field(b, "zoom", "%d\n", ms->zoom);
+    eb_print_field(b, "scale", "%.6g\n", (double)ms->scale);
+    eb_print_field(b, "rot", "%d\n", ms->rot);
+    eb_print_field(b, "bailout", ""MFT"\n", ms->bailout);
+    eb_print_field(b, "maxiter", "%d\n", ms->maxiter);
+    eb_print_field(b, "colors", "cb=%d nc=%d shift=%d\n", ms->cb, ms->nc, ms->shift);
 
-    eb_printf(b, "\nFractal navigator:\n\n");
+    eb_print_style(b, DESCRIBE_STYLE_HEAD, "\nFractal navigator:\n\n");
 
     // XXX: should use print_bindings(b, "Fractal commands", 0, &fractal_mode);
 
-    eb_printf(b, "%*s: %s\n", w, "left, right", "move center point horizontally");
-    eb_printf(b, "%*s: %s\n", w, "up, down", "move center point vertically");
-    eb_printf(b, "%*s: %s\n", w, "+, SP", "zoom in");
-    eb_printf(b, "%*s: %s\n", w, "-, _", "zoom out");
-    eb_printf(b, "%*s: %s\n", w, "/", "rotate right");
-    eb_printf(b, "%*s: %s\n", w, "\\, .", "rotate left");
-    eb_printf(b, "%*s: %s\n", w, "|", "reset rotation");
-    eb_printf(b, "%*s: %s\n", w, "{, }", "change maxiter");
-    eb_printf(b, "%*s: %s\n", w, "[, ]", "shift colors");
-    eb_printf(b, "%*s: %s\n", w, "<, >", "change bailout");
-    eb_printf(b, "%*s: %s\n", w, "=", "set fractal parameters");
-    eb_printf(b, "%*s: %s\n", w, "g", "set gray colors");
-    eb_printf(b, "%*s: %s\n", w, "c", "set default colors");
+    eb_print_field(b, "left, right", "%s\n", "move center point horizontally");
+    eb_print_field(b, "up, down", "%s\n", "move center point vertically");
+    eb_print_field(b, "+, SP", "%s\n", "zoom in");
+    eb_print_field(b, "-, _", "%s\n", "zoom out");
+    eb_print_field(b, "/", "%s\n", "rotate right");
+    eb_print_field(b, "\\, .", "%s\n", "rotate left");
+    eb_print_field(b, "|", "%s\n", "reset rotation");
+    eb_print_field(b, "{, }", "%s\n", "change maxiter");
+    eb_print_field(b, "[, ]", "%s\n", "shift colors");
+    eb_print_field(b, "<, >", "%s\n", "change bailout");
+    eb_print_field(b, "=", "%s\n", "set fractal parameters");
+    eb_print_field(b, "g", "%s\n", "set gray colors");
+    eb_print_field(b, "c", "%s\n", "set default colors");
 
     show_popup(s, b, "About Fractal");
 }

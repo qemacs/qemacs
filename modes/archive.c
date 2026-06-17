@@ -306,7 +306,7 @@ static int compress_buffer_load(EditBuffer *b, FILE *f)
 
         return 0;
     } else {
-        eb_printf(b, "cannot find compressor\n");
+        eb_printf(b, "Cannot find compressor\n");
         return -1;
     }
 }

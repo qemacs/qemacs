@@ -607,6 +607,8 @@ int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap) qe__attr_printf(2,0);
 int eb_printf(EditBuffer *b, const char *fmt, ...) qe__attr_printf(2,3);
 int eb_puts(EditBuffer *b, const char *s);
 int eb_putc(EditBuffer *b, char32_t c);
+int eb_print_style(EditBuffer *b, QETermStyle style, const char *fmt, ...) qe__attr_printf(3,4);
+int eb_print_field(EditBuffer *b, const char *name, const char *fmt, ...) qe__attr_printf(3,4);
 
 void eb_line_pad(EditBuffer *b, int offset, int n);
 int eb_get_region_content_size(EditBuffer *b, int start, int stop);
@@ -1874,6 +1876,8 @@ void do_save_session(EditState *s, int popup);
 #endif
 
 /* extras.c */
+
+#define DESCRIBE_STYLE_HEAD  QE_STYLE_FUNCTION
 
 #ifndef CONFIG_TINY
 struct Equivalent *create_equivalent(const char *str1, const char *str2);

@@ -2016,10 +2016,10 @@ static void x11_list_fonts(EditState *s, int argval)
     }
     list = XListFonts(xs->display, buf, 20000, &count);
 
-    eb_printf(b, "\n%d entries\n\n", count);
+    eb_print_style(b, DESCRIBE_STYLE_HEAD, "\n%d core fonts\n\n", count);
 
     for (i = 0; i < count; i++) {
-        eb_printf(b, "%d: %s\n", i, list[i]);
+        eb_printf(b, "%4d: %s\n", i, list[i]);
     }
     XFreeFontNames(list);
 

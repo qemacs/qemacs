@@ -227,7 +227,7 @@ QVarType qe_get_variable(EditState *s, const char *name,
             return VAR_NUMBER;
         }
         if (as_source)
-            strquote(buf, size, str, -1);
+            strquote(buf, size, str, -1, SQB_USE_EXTENDED);
         else
             pstrcpy(buf, size, str);
         return VAR_STRING;
@@ -261,14 +261,14 @@ QVarType qe_get_variable(EditState *s, const char *name,
     case VAR_STRING:
         memcpy(&str, ptr, sizeof(str));
         if (as_source)
-            strquote(buf, size, str, -1);
+            strquote(buf, size, str, -1, SQB_USE_EXTENDED);
         else
             pstrcpy(buf, size, str ? str : "");
         break;
     case VAR_CHARS:
         str = (const char*)ptr;
         if (as_source)
-            strquote(buf, size, str, -1);
+            strquote(buf, size, str, -1, SQB_USE_EXTENDED);
         else
             pstrcpy(buf, size, str);
         break;
@@ -508,9 +508,8 @@ static void do_show_all_variables(EditState *s) {
 
     // XXX: should create links to markdown documentation
     for (i = 0; i < countof(var_domain); i++) {
-        b->cur_style = QE_STYLE_FUNCTION;
-        eb_printf(b, "%s variables:\n", var_domain_desc[i]);
-        b->cur_style = QE_STYLE_DEFAULT;
+        eb_print_style(b, DESCRIBE_STYLE_HEAD,
+                       "%s variables:\n", var_domain_desc[i]);
         for (vp = s->qs->first_variable; vp; vp = vp->next) {
             if (vp->domain == i) {
                 /* print name, class, current value and short description */
@@ -627,46 +626,32 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s, int long_fo
     if (long_format) {
         len += eb_puts(b, "  ");
         if (!vp->rw) {
-            b->cur_style = QE_STYLE_KEYWORD;
-            len += eb_puts(b, "const ");
+            len += eb_print_style(b, QE_STYLE_KEYWORD, "const ");
         }
-        b->cur_style = QE_STYLE_TYPE;
-        len += eb_printf(b, "%s ", type);
+        len += eb_print_style(b, QE_STYLE_TYPE, "%s ", type);
     }
-    b->cur_style = QE_STYLE_VARIABLE;
-    len += eb_puts(b, vp->name);
-    b->cur_style = QE_STYLE_DEFAULT;
+    len += eb_print_style(b, QE_STYLE_VARIABLE, "%s", vp->name);
     if (long_format)
         len += eb_puts(b, typebuf);
     len += eb_puts(b, " = ");
     qe_get_variable(s, vp->name, buf, sizeof(buf), NULL, 1);
-    if (*buf == '\"')
-        b->cur_style = QE_STYLE_STRING;
-    else
-        b->cur_style = QE_STYLE_NUMBER;
-    len += eb_puts(b, buf);
-    b->cur_style = QE_STYLE_DEFAULT;
+    len += eb_print_style(b, *buf == '\"' ? QE_STYLE_STRING : QE_STYLE_NUMBER, "%s", buf);
     if (long_format) {
         eb_putc(b, '\n');
         if (vp->desc && *vp->desc) {
             /* print short description */
-            b->cur_style = QE_STYLE_COMMENT;
-            eb_printf(b, "    %s\n", vp->desc);
-            b->cur_style = QE_STYLE_DEFAULT;
+            eb_print_style(b, QE_STYLE_COMMENT, "    %s\n", vp->desc);
         }
     } else {
-        b->cur_style = QE_STYLE_COMMENT;
         if (len + 2 <= 40) {
             b->tab_width = max_int(len + 2, b->tab_width);
             len += eb_putc(b, '\t');
         } else {
             b->tab_width = 40;
         }
-        len += eb_printf(b, "  %s%s", vp->rw ? "" : "read-only ",
-                         var_domain[vp->domain]);
-        b->cur_style = QE_STYLE_TYPE;
-        len += eb_printf(b, " %s%s", type, typebuf);
-        b->cur_style = QE_STYLE_DEFAULT;
+        len += eb_print_style(b, QE_STYLE_COMMENT, "  %s%s",
+                              vp->rw ? "" : "read-only ", var_domain[vp->domain]);
+        len += eb_print_style(b, QE_STYLE_TYPE, " %s%s", type, typebuf);
     }
     return len;
 }

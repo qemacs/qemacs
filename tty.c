@@ -2165,28 +2165,28 @@ static int tty_dpy_draw_picture(QEditScreen *s,
 static void tty_dpy_describe(QEditScreen *s, EditBuffer *b)
 {
     TTYState *ts = s->priv_data;
-    int w = 16;
 
+    b->tab_width = 16;
     eb_printf(b, "Device Description\n\n");
 
     if (ts->term_name)
-        eb_printf(b, "%*s: %s\n", w, "term_name", ts->term_name);
-    eb_printf(b, "%*s: %u  %s\n", w, "term_code", ts->term_code,
-              term_code_name[ts->term_code]);
-    eb_printf(b, "%*s: %d\n", w, "tty_mk", tty_mk);
-    eb_printf(b, "%*s: %d\n", w, "tty_mouse", tty_mouse);
-    eb_printf(b, "%*s: %d\n", w, "tty_clipboard", tty_clipboard);
-    eb_printf(b, "%*s: %#x %s%s%s%s%s%s\n", w, "term_flags", ts->term_flags,
-              ts->term_flags & KBS_CONTROL_H ? " KBS_CONTROL_H" : "",
-              ts->term_flags & USE_ERASE_END_OF_LINE ? " USE_ERASE_END_OF_LINE" : "",
-              ts->term_flags & USE_BOLD_AS_BRIGHT_FG ? " USE_BOLD_AS_BRIGHT_FG" : "",
-              ts->term_flags & USE_BLINK_AS_BRIGHT_BG ? " USE_BLINK_AS_BRIGHT_BG" : "",
-              ts->term_flags & USE_256_COLORS ? " USE_256_COLORS" : "",
-              ts->term_flags & USE_TRUE_COLORS ? " USE_TRUE_COLORS" : "");
-    eb_printf(b, "%*s: fg:%d, bg:%d\n", w, "terminal colors",
-              ts->term_fg_colors_count, ts->term_bg_colors_count);
-    eb_printf(b, "%*s: fg:%d, bg:%d\n", w, "virtual tty colors",
-              ts->tty_fg_colors_count, ts->tty_bg_colors_count);
+        eb_print_field(b, "term_name", "%s\n", ts->term_name);
+    eb_print_field(b, "term_code", "%u  %s\n", ts->term_code,
+                   term_code_name[ts->term_code]);
+    eb_print_field(b, "tty_mk", "%d\n", tty_mk);
+    eb_print_field(b, "tty_mouse", "%d\n", tty_mouse);
+    eb_print_field(b, "tty_clipboard", "%d\n", tty_clipboard);
+    eb_print_field(b, "term_flags", "%#x %s%s%s%s%s%s\n", ts->term_flags,
+                   ts->term_flags & KBS_CONTROL_H ? " KBS_CONTROL_H" : "",
+                   ts->term_flags & USE_ERASE_END_OF_LINE ? " USE_ERASE_END_OF_LINE" : "",
+                   ts->term_flags & USE_BOLD_AS_BRIGHT_FG ? " USE_BOLD_AS_BRIGHT_FG" : "",
+                   ts->term_flags & USE_BLINK_AS_BRIGHT_BG ? " USE_BLINK_AS_BRIGHT_BG" : "",
+                   ts->term_flags & USE_256_COLORS ? " USE_256_COLORS" : "",
+                   ts->term_flags & USE_TRUE_COLORS ? " USE_TRUE_COLORS" : "");
+    eb_print_field(b, "terminal colors", "fg:%d, bg:%d\n",
+                   ts->term_fg_colors_count, ts->term_bg_colors_count);
+    eb_print_field(b, "virtual tty colors", "fg:%d, bg:%d\n",
+                   ts->tty_fg_colors_count, ts->tty_bg_colors_count);
 
     comb_cache_describe(s, b, ts);
 }
