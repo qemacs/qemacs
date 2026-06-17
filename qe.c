@@ -5962,6 +5962,8 @@ void qe_display(QEmacsState *qs)
     for (s = qs->first_window; s != NULL; s = s->next_window) {
         if (s->flags & WF_POPUP)
             continue;
+        if (s->display_invalid)
+            invalidate_popups = 1;
         if ((s->flags & WF_MINIBUF) || !has_popups || invalidate_popups) {
             window_display(s);
         }
