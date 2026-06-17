@@ -976,7 +976,7 @@ void qe_trace_bytes(QEmacsState *qs, const void *buf, int size, int state)
             }
             if (p < endp) {
                 char buf1[16];
-                len = byte_quote(buf1, sizeof buf1, *p);
+                len = strquote_byte(buf1, sizeof buf1, *p, SQB_USE_CONTROL);
                 eb_puts(b, buf1);
                 p0 = p + 1;
                 col += len;
@@ -2417,6 +2417,30 @@ int eb_printf(EditBuffer *b, const char *fmt, ...) {
 
     va_start(ap, fmt);
     written = eb_vprintf(b, fmt, ap);
+    va_end(ap);
+    return written;
+}
+
+int eb_print_style(EditBuffer *b, QETermStyle style, const char *fmt, ...) {
+    va_list ap;
+    int written;
+
+    b->cur_style = style;
+    va_start(ap, fmt);
+    written = eb_vprintf(b, fmt, ap);
+    va_end(ap);
+    b->cur_style = QE_STYLE_DEFAULT;
+    return written;
+}
+
+int eb_print_field(EditBuffer *b, const char *name, const char *fmt, ...) {
+    va_list ap;
+    int written;
+
+    written = eb_print_style(b, QE_STYLE_VARIABLE, "%*s", b->tab_width, name);
+    written += eb_puts(b, *name ? ": " : "  ");
+    va_start(ap, fmt);
+    written += eb_vprintf(b, fmt, ap);
     va_end(ap);
     return written;
 }

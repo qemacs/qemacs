@@ -391,8 +391,9 @@ int get_str(const char **pp, char *buf, int buf_size, const char *stop);
 
 int strsubst(char *buf, int buf_size, const char *from,
              const char *s1, const char *s2);
-int byte_quote(char *dest, int size, unsigned char c);
-int strquote(char *dest, int size, const char *str, int len);
+enum { SQB_USE_DEFAULT = 0, SQB_USE_EXTENDED = 1, SQB_USE_CONTROL = 2 };
+int strquote_byte(char *dest, int size, unsigned char c, int flags);
+int strquote(char *dest, int size, const char *str, int len, int flags);
 int strunquote(char *dest, int size, const char *str, int len);
 
 /*---- Unicode string functions ----*/
@@ -710,7 +711,7 @@ int strtokey(const char **pp);
 int strtokeys(const char *keystr, unsigned int *keys, int max_keys, const char **endp);
 int buf_put_key(buf_t *out, int key);
 int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys);
-int buf_quote_byte(buf_t *out, unsigned char ch);
+int buf_quote_byte(buf_t *out, unsigned char ch, int flags);
 int is_shift_key(int key);
 
 /* XXX: should use a more regular key mapping scheme:

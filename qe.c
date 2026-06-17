@@ -266,22 +266,18 @@ int eb_command_print_entry(EditBuffer *b, const CmdDef *d, EditState *s) {
     int len = 0;
 
     if (d) {
-        b->cur_style = QE_STYLE_FUNCTION;
-        len = eb_puts(b, d->name);
-        b->cur_style = QE_STYLE_DEFAULT;
+        len = eb_print_style(b, QE_STYLE_FUNCTION, "%s", d->name);
         qe_get_prototype(d, buf, sizeof buf);
         len += eb_puts(b, buf);
 #ifndef CONFIG_TINY
         if (qe_list_bindings(b->qs, d, s->mode, 1, buf, sizeof buf)) {
-            b->cur_style = QE_STYLE_COMMENT;
             if (len + 1 < 40) {
                 b->tab_width = max_int(len + 1, b->tab_width);
                 len += eb_putc(b, '\t');
             } else {
                 b->tab_width = 40;
             }
-            len += eb_printf(b, "  bound to %s", buf);
-            b->cur_style = QE_STYLE_DEFAULT;
+            len += eb_print_style(b, QE_STYLE_COMMENT, "  bound to %s", buf);
         }
 #endif
     }
@@ -2317,7 +2313,7 @@ static void do_unknown_key(EditState *s) {
 
     buf_init(out, buf, sizeof buf);
     for (i = 0; i < qs->input_len; i++)
-        buf_quote_byte(out, qs->input_buf[i]);
+        buf_quote_byte(out, qs->input_buf[i], SQB_USE_CONTROL);
     put_error(s, "Unknown key: %s", buf);
 }
 
@@ -10415,9 +10411,8 @@ void do_help_for_help(EditState *s)
     if (!b)
         return;
 
+    eb_print_style(b, DESCRIBE_STYLE_HEAD, "QEmacs help for help - Press q to quit:\n\n");
     eb_puts(b,
-            "QEmacs help for help - Press q to quit:\n"
-            "\n"
             "C-h C-h   Show this help\n"
             "C-h b     Display table of all key bindings\n"
             "C-h c     Describe key briefly\n"

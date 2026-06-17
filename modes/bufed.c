@@ -200,8 +200,7 @@ static void bufed_build_list(EditState *s, BufedState *bs)
             *flagp++ = ' ';
         *flagp = '\0';
 
-        b->cur_style = style0;
-        eb_printf(b, "%3s", flags);
+        eb_print_style(b, style0, "%3s", flags);
         b->cur_style = BUFED_STYLE_BUFNAME;
         len = eb_put_filename(b, item->str, bs->pf_flags);
         b->tab_width = max_int(3 + len + 2, b->tab_width);
@@ -237,10 +236,9 @@ static void bufed_build_list(EditState *s, BufedState *bs)
                     buf_printf(out, ",%s", md->mode->name);
             }
 
-            b->cur_style = style0;
-            eb_printf(b, " %10d %1.0d %-8.8s %-11s ",
-                      b1->total_size, b1->style_bytes & 7,
-                      b1->charset->name, mode_buf);
+            eb_print_style(b, style0, " %10d %1.0d %-8.8s %-11s ",
+                           b1->total_size, b1->style_bytes & 7,
+                           b1->charset->name, mode_buf);
             if (b1->flags & (BF_DIRED | BF_SHELL))
                 b->cur_style = BUFED_STYLE_DIRECTORY;
             else

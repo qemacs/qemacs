@@ -362,13 +362,20 @@ Append a string to a fixed length buffer.
 
 Return the number of bytes actually written.
 
-### `int buf_quote_byte(buf_t *bp, unsigned char ch);`
+### `int buf_quote_byte(buf_t *bp, unsigned char ch, int flags);`
 
 Encode a byte as a source code escape sequence into a fixed length buffer
 
 * argument `bp` a valid pointer to fixed length buffer
 
 * argument `ch` a byte value to encode as source
+
+* argument `flags` a boolean indicating if control codes should appear
+as hex escapes or control escapes (eg: `\x10` or `\^P` for `ch = 16`).
+`flags` is a combination of
+`SQB_USE_DEFAULT` for default formatting
+`SQB_USE_CONTROL` to use `\^X` form for control codes
+`SQB_USE_EXTENDED` to use `\e` for 27 and `\b` for 8
 
 Return the number of bytes produced in the destination array,
 not counting the null terminator
@@ -1297,19 +1304,6 @@ Write a block of data at a given offset in a dynamic buffer
 Return an error indicator: `0` if data could be written, `-1` if
 buffer could not be reallocated.
 
-### `int byte_quote(char *dest, int size, unsigned char ch);`
-
-Encode a byte as a source code escape sequence
-
-* argument `dest` a valid pointer to an array of bytes
-
-* argument `size` the length of the destination array
-
-* argument `ch` a byte value to encode as source
-
-Return the number of bytes produced in the destination array,
-not counting the null terminator
-
 ### `const char *get_basename(const char *filename);`
 
 Get the filename portion of a path.
@@ -1656,7 +1650,7 @@ Find a chunk of characters inside a string.
 Return a pointer to the first character of the match if found,
 `NULL` otherwise.
 
-### `int strquote(char *dest, int size, const char *str, int len);`
+### `int strquote(char *dest, int size, const char *str, int len, int flags);`
 
 Encode a string using source code escape sequences
 
@@ -1668,11 +1662,38 @@ Encode a string using source code escape sequences
 
 * argument `len` the number of bytes to encode
 
+* argument `flags` a boolean indicating if control codes should appear
+as hex escapes or control escapes (eg: `\x10` or `\^P` for `ch = 16`).
+`flags` is a combination of
+`SQB_USE_DEFAULT` for default formatting
+`SQB_USE_CONTROL` to use `\^X` form for control codes
+`SQB_USE_EXTENDED` to use `\e` for 27 and `\b` for 8
+
 Return the length of the converted string, not counting the null
 terminator, possibly longer than the destination array length.
 
 Note: if `src` is a null pointer, the string `null` is output
 otherwise a double quoted string is produced.
+
+### `int strquote_byte(char *dest, int size, unsigned char ch, int flags);`
+
+Encode a byte as a source code escape sequence
+
+* argument `dest` a valid pointer to an array of bytes
+
+* argument `size` the length of the destination array
+
+* argument `ch` a byte value to encode as source
+
+* argument `flags` a boolean indicating if control codes should appear
+as hex escapes or control escapes (eg: `\x10` or `\^P` for `ch = 16`).
+`flags` is a combination of
+`SQB_USE_DEFAULT` for default formatting
+`SQB_USE_CONTROL` to use `\^X` form for control codes
+`SQB_USE_EXTENDED` to use `\e` for 27 and `\b` for 8
+
+Return the number of bytes produced in the destination array,
+not counting the null terminator
 
 ### `int strstart(const char *str, const char *val, const char **ptr);`
 

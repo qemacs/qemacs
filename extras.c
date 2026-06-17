@@ -88,7 +88,10 @@ static void do_list_equivalents(EditState *s, int argval)
         return;
 
     for (ep = qs->first_equivalent; ep; ep = ep->next) {
-        eb_printf(b, "  \"%s\" <-> \"%s\"\n", ep->str1, ep->str2);
+        eb_print_style(b, QE_STYLE_STRING, "  \"%s\"", ep->str1);
+        eb_printf(b, " <-> ");
+        eb_print_style(b, QE_STYLE_STRING, "  \"%s\"", ep->str2);
+        eb_putc(b, '\n');
     }
 
     show_popup(s, b, "Equivalents");
@@ -1463,19 +1466,22 @@ static void print_bindings(EditBuffer *b, ModeDef *mode)
 
     start = 0;
     gfound = 0;
+    b->tab_width = 24;
     for (i = 0; i < qs->cmd_array_count; i++) {
         for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
             if (qe_list_bindings(qs, d, mode, 0, buf, sizeof(buf))) {
                 if (!gfound) {
                     if (mode) {
-                        eb_printf(b, "\n%s mode bindings:\n\n", mode->name);
+                        eb_print_style(b, DESCRIBE_STYLE_HEAD,
+                                       "\n%s mode bindings:\n\n", mode->name);
                     } else {
-                        eb_printf(b, "\nGlobal bindings:\n\n");
+                        eb_print_style(b, DESCRIBE_STYLE_HEAD,
+                                       "\nGlobal bindings:\n\n");
                     }
                     start = b->offset;
                     gfound = 1;
                 }
-                eb_printf(b, "%24s : %s\n", d->name, buf);
+                eb_print_field(b, d->name, "%s\n", buf);
             }
         }
     }
@@ -1488,15 +1494,56 @@ static void print_bindings(EditBuffer *b, ModeDef *mode)
 void do_describe_bindings(EditState *s, int argval)
 {
     EditBuffer *b;
+    ModeDef *m;
 
     b = new_help_buffer(s);
     if (!b)
         return;
 
-    print_bindings(b, s->mode);
+    for (m = s->qs->first_mode; m; m = m->next) {
+        // XXX: windows/buffers should handle multiple modes
+        if (argval != 1 || m == s->mode)
+            print_bindings(b, m);
+    }
     print_bindings(b, NULL);
 
     show_popup(s, b, "Bindings");
+}
+
+// List all active bindings for a given mode
+static void mode_wall_chart(EditBuffer *b, ModeDef *mode) {
+    buf_t out[1];
+    char buf[32];
+    KeyDef *kd;
+
+    for (kd = mode ? mode->first_key : b->qs->first_key; kd != NULL; kd = kd->next) {
+        buf_init(out, buf, countof(buf));
+        buf_put_keys(out, kd->keys, kd->nb_keys);
+        eb_print_style(b, QE_STYLE_STRING, " %s", buf);
+        eb_putc(b, '\t');
+        eb_print_style(b, QE_STYLE_FUNCTION, "%s\n", kd->cmd->name);
+    }
+}
+
+static void do_wall_chart(EditState *s, int argval)
+{
+    EditBuffer *b;
+    int start, stop;
+
+    b = new_help_buffer(s);
+    if (!b)
+        return;
+
+    start = 0;
+    b->tab_width = 16;
+    if (s->mode)
+        mode_wall_chart(b, s->mode);
+
+    mode_wall_chart(b, NULL);
+    stop = b->offset;
+    eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_SILENT);
+
+    show_popup(s, b, "Wall chart");
 }
 
 void do_apropos(EditState *s, const char *str)
@@ -1918,21 +1965,22 @@ static void do_describe_buffer(EditState *s, int argval)
     if (!b1)
         return;
 
-    eb_printf(b1, "Buffer fields:\n");
+    eb_print_style(b1, DESCRIBE_STYLE_HEAD, "Buffer fields:\n");
 
-    eb_printf(b1, "        name: %s\n", b->name);
-    eb_printf(b1, "    filename: %s\n", b->filename);
-    eb_printf(b1, "    modified: %d\n", b->modified);
-    eb_printf(b1, "  total_size: %d\n", b->total_size);
-    eb_printf(b1, "        mark: %d\n", b->mark);
-    eb_printf(b1, "    refcount: %d\n", b->ref_count);
-    eb_printf(b1, "   s->offset: %d\n", s->offset);
-    eb_printf(b1, "   b->offset: %d\n", b->offset);
+    b1->tab_width = 12;
+    eb_print_field(b1, "name", "%s\n", b->name);
+    eb_print_field(b1, "filename", "%s\n", b->filename);
+    eb_print_field(b1, "modified", "%d\n", b->modified);
+    eb_print_field(b1, "total_size", "%d\n", b->total_size);
+    eb_print_field(b1, "mark", "%d\n", b->mark);
+    eb_print_field(b1, "refcount", "%d\n", b->ref_count);
+    eb_print_field(b1, "s->offset", "%d\n", s->offset);
+    eb_print_field(b1, "b->offset", "%d\n", b->offset);
 
-    eb_printf(b1, "   tab_width: %d\n", b->tab_width);
-    eb_printf(b1, " fill_column: %d\n", b->fill_column);
+    eb_print_field(b1, "tab_width", "%d\n", b->tab_width);
+    eb_print_field(b1, "fill_column", "%d\n", b->fill_column);
     if (b->linum_mode_set) {
-        eb_printf(b1, "  linum_mode: %d\n", b->linum_mode);
+        eb_print_field(b1, "linum_mode", "%d\n", b->linum_mode);
     }
 
     desc = buf_init(&descbuf, buf, countof(buf));
@@ -1943,9 +1991,9 @@ static void do_describe_buffer(EditState *s, int argval)
     if (b->eol_type == EOL_MAC)
         buf_puts(desc, " mac");
 
-    eb_printf(b1, "    eol_type: %u %s\n", b->eol_type, buf);
-    eb_printf(b1, "     charset: %s  (bytes=%d, shift=%d)\n",
-              b->charset->name, b->char_bytes, b->char_shift);
+    eb_print_field(b1, "eol_type", "%u %s\n", b->eol_type, buf);
+    eb_print_field(b1, "charset", "%s  (bytes=%d, shift=%d)\n",
+                   b->charset->name, b->char_bytes, b->char_shift);
 
     desc = buf_init(&descbuf, buf, countof(buf));
     if (b->flags & BF_SAVELOG)
@@ -1973,31 +2021,31 @@ static void do_describe_buffer(EditState *s, int argval)
     if (b->flags & BF_STYLES)
         buf_puts(desc, " STYLES");
 
-    eb_printf(b1, "       flags: 0x%02x %s\n", (unsigned)b->flags, buf);
+    eb_print_field(b1, "flags", "0x%02x %s\n", (unsigned)b->flags, buf);
 #if 0
-    eb_printf(b1, "      probed: %d\n", b->probed);
+    eb_print_field(b1, "probed", "%d\n", b->probed);
 #endif
 
     if (b->data_mode)
-        eb_printf(b1, "   data_mode: %s\n", b->data_mode->name);
+        eb_print_field(b1, "data_mode", "%s\n", b->data_mode->name);
     if (s->mode)
-        eb_printf(b1, "     s->mode: %s\n", s->mode->name);
+        eb_print_field(b1, "s->mode", "%s\n", s->mode->name);
     if (b->default_mode)
-        eb_printf(b1, "default_mode: %s\n", b->default_mode->name);
+        eb_print_field(b1, "default_mode", "%s\n", b->default_mode->name);
     if (b->saved_mode)
-        eb_printf(b1, "  saved_mode: %s\n", b->saved_mode->name);
+        eb_print_field(b1, "saved_mode", "%s\n", b->saved_mode->name);
 
-    eb_printf(b1, "   data_type: %s\n", b->data_type->name);
-    eb_printf(b1, "       pages: %d\n", b->nb_pages);
+    eb_print_field(b1, "data_type", "%s\n", b->data_type->name);
+    eb_print_field(b1, "pages", "%d\n", b->nb_pages);
 
     if (b->map_address) {
-        eb_printf(b1, " map_address: %p  (length=%d, handle=%d)\n",
-                  b->map_address, b->map_length, b->map_handle);
+        eb_print_field(b1, "map_address", "%p  (length=%d, handle=%d)\n",
+                       b->map_address, b->map_length, b->map_handle);
     }
 
-    eb_printf(b1, "    save_log: %d  (new_index=%d, current=%d, nb_logs=%d)\n",
+    eb_print_field(b1, "save_log", "%d  (new_index=%d, current=%d, nb_logs=%d)\n",
               b->save_log, b->log_new_index, b->log_current, b->nb_logs);
-    eb_printf(b1, "      styles: %d  (cur_style=%lld, bytes=%d, shift=%d)\n",
+    eb_print_field(b1, "styles", "%d  (cur_style=%lld, bytes=%d, shift=%d)\n",
               !!b->b_styles, (long long)b->cur_style,
               b->style_bytes, b->style_shift);
 
@@ -2005,7 +2053,7 @@ static void do_describe_buffer(EditState *s, int argval)
         u8 iobuf[4096];
         int count[256];
         int total_size = b->total_size;
-        int offset, c, i, col, len, max_count, count_width;
+        int offset, c, i, col, max_count, count_width;
         int word_char, word_count, nb_chars, line, column;
 
         eb_get_pos(b, &line, &column, total_size);
@@ -2036,14 +2084,14 @@ static void do_describe_buffer(EditState *s, int argval)
         }
         count_width = snprintf(NULL, 0, "%d", max_count);
 
-        eb_printf(b1, "       chars: %d\n", nb_chars);
-        eb_printf(b1, "       words: %d\n", word_count);
-        eb_printf(b1, "       lines: %d\n", line + (column > 0));
+        eb_print_field(b1, "chars", "%d\n", nb_chars);
+        eb_print_field(b1, "words", "%d\n", word_count);
+        eb_print_field(b1, "lines", "%d\n", line + (column > 0));
 
         if (b->property_list) {
             QEProperty *p;
 
-            eb_printf(b1, "\nBuffer property list:\n");
+            eb_print_style(b1, DESCRIBE_STYLE_HEAD, "\nBuffer property list:\n");
 
             for (p = b->property_list; p; p = p->next) {
                 eb_printf(b1, " %7d  %c%c%c  ", p->offset,
@@ -2065,26 +2113,24 @@ static void do_describe_buffer(EditState *s, int argval)
             }
         }
 
-        eb_printf(b1, "\nByte stats:\n");
+        eb_print_style(b1, DESCRIBE_STYLE_HEAD, "\nByte stats:\n");
 
         for (col = i = 0; i < 256; i++) {
             if (count[i] == 0)
                 continue;
 
-            col += eb_printf(b1, "   %*d  ", count_width, count[i]);
             if (i > 0 && i < 0x7f) {
-                char cbuf[8];
-                byte_quote(cbuf, sizeof cbuf, i);
-                len = eb_printf(b1, "'%s'", cbuf);
+                int len = 0;
+                buf[len++] = '\'';
+                len += strquote_byte(buf + len, countof(buf) - len, i, SQB_USE_EXTENDED);
+                buf[len++] = '\'';
+                buf[len] = '\0';
             } else {
-                len = eb_printf(b1, "0x%02x", (unsigned)i);
+                snprintf(buf, countof(buf), "0x%02x", (unsigned)i);
             }
-            while (len < 4) {
-                eb_putc(b1, ' ');
-                len++;
-            }
-            col += len;
-            if (col >= 60) {
+            col += eb_print_style(b1, QE_STYLE_STRING, "  %5s", buf);
+            col += eb_print_style(b1, QE_STYLE_NUMBER, "  %-*d", count_width, count[i]);
+            if (col >= 64) {
                 eb_putc(b1, '\n');
                 col = 0;
             }
@@ -2095,24 +2141,21 @@ static void do_describe_buffer(EditState *s, int argval)
 
     if (b->nb_pages) {
         Page *p;
-        const u8 *pc;
-        int i, n;
+        int i, j;
 
-        eb_printf(b1, "\nBuffer page layout:\n");
+        eb_print_style(b1, DESCRIBE_STYLE_HEAD, "\nBuffer page layout:\n");
 
-        eb_printf(b1, "    page  size  flags  lines   col  chars  addr\n");
+        eb_print_style(b1, QE_STYLE_VARIABLE, "  page  size  flags  lines   col  chars  addr\n");
         for (i = 0, p = b->page_table; i < b->nb_pages && i < 100; i++, p++) {
-            eb_printf(b1, "    %4d  %4d  %5x  %5d  %4d  %5d  %p  |",
+            eb_printf(b1, " %5d  %4d  %5x  %5d  %4d  %5d  %p  ",
                       i, p->size, (unsigned)p->flags, p->nb_lines, p->col, p->nb_chars,
                       (void *)p->data);
-            pc = p->data;
-            n = min_offset(p->size, 16);
-            while (n-- > 0) {
-                char cbuf[8];
-                byte_quote(cbuf, sizeof cbuf, *pc++);
-                eb_puts(b1, cbuf);
+            for (j = 0; j < 32 && j < p->size; j++) {
+                u8 cc = p->data[j];
+                buf[j] = (cc >= ' ' && cc < 0x7f) ? cc : '.';
             }
-            eb_printf(b1, "|%s\n", p->size > 16 ? "..." : "");
+            buf[j] = '\0';
+            eb_print_style(b1, QE_STYLE_COMMENT, "|%s|%s\n", buf, p->size > j ? "..." : "");
         }
         eb_putc(b1, '\n');
     }
@@ -2123,65 +2166,64 @@ static void do_describe_buffer(EditState *s, int argval)
 static void do_describe_window(EditState *s, int argval)
 {
     EditBuffer *b1;
-    int w;
 
     b1 = new_help_buffer(s);
     if (!b1)
         return;
 
-    eb_printf(b1, "Window fields:\n");
+    eb_print_style(b1, DESCRIBE_STYLE_HEAD, "Window fields:\n");
 
-    w = 28;
-    eb_printf(b1, "%*s: %d, %d\n", w, "xleft, ytop", s->xleft, s->ytop);
-    eb_printf(b1, "%*s: %d, %d\n", w, "width, height", s->width, s->height);
-    eb_printf(b1, "%*s: %d, %d, %d, %d\n", w, "x1, y1, x2, y2", s->x1, s->y1, s->x2, s->y2);
-    eb_printf(b1, "%*s: %d, %d, %d, %d\n", w, "xx1, yy1, xx2, yy2", s->xx1, s->yy1, s->xx2, s->yy2);
-    eb_printf(b1, "%*s: %#x%s%s%s%s%s%s%s\n", w, "flags", (unsigned)s->flags,
-              (s->flags & WF_POPUP) ? " POPUP" : "",
-              (s->flags & WF_MODELINE) ? " MODELINE" : "",
-              (s->flags & WF_RSEPARATOR) ? " RSEPARATOR" : "",
-              (s->flags & WF_POPLEFT) ? " POPLEFT" : "",
-              (s->flags & WF_MINIBUF) ? " MINIBUF" : "",
-              (s->flags & WF_HIDDEN) ? " HIDDEN" : "",
-              (s->flags & WF_FILELIST) ? " FILELIST" : "");
-    eb_printf(b1, "%*s: %d\n", w, "offset", s->offset);
-    eb_printf(b1, "%*s: %d\n", w, "offset_top", s->offset_top);
-    eb_printf(b1, "%*s: %d\n", w, "offset_bottom", s->offset_bottom);
-    eb_printf(b1, "%*s: %d\n", w, "y_disp", s->y_disp);
-    eb_printf(b1, "%*s: %d, %d\n", w, "x_disp[]", s->x_disp[0], s->x_disp[1]);
-    eb_printf(b1, "%*s: %d\n", w, "dump_width", s->dump_width);
-    eb_printf(b1, "%*s: %d\n", w, "hex_mode", s->hex_mode);
-    eb_printf(b1, "%*s: %d\n", w, "unihex_mode", s->unihex_mode);
-    eb_printf(b1, "%*s: %d\n", w, "hex_nibble", s->hex_nibble);
-    eb_printf(b1, "%*s: %d\n", w, "overwrite", s->overwrite);
+    b1->tab_width = 28;
+    eb_print_field(b1, "xleft, ytop", "%d, %d\n", s->xleft, s->ytop);
+    eb_print_field(b1, "width, height", "%d, %d\n", s->width, s->height);
+    eb_print_field(b1, "x1, y1, x2, y2", "%d, %d, %d, %d\n", s->x1, s->y1, s->x2, s->y2);
+    eb_print_field(b1, "xx1, yy1, xx2, yy2", "%d, %d, %d, %d\n", s->xx1, s->yy1, s->xx2, s->yy2);
+    eb_print_field(b1, "flags", "%#x%s%s%s%s%s%s%s\n", (unsigned)s->flags,
+                   (s->flags & WF_POPUP) ? " POPUP" : "",
+                   (s->flags & WF_MODELINE) ? " MODELINE" : "",
+                   (s->flags & WF_RSEPARATOR) ? " RSEPARATOR" : "",
+                   (s->flags & WF_POPLEFT) ? " POPLEFT" : "",
+                   (s->flags & WF_MINIBUF) ? " MINIBUF" : "",
+                   (s->flags & WF_HIDDEN) ? " HIDDEN" : "",
+                   (s->flags & WF_FILELIST) ? " FILELIST" : "");
+    eb_print_field(b1, "offset", "%d\n", s->offset);
+    eb_print_field(b1, "offset_top", "%d\n", s->offset_top);
+    eb_print_field(b1, "offset_bottom", "%d\n", s->offset_bottom);
+    eb_print_field(b1, "y_disp", "%d\n", s->y_disp);
+    eb_print_field(b1, "x_disp[]", "%d, %d\n", s->x_disp[0], s->x_disp[1]);
+    eb_print_field(b1, "dump_width", "%d\n", s->dump_width);
+    eb_print_field(b1, "hex_mode", "%d\n", s->hex_mode);
+    eb_print_field(b1, "unihex_mode", "%d\n", s->unihex_mode);
+    eb_print_field(b1, "hex_nibble", "%d\n", s->hex_nibble);
+    eb_print_field(b1, "overwrite", "%d\n", s->overwrite);
     if (s->input_method)
-        eb_printf(b1, "%*s: %s\n", w, "input_method", s->input_method->name);
+        eb_print_field(b1, "input_method", "%s\n", s->input_method->name);
     if (s->selected_input_method)
-        eb_printf(b1, "%*s: %s\n", w, "selected_input_method", s->selected_input_method->name);
-    eb_printf(b1, "%*s: %d\n", w, "bidir", s->bidir);
-    eb_printf(b1, "%*s: %d\n", w, "cur_rtl", s->cur_rtl);
-    eb_printf(b1, "%*s: %u  %s\n", w, "wrap", s->wrap,
-              s->wrap == WRAP_AUTO ? "AUTO" :
-              s->wrap == WRAP_TRUNCATE ? "TRUNCATE" :
-              s->wrap == WRAP_LINE ? "LINE" :
-              s->wrap == WRAP_TERM ? "TERM" :
-              s->wrap == WRAP_WORD ? "WORD" : "???");
-    eb_printf(b1, "%*s: %d\n", w, "indent_width", s->indent_width);
-    eb_printf(b1, "%*s: %d\n", w, "indent_tabs_mode", s->indent_tabs_mode);
-    eb_printf(b1, "%*s: %d\n", w, "interactive", s->interactive);
-    eb_printf(b1, "%*s: %d\n", w, "force_highlight", s->force_highlight);
-    eb_printf(b1, "%*s: %d\n", w, "mouse_force_highlight", s->mouse_force_highlight);
-    eb_printf(b1, "%*s: %s\n", w, "colorize_mode", s->colorize_mode ? s->colorize_mode->name : "none");
-    eb_printf(b1, "%*s: %lld\n", w, "default_style", (long long)s->default_style);
-    eb_printf(b1, "%*s: %s\n", w, "buffer", s->b->name);
+        eb_print_field(b1, "selected_input_method", "%s\n", s->selected_input_method->name);
+    eb_print_field(b1, "bidir", "%d\n", s->bidir);
+    eb_print_field(b1, "cur_rtl", "%d\n", s->cur_rtl);
+    eb_print_field(b1, "wrap", "%u  %s\n", s->wrap,
+                   s->wrap == WRAP_AUTO ? "AUTO" :
+                   s->wrap == WRAP_TRUNCATE ? "TRUNCATE" :
+                   s->wrap == WRAP_LINE ? "LINE" :
+                   s->wrap == WRAP_TERM ? "TERM" :
+                   s->wrap == WRAP_WORD ? "WORD" : "???");
+    eb_print_field(b1, "indent_width", "%d\n", s->indent_width);
+    eb_print_field(b1, "indent_tabs_mode", "%d\n", s->indent_tabs_mode);
+    eb_print_field(b1, "interactive", "%d\n", s->interactive);
+    eb_print_field(b1, "force_highlight", "%d\n", s->force_highlight);
+    eb_print_field(b1, "mouse_force_highlight", "%d\n", s->mouse_force_highlight);
+    eb_print_field(b1, "colorize_mode", "%s\n", s->colorize_mode ? s->colorize_mode->name : "none");
+    eb_print_field(b1, "default_style", "%lld\n", (long long)s->default_style);
+    eb_print_field(b1, "buffer", "%s\n", s->b->name);
     if (s->last_buffer)
-        eb_printf(b1, "%*s: %s\n", w, "last_buffer", s->last_buffer->name);
-    eb_printf(b1, "%*s: %s\n", w, "mode", s->mode->name);
-    eb_printf(b1, "%*s: %d\n", w, "colorize_nb_lines", s->colorize_nb_lines);
-    eb_printf(b1, "%*s: %d\n", w, "colorize_nb_valid_lines", s->colorize_nb_valid_lines);
-    eb_printf(b1, "%*s: %d\n", w, "colorize_max_valid_offset", s->colorize_max_valid_offset);
+        eb_print_field(b1, "last_buffer", "%s\n", s->last_buffer->name);
+    eb_print_field(b1, "mode", "%s\n", s->mode->name);
+    eb_print_field(b1, "colorize_nb_lines", "%d\n", s->colorize_nb_lines);
+    eb_print_field(b1, "colorize_nb_valid_lines", "%d\n", s->colorize_nb_valid_lines);
+    eb_print_field(b1, "colorize_max_valid_offset", "%d\n", s->colorize_max_valid_offset);
     if (s->colorize_nb_valid_lines) {
-        int pos = eb_printf(b1, "%*s: [%d] {", w, "colorize_states", s->colorize_nb_valid_lines);
+        int pos = eb_print_field(b1, "colorize_states", "[%d] {", s->colorize_nb_valid_lines);
         int i, from, len;
         unsigned int bits = 0;
         int w1;
@@ -2196,8 +2238,10 @@ static void do_describe_window(EditState *s, int argval)
                 if (s->colorize_states[i] != bits)
                     break;
             }
-            if (pos > 60)
-                pos = eb_printf(b1, "\n%*s   ", w, "");
+            if (pos > 60) {
+                eb_putc(b1, '\n');
+                pos = eb_print_field(b1, "", "");
+            }
             len = snprintf(buf, sizeof buf, "%d", from);
             if (i > from + 1)
                 len += snprintf(buf + len, sizeof(buf) - len, "..%d", i - 1);
@@ -2205,12 +2249,12 @@ static void do_describe_window(EditState *s, int argval)
         }
         eb_printf(b1, " }\n");
     }
-    eb_printf(b1, "%*s: %d\n", w, "busy", s->busy);
-    eb_printf(b1, "%*s: %d\n", w, "display_invalid", s->display_invalid);
-    eb_printf(b1, "%*s: %d\n", w, "borders_invalid", s->borders_invalid);
-    eb_printf(b1, "%*s: %d\n", w, "show_selection", s->show_selection);
-    eb_printf(b1, "%*s: %d\n", w, "region_style", s->region_style);
-    eb_printf(b1, "%*s: %d\n", w, "curline_style", s->curline_style);
+    eb_print_field(b1, "busy", "%d\n", s->busy);
+    eb_print_field(b1, "display_invalid", "%d\n", s->display_invalid);
+    eb_print_field(b1, "borders_invalid", "%d\n", s->borders_invalid);
+    eb_print_field(b1, "show_selection", "%d\n", s->show_selection);
+    eb_print_field(b1, "region_style", "%d\n", s->region_style);
+    eb_print_field(b1, "curline_style", "%d\n", s->curline_style);
     eb_putc(b1, '\n');
 
     show_popup(s, b1, "Window Description");
@@ -2220,29 +2264,28 @@ static void do_describe_screen(EditState *e, int argval)
 {
     QEditScreen *s = e->screen;
     EditBuffer *b1;
-    int w;
 
     b1 = new_help_buffer(e);
     if (!b1)
         return;
 
-    eb_printf(b1, "Screen fields:\n");
+    eb_print_style(b1, DESCRIBE_STYLE_HEAD, "Screen fields:\n");
 
-    w = 16;
-    eb_printf(b1, "%*s: %s\n", w, "dpy.name", s->dpy.name);
-    eb_printf(b1, "%*s: %d, %d\n", w, "width, height", s->width, s->height);
-    eb_printf(b1, "%*s: %s\n", w, "charset", s->charset->name);
+    b1->tab_width = 16;
+    eb_print_field(b1, "dpy.name", "%s\n", s->dpy.name);
+    eb_print_field(b1, "width, height", "%d, %d\n", s->width, s->height);
+    eb_print_field(b1, "charset", "%s\n", s->charset->name);
     if (s->unicode_version) {
-        eb_printf(b1, "%*s: %d.%d.0\n", w, "Unicode version",
-                  s->unicode_version / 10, s->unicode_version % 10);
+        eb_print_field(b1, "Unicode version", "%d.%d.0\n",
+                       s->unicode_version / 10, s->unicode_version % 10);
     }
-    eb_printf(b1, "%*s: %d\n", w, "media", s->media);
-    eb_printf(b1, "%*s: %u\n", w, "bitmap_format", s->bitmap_format);
-    eb_printf(b1, "%*s: %u\n\n", w, "video_format", s->video_format);
+    eb_print_field(b1, "media", "%d\n", s->media);
+    eb_print_field(b1, "bitmap_format", "%u\n", s->bitmap_format);
+    eb_print_field(b1, "video_format", "%u\n\n", s->video_format);
 
-    eb_printf(b1, "%*s: %d\n", w, "QE_TERM_STYLE_BITS", QE_TERM_STYLE_BITS);
-    eb_printf(b1, "%*s: %x << %d\n", w, "QE_TERM_FG_COLORS", (unsigned)QE_TERM_FG_COLORS, QE_TERM_FG_SHIFT);
-    eb_printf(b1, "%*s: %x << %d\n\n", w, "QE_TERM_BG_COLORS", (unsigned)QE_TERM_BG_COLORS, QE_TERM_BG_SHIFT);
+    eb_print_field(b1, "QE_TERM_STYLE_BITS", "%d\n", QE_TERM_STYLE_BITS);
+    eb_print_field(b1, "QE_TERM_FG_COLORS", "%x << %d\n", (unsigned)QE_TERM_FG_COLORS, QE_TERM_FG_SHIFT);
+    eb_print_field(b1, "QE_TERM_BG_COLORS", "%x << %d\n\n", (unsigned)QE_TERM_BG_COLORS, QE_TERM_BG_SHIFT);
 
     dpy_describe(s, b1);
 
@@ -2796,16 +2839,13 @@ static int eb_print_color(EditBuffer *b, const char *name) {
         style2 = QE_TERM_COMPOSITE | QE_TERM_MAKE_COLOR(bg, 16);
         rgb = qe_unmap_color(bg, 8192);
     }
-    b->cur_style = QE_STYLE_FUNCTION;
-    len = eb_printf(b, "%s\t", name);
-    b->tab_width = max_int(b->tab_width, len + 1);
-    b->cur_style = QE_STYLE_DEFAULT;
+    len = eb_print_style(b, QE_STYLE_FUNCTION, "%s", name);
+    b->tab_width = max_int(b->tab_width, len + 2);
+    eb_putc(b, '\t');
+    len += 1;
     len += eb_printf(b, " %-10s ", alt_name);
-    b->cur_style = style;
-    len += eb_puts(b, "[   ]");
-    b->cur_style = style2;
-    len += eb_puts(b, "[  Sample  ]");
-    b->cur_style = QE_STYLE_DEFAULT;
+    len += eb_print_style(b, style, "[   ]");
+    len += eb_print_style(b, style2, "[  Sample  ]");
     len2 = eb_printf(b, "  p%-4d", bg);
     if (dist != 0)
         len2 += eb_printf(b, "  dist=%-4d", dist);
@@ -2820,7 +2860,7 @@ int color_print_entry(CompleteState *cp, EditState *s, const char *name) {
     return eb_print_color(s->b, name);
 }
 
-static int eb_print_style(EditBuffer *b, const char *name, int style) {
+static int eb_print_style_entry(EditBuffer *b, const char *name, int style) {
     QEStyleDef *stp = NULL;
     char buf[80];
     int i, len;
@@ -2837,12 +2877,9 @@ static int eb_print_style(EditBuffer *b, const char *name, int style) {
         stp = &qe_styles[style];
         name = stp->name;
     }
-    b->cur_style = QE_STYLE_FUNCTION;
-    len = eb_printf(b, "%s\t", name);
+    len = eb_print_style(b, QE_STYLE_FUNCTION, "%s\t", name);
     b->tab_width = max_int(b->tab_width, len + 1);
-    b->cur_style = style;
-    len += eb_puts(b, "[  Sample  ]");
-    b->cur_style = QE_STYLE_DEFAULT;
+    len += eb_print_style(b, style, "[  Sample  ]");
 
     *buf = '\0';
     if (stp) {
@@ -2853,7 +2890,7 @@ static int eb_print_style(EditBuffer *b, const char *name, int style) {
 }
 
 int style_print_entry(CompleteState *cp, EditState *s, const char *name) {
-    return eb_print_style(s->b, name, QE_STYLE_DEFAULT);
+    return eb_print_style_entry(s->b, name, QE_STYLE_DEFAULT);
 }
 
 static void do_list_styles(EditState *s) {
@@ -2865,7 +2902,7 @@ static void do_list_styles(EditState *s) {
         return;
 
     for (i = 0; i < QE_STYLE_NB; i++) {
-        eb_print_style(b, NULL, i);
+        eb_print_style_entry(b, NULL, i);
         eb_putc(b, '\n');
     }
     show_popup(s, b, "Quick Emacs Styles");
@@ -3503,13 +3540,16 @@ static const CmdDef extra_commands[] = {
           "Show the Quick Emacs FAQ",
           do_qemacs_faq)
 
-    CMD0( "about-qemacs", "C-h ?, f1",
+    CMD0( "about-qemacs", "C-h q",
           "Display information about Quick Emacs",
           do_about_qemacs)
     CMD2( "apropos", "C-h a, C-h C-a",
           "List commands and variables matching a topic",
           do_apropos, ESs,
           "s{Apropos: }[symbol]|apropos|")
+    CMD2( "wall-chart", "C-h w",
+          "List local and global key bindings as a wall chart",
+          do_wall_chart, ESi, "p")
     CMD2( "describe-bindings", "C-h b",
           "List local and global key bindings",
           do_describe_bindings, ESi, "p")
@@ -3523,9 +3563,12 @@ static const CmdDef extra_commands[] = {
     CMD2( "describe-screen", "C-h s, C-h C-s",
           "Show information about the current screen",
           do_describe_screen, ESi, "p")
-    CMD2( "describe-window", "C-h w, C-h C-w",
+    CMD2( "describe-window", "C-h C-w",
           "Show information about the current window",
           do_describe_window, ESi, "p")
+    CMD2( "describe-help", "C-h ?",
+          "Display a summary of help commands",
+          do_apropos, ESs, "@{describe}")
 
     /* XXX: should take region as argument, implicit from keyboard */
     CMD2( "set-region-color", "C-c c",

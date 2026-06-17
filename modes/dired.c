@@ -359,6 +359,7 @@ static int dired_sort_func(void *opaque, const void *p1, const void *p2)
 int eb_put_filename(EditBuffer *b, const char *name, int flags) {
     // write a filename to a buffer, encoding special characters according
     // to flags
+    // XXX: use local array to write to buffer as a single modification?
     int len = 0;
     char buf[8];
     u8 cc;

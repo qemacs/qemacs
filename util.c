@@ -2256,12 +2256,18 @@ int strsubst(char *buf, int buf_size, const char *from,
     return out->pos;
 }
 
-int byte_quote(char *dest, int size, unsigned char ch) {
+int strquote_byte(char *dest, int size, unsigned char ch, int flags) {
     /*@API utils.string
        Encode a byte as a source code escape sequence
        @argument `dest` a valid pointer to an array of bytes
        @argument `size` the length of the destination array
        @argument `ch` a byte value to encode as source
+       @argument `flags` a boolean indicating if control codes should appear
+       as hex escapes or control escapes (eg: `\x10` or `\^P` for `ch = 16`).
+       `flags` is a combination of
+       `SQB_USE_DEFAULT` for default formatting
+       `SQB_USE_CONTROL` to use `\^X` form for control codes
+       `SQB_USE_EXTENDED` to use `\e` for 27 and `\b` for 8
        @return the number of bytes produced in the destination array,
        not counting the null terminator
      */
@@ -2270,21 +2276,17 @@ int byte_quote(char *dest, int size, unsigned char ch) {
     ||  ((void)(c = 'r'), ch == '\r')
     ||  ((void)(c = 't'), ch == '\t')
     ||  ((void)(c = 'f'), ch == '\f')
-    ||  ((void)(c = 'b'), ch == '\010')
-    ||  ((void)(c = 'E'), ch == '\033')
+    ||  ((void)(c = 'b'), ch == '\010' && (flags & SQB_USE_EXTENDED))
+    ||  ((void)(c = 'e'), ch == '\033' && (flags & SQB_USE_EXTENDED))
     ||  ((void)(c = '\''), ch == '\'')      // XXX: need flag to make this optional
     ||  ((void)(c = '\"'), ch == '\"')      // XXX: need flag to make this optional
     ||  ((void)(c = '\\'), ch == '\\')) {
         return snprintf(dest, size, "\\%c", c);
     } else
-    if (ch < 32) {
-        //if (*p == '\e' && col > 9) {
-        //    eb_write(b, b->total_size, "\n         ", 10);
-        //    col = 9;
-        //}
-        return snprintf(dest, size, "\\^%c", (ch + '@') & 127);      // XXX: need flag to make this optional
+    if (ch < 32 && (flags & SQB_USE_CONTROL)) {
+        return snprintf(dest, size, "\\^%c", (ch + '@') & 127);
     } else
-    if (ch < 127) {
+    if (ch >= 32 && ch < 127) {
         if (size > 1) {
             dest[0] = ch;
             dest[1] = '\0';
@@ -2294,17 +2296,24 @@ int byte_quote(char *dest, int size, unsigned char ch) {
         }
         return 1;
     } else {
-        return snprintf(dest, size, "\\0x%02X", ch);      // XXX: need flag to make this optional
+        // XXX: need flag to control this
+        return snprintf(dest, size, "\\x%02X", ch);
     }
 }
 
-int strquote(char *dest, int size, const char *str, int len) {
+int strquote(char *dest, int size, const char *str, int len, int flags) {
     /*@API utils.string
        Encode a string using source code escape sequences
        @argument `dest` a valid pointer to an array of bytes
        @argument `size` the length of the destination array
        @argument `src` a pointer to a string to encode
        @argument `len` the number of bytes to encode
+       @argument `flags` a boolean indicating if control codes should appear
+       as hex escapes or control escapes (eg: `\x10` or `\^P` for `ch = 16`).
+       `flags` is a combination of
+       `SQB_USE_DEFAULT` for default formatting
+       `SQB_USE_CONTROL` to use `\^X` form for control codes
+       `SQB_USE_EXTENDED` to use `\e` for 27 and `\b` for 8
        @return the length of the converted string, not counting the null
        terminator, possibly longer than the destination array length.
        @note if `src` is a null pointer, the string `null` is output
@@ -2318,7 +2327,7 @@ int strquote(char *dest, int size, const char *str, int len) {
             len = strlen(str);
         buf_put_byte(out, '"');
         for (i = 0; i < len; i++)
-            buf_quote_byte(out, str[i]);
+            buf_quote_byte(out, str[i], flags);
         buf_put_byte(out, '"');
     } else {
         buf_puts(out, "null");
@@ -2333,11 +2342,17 @@ int strunquote(char *dest, int size, const char *str, int len)
 }
 #endif
 
-int buf_quote_byte(buf_t *bp, unsigned char ch) {
+int buf_quote_byte(buf_t *bp, unsigned char ch, int flags) {
     /*@API buf
        Encode a byte as a source code escape sequence into a fixed length buffer
        @argument `bp` a valid pointer to fixed length buffer
        @argument `ch` a byte value to encode as source
+       @argument `flags` a boolean indicating if control codes should appear
+       as hex escapes or control escapes (eg: `\x10` or `\^P` for `ch = 16`).
+       `flags` is a combination of
+       `SQB_USE_DEFAULT` for default formatting
+       `SQB_USE_CONTROL` to use `\^X` form for control codes
+       `SQB_USE_EXTENDED` to use `\e` for 27 and `\b` for 8
        @return the number of bytes produced in the destination array,
        not counting the null terminator
      */
@@ -2350,7 +2365,7 @@ int buf_quote_byte(buf_t *bp, unsigned char ch) {
         dest = bp->buf + bp->pos;
         size = bp->size - bp->pos;
     }
-    len = byte_quote(dest, size, ch);
+    len = strquote_byte(dest, size, ch, flags);
     if (bp->pos < bp->size) {
         written = (len < size) ? len : size - 1;
         bp->len += written;
