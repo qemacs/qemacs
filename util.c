@@ -1915,7 +1915,7 @@ int get_modified_key(int key, int state) {
             key = 127;
         else
             key = KEY_CONTROL(key);
-    } else
+    }
     if (state & KEY_STATE_SHIFT) {
         if (key < 32 || key == 127 || KEY_IS_SPECIAL(key))
             key = KEY_SHIFT(key);
