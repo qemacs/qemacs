@@ -1513,7 +1513,7 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b, TTYState *ts) {
     char32_t *ip;
     unsigned int i;
 
-    eb_printf(b, "\nUnicode combination cache:\n\n");
+    eb_print_style(b, DESCRIBE_STYLE_HEAD, "\nUnicode combination cache:\n\n");
 
     for (ip = ts->comb_cache; *ip != 0; ip += *ip & 0xFFFF) {
         if (*ip & 0x10000) {
@@ -2166,8 +2166,8 @@ static void tty_dpy_describe(QEditScreen *s, EditBuffer *b)
 {
     TTYState *ts = s->priv_data;
 
-    b->tab_width = 16;
-    eb_printf(b, "Device Description\n\n");
+    b->tab_width = 20;
+    eb_print_style(b, DESCRIBE_STYLE_HEAD, "\nDevice description:\n\n");
 
     if (ts->term_name)
         eb_print_field(b, "term_name", "%s\n", ts->term_name);
