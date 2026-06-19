@@ -355,14 +355,13 @@ static int qe_unregister_binding(KeyDef **lp, unsigned int *keys, int nb_keys) {
     if (!nb_keys)
         return -2;
 
-    while (*lp) {
-        if ((*lp)->nb_keys == nb_keys && !blockcmp((*lp)->keys, keys, nb_keys)) {
-            p = *lp;
+    while ((p = *lp) != NULL) {
+        if (p->nb_keys == nb_keys && !blockcmp(p->keys, keys, nb_keys)) {
             *lp = p->next;
             qe_free(&p);
             return 1;
         }
-        lp = &(*lp)->next;
+        lp = &p->next;
     }
     return 0;
 }
@@ -373,6 +372,9 @@ static int qe_register_command_bindings(QEmacsState *qs, KeyDef **lp, const CmdD
     unsigned int keys[MAX_KEYS];
     int nb_keys, res = -2;
     const char *p = keystr;
+
+    if (!d)
+        return -3;
 
     while (p && *p) {
         nb_keys = strtokeys(p, keys, MAX_KEYS, &p);
@@ -403,7 +405,6 @@ static void qe_unregister_bindings(KeyDef **lp, const char *keystr) {
 /* if mode is non NULL, the defined keys are only active in this mode */
 int qe_register_commands(QEmacsState *qs, ModeDef *m, const CmdDef *cmds, int len)
 {
-    KeyDef **lp = m ? &m->first_key : &qs->first_key;
     const CmdDef *d;
     int i, allocated = 0;
 
@@ -437,8 +438,10 @@ int qe_register_commands(QEmacsState *qs, ModeDef *m, const CmdDef *cmds, int le
     /* register default bindings */
     for (d = cmds, i = len; i-- > 0; d++) {
         const char *p = d->name + strlen(d->name) + 1;
-        if (*p)
+        if (*p) {
+            KeyDef **lp = m ? &m->first_key : &qs->first_key;
             qe_register_command_bindings(qs, lp, d, p);
+        }
     }
     return 0;
 }
@@ -560,6 +563,7 @@ static void qe_register_emulation_bindings(QEmacsState *qs, const char * const *
                 continue;
             lp = &mode->first_key;
         }
+        // XXX should only unregister custom bindings
         qe_unregister_bindings(lp, pp[i]);
         if (pp[i + 1])
             qe_register_bindings(qs, lp, pp[i + 1], pp[i]);
@@ -6654,11 +6658,22 @@ static void qe_key_init(QEKeyContext *c) {
 
 KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, KeyDef *kd, int exact)
 {
+    /* Find a matching binding:
+     * if `exact` is `1`, only exact matches are considered
+     * if `exact` is `0`, bindings must have at least `nb_keys` keys
+     * otherwise, bindings that are a prefix match
+     */
     for (; kd != NULL; kd = kd->next) {
-        if (kd->nb_keys >= nb_keys
-        &&  !blockcmp(kd->keys, keys, nb_keys)
-        &&  (!exact || kd->nb_keys == nb_keys)) {
-            break;
+        if (kd->nb_keys == nb_keys) {
+            if (!blockcmp(kd->keys, keys, nb_keys))
+                break;
+        } else
+        if (kd->nb_keys > nb_keys) {
+            if (exact < 1 && !blockcmp(kd->keys, keys, nb_keys))
+                break;
+        } else {
+            if (exact < 0 && !blockcmp(kd->keys, keys, kd->nb_keys))
+                break;
         }
     }
     return kd;

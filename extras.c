@@ -1,5 +1,5 @@
 /*
- * QEmacs, extra commands non full version
+ * QEmacs, extra commands for full version
  *
  * Copyright (c) 2000-2026 Charlie Gordon.
  *
@@ -1385,10 +1385,11 @@ int qe_list_bindings(QEmacsState *qs, const CmdDef *d, ModeDef *mode, int inheri
     for (;;) {
         KeyDef *kd = mode ? mode->first_key : qs->first_key;
 
+        // XXX: method runs in quadratic time, which may be slow
         for (; kd != NULL; kd = kd->next) {
             /* do not list overridden bindings */
             if (kd->cmd == d
-            &&  qe_find_current_binding(qs, kd->keys, kd->nb_keys, mode0, 1) == kd) {
+            &&  qe_find_current_binding(qs, kd->keys, kd->nb_keys, mode0, -1) == kd) {
                 if (out->len > 0)
                     buf_puts(out, ", ");
 
@@ -1487,7 +1488,7 @@ static void print_bindings(EditBuffer *b, ModeDef *mode)
     }
     if (gfound) {
         stop = b->offset;
-        eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_SILENT);
+        eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_NUMBER | SF_SILENT);
     }
 }
 
@@ -1511,22 +1512,48 @@ void do_describe_bindings(EditState *s, int argval)
 }
 
 // List all active bindings for a given mode
-static void mode_wall_chart(EditBuffer *b, ModeDef *mode) {
+static void mode_wall_chart(EditBuffer *b, ModeDef *mode, ModeDef *mode0, const char *prefix, int separate) {
     buf_t out[1];
     char buf[32];
-    KeyDef *kd;
+    int head, start, stop;
+    KeyDef *kd = mode ? mode->first_key : b->qs->first_key;
 
-    for (kd = mode ? mode->first_key : b->qs->first_key; kd != NULL; kd = kd->next) {
+    if (!kd)
+        return;
+
+    head = b->offset;
+    if (separate) {
+        eb_print_style(b, DESCRIBE_STYLE_HEAD, "\n%s bindings:\n\n", mode ? mode->name : "Global");
+    }
+    start = b->offset;
+    for (; kd != NULL; kd = kd->next) {
+        QETermStyle style = QE_STYLE_STRING;
+        const char *p;
+        // Flag redefined bindings unless we construct separate lists
+        if (!separate) {
+            if (qe_find_current_binding(b->qs, kd->keys, kd->nb_keys, mode0, -1) != kd)
+                style = QE_STYLE_COMMENT;
+        }
         buf_init(out, buf, countof(buf));
         buf_put_keys(out, kd->keys, kd->nb_keys);
-        eb_print_style(b, QE_STYLE_STRING, " %s", buf);
+        if (*prefix && (!strstart(buf, prefix, &p) || *p != ' '))
+            continue;
+        eb_print_style(b, style, " %s", buf);
         eb_putc(b, '\t');
         eb_print_style(b, QE_STYLE_FUNCTION, "%s\n", kd->cmd->name);
     }
+    if (separate) {
+        stop = b->offset;
+        if (start == stop)
+            eb_delete_range(b, head, start);
+        else
+            eb_sort_span(b, &start, &stop, stop, SF_NUMBER | SF_SILENT);
+    }
 }
 
-static void do_wall_chart(EditState *s, int argval)
+static void wall_chart_prefix(EditState *s, const char *prefix, int argval)
 {
+    ModeDef *mode;
     EditBuffer *b;
     int start, stop;
 
@@ -1534,16 +1561,32 @@ static void do_wall_chart(EditState *s, int argval)
     if (!b)
         return;
 
-    start = 0;
     b->tab_width = 16;
-    if (s->mode)
-        mode_wall_chart(b, s->mode);
-
-    mode_wall_chart(b, NULL);
-    stop = b->offset;
-    eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_SILENT);
-
+    if (argval != 1) {
+        // make a complete wall chart with all modes
+        mode_wall_chart(b, NULL, NULL, prefix, TRUE);
+        for (mode = s->qs->first_mode; mode; mode = mode->next)
+            mode_wall_chart(b, mode, NULL, prefix, TRUE);
+    } else {
+        start = 0;
+        for (mode = s->mode; mode; mode = mode->fallback)
+            mode_wall_chart(b, mode, s->mode, prefix, FALSE);
+        mode_wall_chart(b, NULL, s->mode, prefix, FALSE);
+        stop = b->offset;
+        eb_sort_span(b, &start, &stop, stop, SF_NUMBER | SF_SILENT);
+    }
     show_popup(s, b, "Wall chart");
+    put_status(s, "prefix: {%s}", prefix);
+}
+
+static void do_wall_chart(EditState *s, int argval)
+{
+    wall_chart_prefix(s, "", argval);
+}
+
+static void do_describe_prefix_bindings(EditState *s, const char *prefix)
+{
+    wall_chart_prefix(s, prefix, 1);
 }
 
 void do_apropos(EditState *s, const char *str)
@@ -1580,7 +1623,7 @@ void do_apropos(EditState *s, const char *str)
         }
         stop = b->offset;
         if (start < stop) {
-            eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH | SF_SILENT);
+            eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_NUMBER | SF_PARAGRAPH | SF_SILENT);
             eb_putc(b, '\n');
         }
 
@@ -1594,7 +1637,7 @@ void do_apropos(EditState *s, const char *str)
         }
         stop = b->offset;
         if (start < stop) {
-            eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH | SF_SILENT);
+            eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_NUMBER | SF_PARAGRAPH | SF_SILENT);
             eb_putc(b, '\n');
         }
     }
@@ -1647,7 +1690,7 @@ static void do_about_qemacs(EditState *s)
         }
     }
     stop = b->offset;
-    eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_SILENT);
+    eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_NUMBER | SF_SILENT);
 
     qe_list_variables(s, b);
 
@@ -1661,7 +1704,7 @@ static void do_about_qemacs(EditState *s)
             eb_printf(b, "    %s\n", *envp);
         }
         stop = b->offset;
-        eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_SILENT);
+        eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_NUMBER | SF_SILENT);
     }
 
     show_popup(s, b, "About QEmacs");
@@ -2347,15 +2390,23 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
         while (pos1 < p1->end) {
             c1 = eb_nextc(cp->b, pos1, &pos1);
             /* XXX: incorrect for non ASCII contents */
-            if (!(cp->flags & SF_DICT) || qe_iswalpha(c1))
+            if (!(cp->flags & SF_DICT) || qe_isdigit(c1) || qe_iswalpha(c1))
                 break;
+            if (c1 == '\t') {
+                c1 = 0;
+                break;
+            }
             c1 = 0;
         }
         while (pos2 < p2->end) {
             c2 = eb_nextc(cp->b, pos2, &pos2);
             /* XXX: incorrect for non ASCII contents */
-            if (!(cp->flags & SF_DICT) || qe_iswalpha(c2))
+            if (!(cp->flags & SF_DICT) || qe_isdigit(c2) || qe_iswalpha(c2))
                 break;
+            if (c2 == '\t') {
+                c2 = 0;
+                break;
+            }
             c2 = 0;
         }
         // XXX: number conversion should not occur after decimal point
@@ -2465,7 +2516,7 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
                     c = 0;
                     break;
                 }
-                if ((flags & SF_DICT) && !qe_iswalpha(c)) {
+                if ((flags & SF_DICT) && !qe_isdigit(c) && !qe_iswalpha(c)) {
                     pos = pos1;
                     continue;
                 }
@@ -3566,9 +3617,21 @@ static const CmdDef extra_commands[] = {
     CMD2( "describe-window", "C-h C-w",
           "Show information about the current window",
           do_describe_window, ESi, "p")
-    CMD2( "describe-help", "C-h ?",
-          "Display a summary of help commands",
-          do_apropos, ESs, "@{describe}")
+    CMD2( "describe-prefix-bindings", "C-h p",
+          "Display a list of commands with a common binding prefix",
+          do_describe_prefix_bindings, ESs, "s{Binding prefix: }")
+    CMD2( "describe-C-h", "C-h ?",
+          "Display a summary of C-h commands",
+          do_describe_prefix_bindings, ESs, "@{C-h}")
+    CMD2( "describe-C-c", "C-c ?, C-c C-h",
+          "Display a summary of C-c commands",
+          do_describe_prefix_bindings, ESs, "@{C-c}")
+    CMD2( "describe-C-x", "C-x ?, C-x C-h",
+          "Display a summary of C-x commands",
+          do_describe_prefix_bindings, ESs, "@{C-x}")
+    CMD2( "describe-C-x-RET", "C-x RET ?, C-x RET C-h",
+          "Display a summary of C-x RET commands",
+          do_describe_prefix_bindings, ESs, "@{C-x RET}")
 
     /* XXX: should take region as argument, implicit from keyboard */
     CMD2( "set-region-color", "C-c c",
