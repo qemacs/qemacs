@@ -2240,12 +2240,12 @@ static void do_describe_window(EditState *s, int argval)
             }
             if (pos > 60) {
                 eb_putc(b1, '\n');
-                pos = eb_print_field(b1, "", "");
+                pos = eb_print_field(b1, "", "  ");
             }
             len = snprintf(buf, sizeof buf, "%d", from);
             if (i > from + 1)
                 len += snprintf(buf + len, sizeof(buf) - len, "..%d", i - 1);
-            pos += eb_printf(b1, " %s: 0x%*x,", buf, w1, bits);
+            pos += eb_printf(b1, " %s: 0x%.*x,", buf, w1, bits);
         }
         eb_printf(b1, " }\n");
     }
@@ -2269,9 +2269,9 @@ static void do_describe_screen(EditState *e, int argval)
     if (!b1)
         return;
 
-    eb_print_style(b1, DESCRIBE_STYLE_HEAD, "Screen fields:\n");
+    eb_print_style(b1, DESCRIBE_STYLE_HEAD, "\nScreen fields:\n\n");
 
-    b1->tab_width = 16;
+    b1->tab_width = 20;
     eb_print_field(b1, "dpy.name", "%s\n", s->dpy.name);
     eb_print_field(b1, "width, height", "%d, %d\n", s->width, s->height);
     eb_print_field(b1, "charset", "%s\n", s->charset->name);
@@ -2284,8 +2284,8 @@ static void do_describe_screen(EditState *e, int argval)
     eb_print_field(b1, "video_format", "%u\n\n", s->video_format);
 
     eb_print_field(b1, "QE_TERM_STYLE_BITS", "%d\n", QE_TERM_STYLE_BITS);
-    eb_print_field(b1, "QE_TERM_FG_COLORS", "%x << %d\n", (unsigned)QE_TERM_FG_COLORS, QE_TERM_FG_SHIFT);
-    eb_print_field(b1, "QE_TERM_BG_COLORS", "%x << %d\n\n", (unsigned)QE_TERM_BG_COLORS, QE_TERM_BG_SHIFT);
+    eb_print_field(b1, "QE_TERM_FG_COLORS", "%#x << %d\n", (unsigned)QE_TERM_FG_COLORS, QE_TERM_FG_SHIFT);
+    eb_print_field(b1, "QE_TERM_BG_COLORS", "%#x << %d\n", (unsigned)QE_TERM_BG_COLORS, QE_TERM_BG_SHIFT);
 
     dpy_describe(s, b1);
 
