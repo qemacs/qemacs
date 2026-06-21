@@ -1560,10 +1560,14 @@ void do_other_window(EditState *s);
 void do_previous_window(EditState *s);
 void do_window_swap_states(EditState *s);
 void do_delete_window(EditState *s, int force);
-#define SW_STACKED       0
-#define SW_SIDE_BY_SIDE  1
-EditState *qe_split_window(EditState *s, int side_by_side, int prop);
-void do_split_window(EditState *s, int prop, int side_by_side);
+#define SW_STACKED       0x01
+#define SW_ABOVE         0x02
+#define SW_BELOW         0x04
+#define SW_SIDE_BY_SIDE  0x10
+#define SW_RIGHT         0x20
+#define SW_LEFT          0x40
+EditState *qe_split_window(EditState *s, int sf_flags, int prop);
+void do_split_window(EditState *s, int prop, int sf_flags);
 void do_create_window(EditState *s, const char *filename, const char *layout);
 void qe_save_window_layout(EditState *s, EditBuffer *b);
 

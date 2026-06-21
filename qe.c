@@ -515,6 +515,8 @@ static const char * const epsilon_bindings[] = {
     "C-y", "isearch-yank-kill", "isearch",
     "M-y", "isearch-yank-line", "isearch",
     "C-\\", "call-last-kbd-macro", NULL,
+    "C-x 2", "split-window-above", NULL,
+    "C-x 3", "split-window-left", NULL,
     "C-x C-l", "compare-files", NULL,
     "C-x RET", "shell", NULL,
     "C-x d", "delete-window", NULL,
@@ -535,12 +537,14 @@ static const char * const emacs_bindings[] = {
     "C-y", "isearch-yank-line", "isearch",
     "M-y", "isearch-yank-kill", "isearch",
     "C-\\", "toggle-input-method", NULL,
+    "C-x 2", "split-window-below", NULL,
+    "C-x 3", "split-window-right", NULL,
     "C-x C-l", "downcase-region", NULL,
     "C-x RET", NULL, NULL,
     "C-x d", "dired", NULL,
     "M-SPC", "just-one-space", NULL,
-    "M-[", NULL, NULL,
-    "M-]", NULL, NULL,
+    "M-[", "scroll-left", NULL,
+    "M-]", "scroll-right", NULL,
     "M-j", "indent-new-comment-line", NULL,
     "M-k", "kill-sentence", NULL,
     "M-q", "fill-paragraph", NULL,
@@ -7208,23 +7212,27 @@ static void edit_detach(EditState *s)
 }
 
 /* move a window before another one */
-static void edit_attach(EditState *s, EditState *e)
+static void edit_attach(EditState *s, EditState *next)
 {
     QEmacsState *qs = s->qs;
     EditState **ep;
+    EditState *e;
 
-    if (s != e) {
+    if (s != next) {
         /* Detach the window from the frame */
-        for (ep = &qs->first_window; *ep; ep = &(*ep)->next_window) {
-            if (*ep == s) {
+        for (ep = &qs->first_window; (e = *ep) != NULL; ep = &e->next_window) {
+            if (e == s) {
                 *ep = s->next_window;
                 s->next_window = NULL;
                 break;
             }
         }
         /* Re-attach the window before `e` */
-        for (ep = &qs->first_window; *ep; ep = &(*ep)->next_window) {
-            if (*ep == e)
+        for (ep = &qs->first_window; (e = *ep) != NULL; ep = &e->next_window) {
+            if (e == next)
+                break;
+            if ((e->flags & (WF_POPUP | WF_MINIBUF))
+            &&  (!next || !(next->flags & (WF_POPUP | WF_MINIBUF))))
                 break;
         }
         s->next_window = *ep;
@@ -10123,71 +10131,99 @@ void compute_virtual_window_size(EditState *s)
     }
 }
 
-EditState *qe_split_window(EditState *s, int side_by_side, int prop)
+EditState *qe_split_window(EditState *s, int sf_flags, int prop)
 {
     EditState *e;
-    int w, h, w1, h1;
+    int x, y, w, h, x1, x2, y1, y2;
+    int sflags = 0;
+    int flags = WF_MODELINE | (s->flags & WF_RSEPARATOR);
 
     /* cannot split minibuf or popup */
     if (s->flags & (WF_POPUP | WF_MINIBUF))
         return NULL;
 
-    if (prop <= 0)
+    // If prop is positive, it is the percentage to keep for the current window
+    // if prop is negative, its opposite is the percentage to give for the new window
+    // `qe_split_window` allocates at least 4 columns and 2 lines to each window
+    // In emacs, prop is expressed as a number of rows instead of a percentage.
+    if (prop < 0)
+        prop = -max_int(prop, -100);
+    else
+        prop = max_int(100 - prop, 0);
+
+    x1 = s->x1;
+    y1 = s->y1;
+    x2 = s->x2;
+    y2 = s->y2;
+    x = x1;
+    y = y1;
+    w = x2 - x1;
+    h = y2 - y1;
+
+    if (sf_flags & (SW_SIDE_BY_SIDE | SW_RIGHT | SW_LEFT)) {
+        int min_left = 5 * s->char_width;
+        int min_right = ((flags & WF_RSEPARATOR) ? 5 : 4) * s->char_width;
+        if (w < min_left + min_right) {
+            put_error(s, "Window is too narrow to split side by side");
+            return NULL;
+        }
+        w = (w * prop + 50) / 100;
+        if (sf_flags & SW_LEFT) { // new window is on the left of current window
+            w = clamp_int(w, min_left, w - min_right);
+            x1 += w;
+            flags |= WF_RSEPARATOR;
+        } else {
+            w = clamp_int(w, min_right, w - min_left);
+            x2 -= w;
+            x = x2;
+            sflags |= WF_RSEPARATOR;
+        }
+    } else {
+        int min_height = s->line_height + s->qs->mode_line_height;
+        if (h < 2 * min_height) {
+            put_error(s, "Window is too small to to split vertically");
+            return NULL;
+        }
+        h = clamp_int((h * prop + 50) / 100, min_height, h - min_height);
+        if (sf_flags & SW_ABOVE) { // new window is above the current window
+            y1 += h;
+        } else {
+            y2 -= h;
+            y = y2;
+        }
+    }
+    /* This will clone mode and mode data to the newly created window */
+    generic_save_window_data(s);
+    e = qe_new_window(s->b, x, y, w, h, flags);
+    if (!e)
         return NULL;
 
-    w = s->x2 - s->x1;
-    h = s->y2 - s->y1;
-
-    if (side_by_side) {
-        if (s->cols < 9) {
-            put_error(s, "Cannot split a window with %d columns, need at least 9", s->cols);
-            return NULL;
-        }
-
-        /* This will clone mode and mode data to the newly created window */
-        generic_save_window_data(s);
-
-        w1 = (w * min_int(prop, 100) + 50) / 100;
-        e = qe_new_window(s->b, s->x1 + w1, s->y1,
-                          w - w1, h, WF_MODELINE | (s->flags & WF_RSEPARATOR));
-        if (!e)
-            return NULL;
-
-        s->x2 = s->x1 + w1;
-        s->flags |= WF_RSEPARATOR;
-    } else {
-        if (s->rows < 4) {
-            put_error(s, "Cannot split a window with %d rows, need at least 4", s->rows);
-            return NULL;
-        }
-
-        /* This will clone mode and mode data to the newly created window */
-        generic_save_window_data(s);
-
-        h1 = (h * min_int(prop, 100) + 50) / 100;
-        e = qe_new_window(s->b, s->x1, s->y1 + h1,
-                          w, h - h1, WF_MODELINE | (s->flags & WF_RSEPARATOR));
-        if (!e)
-            return NULL;
-        s->y2 = s->y1 + h1;
-    }
+    /* update current window */
+    s->x1 = x1;
+    s->x2 = x2;
+    s->y1 = y1;
+    s->y2 = y2;
+    s->flags |= sflags;
     compute_virtual_window_size(s);
     compute_client_area(s);
 
-    /* reposition new window in window list just after s */
-    edit_attach(e, s->next_window);
+    /* reposition new window in window list just before or after s */
+    edit_attach(e, flags & (SW_LEFT | SW_ABOVE) ? s : s->next_window);
 
     do_refresh(s);
     return e;
 }
 
-void do_split_window(EditState *s, int prop, int side_by_side)
+void do_split_window(EditState *s, int prop, int sf_flags)
 {
     QEmacsState *qs = s->qs;
-    EditState *e = qe_split_window(s, side_by_side, prop == NO_ARG ? 50 : prop);
+    EditState *e = qe_split_window(s, sf_flags, prop == NO_ARG ? 50 : prop);
 
-    if (e && qs->flag_split_window_change_focus)
+    // Change focus only if active and configured to do so.
+    if (e && s == qs->active_window && qs->flag_split_window_change_focus
+    &&  !(sf_flags & (SW_ABOVE | SW_BELOW | SW_RIGHT | SW_LEFT))) {
         qs->active_window = e;
+    }
 }
 
 void do_window_swap_states(EditState *s)
@@ -10490,13 +10526,19 @@ void window_get_min_size(EditState *s, int *w_ptr, int *h_ptr)
     QEmacsState *qs = s->qs;
     int w, h;
 
-    /* XXX: currently, a small square */
-    w = 5;
-    h = 5;
+    /* at least one line and 4 columns plus borders, modeline and caption */
+    w = 4 * s->char_width;
+    if (s->flags & WF_RSEPARATOR)
+        w += qs->separator_width;
+    if (s->flags & WF_POPUP)
+        w += 2 * qs->border_width;
+    h = s->line_height;
     if (s->flags & WF_MODELINE)
-        h += 1;
-    *w_ptr = w * qs->mode_line_height;
-    *h_ptr = h * qs->mode_line_height;
+        h += qs->mode_line_height;
+    if (s->flags & WF_POPUP)
+        h += qs->mode_line_height + qs->border_width;
+    *w_ptr = w;
+    *h_ptr = h;
 }
 
 /* resize a window on bottom right edge */
@@ -11791,10 +11833,10 @@ static const CmdDef basic_commands[] = {
     CMD3( "find-window-right", "C-x right",
           "Move the focus to the window to the right of the current one",
           do_find_window, ESi, "#" "v", KEY_RIGHT)
-    CMD2( "scroll-left", "M-(",
+    CMD2( "scroll-left", "C-x <, C-pagedown, M-[",
           "Shift the window contents to the left",
           do_scroll_left_right, ESi, "q")
-    CMD2( "scroll-right", "M-)",
+    CMD2( "scroll-right", "C-x >, C-pageup, M-]",
           "Shift the window contents to the right",
           do_scroll_left_right, ESi, "p")
     CMD1( "preview-mode", "",
@@ -11817,12 +11859,24 @@ static const CmdDef basic_commands[] = {
     CMD0( "delete-hidden-windows", "",
           "Delete the hidden windows",
           do_delete_hidden_windows)
-    CMD3( "split-window-vertically", "C-x 2",
-          "Split the current window top and bottom",
+    CMD3( "split-window-vertically", "",
+          "Split the current window vertically",
           do_split_window, ESii, "#" "P" "v", SW_STACKED)
-    CMD3( "split-window-horizontally", "C-x 3",
+    CMD3( "split-window-horizontally", "",
           "Split the current window side by side",
           do_split_window, ESii, "#" "P" "v", SW_SIDE_BY_SIDE)
+    CMD3( "split-window-above", "",
+          "Split a new window above the current window",
+          do_split_window, ESii, "#" "P" "v", SW_STACKED | SW_ABOVE)
+    CMD3( "split-window-below", "C-x 2",
+          "Split a new window below the current window",
+          do_split_window, ESii, "#" "P" "v", SW_STACKED | SW_BELOW)
+    CMD3( "split-window-left", "",
+          "Split a new window to the left of the current window",
+          do_split_window, ESii, "#" "P" "v", SW_SIDE_BY_SIDE | SW_LEFT)
+    CMD3( "split-window-right", "C-x 3",
+          "Split a new window to the right of the current window",
+          do_split_window, ESii, "#" "P" "v", SW_SIDE_BY_SIDE | SW_RIGHT)
     CMD2( "toggle-full-screen", "C-c f",
           "Toggle full screen display (on graphics displays)",
           do_toggle_full_screen, ES, "#")
