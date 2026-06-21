@@ -7227,7 +7227,7 @@ static void edit_attach(EditState *s, EditState *next)
                 break;
             }
         }
-        /* Re-attach the window before `e` */
+        /* Re-attach the window before `next` */
         for (ep = &qs->first_window; (e = *ep) != NULL; ep = &e->next_window) {
             if (e == next)
                 break;
@@ -10137,6 +10137,7 @@ EditState *qe_split_window(EditState *s, int sf_flags, int prop)
     int x, y, w, h, x1, x2, y1, y2;
     int sflags = 0;
     int flags = WF_MODELINE | (s->flags & WF_RSEPARATOR);
+    EditState *next = s->next_window;  // where the new window should be inserted
 
     /* cannot split minibuf or popup */
     if (s->flags & (WF_POPUP | WF_MINIBUF))
@@ -10172,6 +10173,7 @@ EditState *qe_split_window(EditState *s, int sf_flags, int prop)
             w = clamp_int(w, min_left, w - min_right);
             x1 += w;
             flags |= WF_RSEPARATOR;
+            next = s;
         } else {
             w = clamp_int(w, min_right, w - min_left);
             x2 -= w;
@@ -10187,6 +10189,7 @@ EditState *qe_split_window(EditState *s, int sf_flags, int prop)
         h = clamp_int((h * prop + 50) / 100, min_height, h - min_height);
         if (sf_flags & SW_ABOVE) { // new window is above the current window
             y1 += h;
+            next = s;
         } else {
             y2 -= h;
             y = y2;
@@ -10208,7 +10211,7 @@ EditState *qe_split_window(EditState *s, int sf_flags, int prop)
     compute_client_area(s);
 
     /* reposition new window in window list just before or after s */
-    edit_attach(e, flags & (SW_LEFT | SW_ABOVE) ? s : s->next_window);
+    edit_attach(e, next);
 
     do_refresh(s);
     return e;
