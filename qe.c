@@ -7231,9 +7231,14 @@ static void edit_attach(EditState *s, EditState *next)
         for (ep = &qs->first_window; (e = *ep) != NULL; ep = &e->next_window) {
             if (e == next)
                 break;
-            if ((e->flags & (WF_POPUP | WF_MINIBUF))
-            &&  (!next || !(next->flags & (WF_POPUP | WF_MINIBUF))))
-                break;
+            if (!next) {
+                /* attach regular window before popup/minibuf */
+                if (!(s->flags & (WF_POPUP | WF_MINIBUF)) && (e->flags & (WF_POPUP | WF_MINIBUF)))
+                    break;
+                /* attach popup window before minibuf */
+                if ((s->flags & WF_POPUP) && (e->flags & WF_MINIBUF))
+                    break;
+            }
         }
         s->next_window = *ep;
         *ep = s;
