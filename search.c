@@ -2,7 +2,7 @@
  * Incremental search and replace for QEmacs.
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2024 Charlie Gordon.
+ * Copyright (c) 2000-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -809,25 +809,31 @@ static void isearch_exit(EditState *s, int key) {
     }
 }
 
-static void isearch_key(void *opaque, int key) {
+static void isearch_key(QEmacsState *qs, void *opaque, int key) {
     ISearchState *is = opaque;
-    QEmacsState *qs = is->s->qs;
+    EditState *s;
     unsigned int keys[1] = { key };
+
+    if (!is || !(s = qe_check_window(qs, &is->s))) {
+        qe_ungrab_keys(qs);
+        put_error(qs->active_window, "&Deleted");
+        return;
+    }
 
     if (is->quoting) {
         is->quoting = 0;
         if (!KEY_IS_SPECIAL(key)) {
-            isearch_printing_char(is->s, key);
+            isearch_printing_char(s, key);
         }
     } else {
         KeyDef *kd = qe_find_binding(keys, 1, isearch_mode.first_key, 1);
         if (kd) {
-            exec_command(is->s, kd->cmd, NO_ARG, key);
+            exec_command(s, kd->cmd, NO_ARG, key);
         } else {
             if (KEY_IS_SPECIAL(key) || KEY_IS_CONTROL(key)) {
-                isearch_exit(is->s, key);
+                isearch_exit(s, key);
             } else {
-                isearch_printing_char(is->s, key);
+                isearch_printing_char(s, key);
             }
         }
     }
@@ -1123,11 +1129,18 @@ static void query_replace_run(QueryReplaceState *is)
     put_status(s, "&%s", out->buf);
 }
 
-static void query_replace_key(void *opaque, int key)
+static void query_replace_key(QEmacsState *qs, void *opaque, int key)
 {
     QueryReplaceState *is = opaque;
-    EditState *s = is->s;
-    QEmacsState *qs = s->qs;
+    EditState *s;
+
+    if (!is || !(s = qe_check_window(qs, &is->s))) {
+        qe_ungrab_keys(qs);
+        qe_free(&is);
+        qe_display(qs);
+        put_error(qs->active_window, "&Deleted");
+        return;
+    }
 
     if (qe_check_window(qs, &is->help_window)) {
         do_delete_window(is->help_window, 0);

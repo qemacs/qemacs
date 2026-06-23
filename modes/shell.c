@@ -1368,7 +1368,7 @@ static void shell_display_hook(EditState *e)
     }
 }
 
-static void shell_key(void *opaque, int key)
+static void shell_key(QEmacsState *qs, void *opaque, int key)
 {
     ShellState *s = opaque;
     char buf[10];
@@ -1379,8 +1379,8 @@ static void shell_key(void *opaque, int key)
         return;
 
     if (key == KEY_CTRL('o') && s->last_key_grabbed == KEY_CTRL(' ')) {
-        qe_ungrab_keys(s->base.qs);
-        qe_unget_key(s->base.qs, key);
+        qe_ungrab_keys(qs);
+        qe_unget_key(qs, key);
         s->last_key_grabbed = key;
         return;
     }
@@ -2878,7 +2878,6 @@ static EditBuffer *try_show_buffer(EditState **sp, const char *bufname)
         e = eb_find_window(b, NULL);
         if (e) {
             qs->active_window = *sp = e;
-            qe_check_buffer_file(e->b, CBF_CHECK);
         } else {
             switch_to_buffer(s, b);
         }

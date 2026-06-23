@@ -249,7 +249,7 @@ static inline QEEvent *qe_event_clear(QEEvent *ev) {
 void qe_handle_event(QEmacsState *qs, QEEvent *ev);
 /* CG: Should optionally attach grab to a window */
 /* CG: Should deal with opaque object life cycle */
-void qe_grab_keys(QEmacsState *qs, void (*cb)(void *opaque, int key), void *opaque);
+void qe_grab_keys(QEmacsState *qs, void (*cb)(QEmacsState *qs, void *opaque, int key), void *opaque);
 void qe_ungrab_keys(QEmacsState *qs);
 KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, KeyDef *kd, int exact);
 KeyDef *qe_find_current_binding(QEmacsState *qs, unsigned int *keys, int nb_keys, ModeDef *m, int exact);
@@ -985,7 +985,7 @@ typedef struct QEKeyContext {
     int is_escape;
     int nb_keys;
     int describe_key; /* if true, the following command is only displayed */
-    void (*grab_key_cb)(void *opaque, int key);
+    void (*grab_key_cb)(QEmacsState *qs, void *opaque, int key);
     void *grab_key_opaque;
     unsigned int keys[MAX_KEYS];
     char buf[128];
