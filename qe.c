@@ -10173,14 +10173,13 @@ EditState *qe_split_window(EditState *s, int sf_flags, int prop)
             put_error(s, "Window is too narrow to split side by side");
             return NULL;
         }
-        w = (w * prop + 50) / 100;
         if (sf_flags & SW_LEFT) { // new window is on the left of current window
-            w = clamp_int(w, min_left, w - min_right);
+            w = clamp_int((w * prop + 50) / 100, min_left, w - min_right);
             x1 += w;
             flags |= WF_RSEPARATOR;
             next = s;
         } else {
-            w = clamp_int(w, min_right, w - min_left);
+            w = clamp_int((w * prop + 50) / 100, min_right, w - min_left);
             x2 -= w;
             x = x2;
             sflags |= WF_RSEPARATOR;
@@ -10188,7 +10187,7 @@ EditState *qe_split_window(EditState *s, int sf_flags, int prop)
     } else {
         int min_height = s->line_height + s->qs->mode_line_height;
         if (h < 2 * min_height) {
-            put_error(s, "Window is too small to to split vertically");
+            put_error(s, "Window is too small to split vertically");
             return NULL;
         }
         h = clamp_int((h * prop + 50) / 100, min_height, h - min_height);
