@@ -4005,7 +4005,7 @@ static int match_error(EditBuffer *b, int start_offset, ShellError *dest)
 static void do_next_error(EditState *s, int arg, int dir)
 {
     QEmacsState *qs = s->qs;
-    EditState *e, *e_next;
+    EditState *e;
     EditBuffer *b;
     int offset;
     struct stat sb;
