@@ -134,9 +134,6 @@ int eb_write(EditBuffer *b, int offset, const void *buf, int size)
     if (b->flags & BF_READONLY)
         return 0;
 
-    if (qe_check_buffer_file(b, CBF_MODIFY) == CBF_PROMPT)
-        return 0;
-
     /* We carefully clip the request, avoiding integer overflow */
     if (offset < 0 || size <= 0 || offset > b->total_size)
         return 0;
@@ -320,9 +317,6 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
     if (dest->flags & BF_READONLY)
         return 0;
 
-    if (qe_check_buffer_file(dest, CBF_MODIFY) == CBF_PROMPT)
-        return 0;
-
     /* Assert parameter consistency */
     if (dest_offset < 0 || src_offset < 0 || src_offset >= src->total_size)
         return 0;
@@ -461,9 +455,6 @@ int eb_insert(EditBuffer *b, int offset, const void *buf, int size)
     if (b->flags & BF_READONLY)
         return 0;
 
-    if (qe_check_buffer_file(b, CBF_MODIFY) == CBF_PROMPT)
-        return 0;
-
     /* sanity checks */
     if (offset > b->total_size)
         offset = b->total_size;
@@ -486,9 +477,6 @@ int eb_delete(EditBuffer *b, int offset, int size)
     Page *del_start, *p;
 
     if (b->flags & BF_READONLY)
-        return 0;
-
-    if (qe_check_buffer_file(b, CBF_MODIFY) == CBF_PROMPT)
         return 0;
 
     if (offset < 0 || offset >= b->total_size || size <= 0)
@@ -816,6 +804,7 @@ void eb_free(EditBuffer **bp)
         EditBuffer **pb;
         EditBuffer *b1;
 
+        // XXX should use qe_free_mode_data()
         /* free b->mode_data_list by calling destructors */
         while (b->mode_data_list) {
             QEModeData *md = b->mode_data_list;
@@ -823,6 +812,8 @@ void eb_free(EditBuffer **bp)
             md->next = NULL;
             if (md->mode && md->mode->mode_free)
                 md->mode->mode_free(b, md);
+            if (qs->key_ctx.grab_key_opaque == md)
+                qs->key_ctx.grab_key_opaque = NULL;
             qe_free(&md);
         }
 
@@ -870,6 +861,8 @@ void eb_free(EditBuffer **bp)
         eb_free_style_buffer(b);
 
         qe_free(&b->saved_data);
+        if (qs->key_ctx.grab_key_opaque == b)
+            qs->key_ctx.grab_key_opaque = NULL;
         // XXX: cannot use qe_free(bp) because *bp may have been set to NULL
         //      already, eg: eb_free_log_buffer() and eb_free_style_buffer()
         qe_free(&b);

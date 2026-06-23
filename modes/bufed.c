@@ -309,7 +309,6 @@ static void bufed_select(EditState *s, int temp)
             do_delete_window(s, 1);
             if (e) {
                 qs->active_window = e;
-                qe_check_buffer_file(e->b, CBF_CHECK);
             }
         }
     } else {

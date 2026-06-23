@@ -11,8 +11,6 @@ This is the TODO list for qemacs
 * fix warning: `int (*eb_printf_fun)(EditBuffer *b, const char *fmt, ...) = (void*)eb_printf;`
 * fix crash bug on `C-X C-B C-X C-F xxx RET`
 * fix cursor positioning beyond end of screen
-* crash bug on reloading file contents in `qe_check_buffer_file()`
-* fix file change detection on buffer change (`C-x b`)
 
 # Core - Buffers - Files
 
@@ -64,6 +62,7 @@ This is the TODO list for qemacs
 
 ## Files
 
+* show popup window with explanation and diff in `qe_check_buffer_file()`
 * fix corner cases in `qe_check_buffer_file()`
 * minimize edit list in `qe_check_buffer_file()` when new version is loaded
 * remanent annotations on files and buffers

@@ -1783,7 +1783,6 @@ void text_mouse_goto(EditState *s, int x, int y, QEEvent *ev)
     if (!(curw && (curw->flags & (WF_POPUP | WF_MINIBUF)))
     &&  !qs->key_ctx.grab_key_cb) {
         qs->active_window = s;
-        qe_check_buffer_file(s->b, CBF_CHECK);
     }
     if (s->mouse_force_highlight)
         s->force_highlight = 1;
@@ -2021,14 +2020,13 @@ struct QuoteKeyArgument {
 };
 
 /* XXX: may be better to move it into qe_key_process() */
-static void quote_key(void *opaque, int key)
+static void quote_key(QEmacsState *qs, void *opaque, int key)
 {
     // XXX: emacs supports octal input followed by RET
     //      and f1 for context sensitive help
     //      qemacs supports special keys and inserts the keyboard sequence
     struct QuoteKeyArgument *qa = opaque;
-    EditState *s = qa->s;
-    QEmacsState *qs = s->qs;
+    EditState *s = qe_check_window(qs, &qa->s);
     int repeat = qa->argval;
 
     put_status(s, "");  /* erase "Quote: " message */
@@ -2656,7 +2654,7 @@ static int reload_buffer(EditState *s, EditBuffer *b, int reload)
         }
         return -1;
     } else {
-        if (stat(b->filename, &st) < 0) {
+        if (!stat(b->filename, &st)) {
             b->file_mtime = st.st_mtime;
             b->file_size = st.st_size;
         }
@@ -2783,6 +2781,8 @@ int qe_free_mode_data(QEModeData *md)
     }
     if (rc == 0) {
         /* mode data was found, OK to free */
+        if (md->qs->key_ctx.grab_key_opaque == md)
+            md->qs->key_ctx.grab_key_opaque = NULL;
         qe_free(&md);
     }
     return rc;
@@ -5644,6 +5644,9 @@ void exec_command(EditState *s, const CmdDef *d, int argval, int key)
                 put_error(s, "Buffer is read only");
                 return;
             }
+            if (qe_check_buffer_file(s->b, CBF_MODIFY) == CBF_PROMPT) {
+                return;
+            }
         } else
         if (*argdesc == '#') {
             argdesc++;
@@ -6626,7 +6629,7 @@ void do_prefix_argument(EditState *s, int key) {
 /*
  * All typed keys are sent to the callback. Previous grab is aborted
  */
-void qe_grab_keys(QEmacsState *qs, void (*cb)(void *opaque, int key), void *opaque)
+void qe_grab_keys(QEmacsState *qs, void (*cb)(QEmacsState *qs, void *opaque, int key), void *opaque)
 {
     QEKeyContext *c = &qs->key_ctx;
 
@@ -6722,7 +6725,7 @@ static void qe_key_process(QEmacsState *qs, int key)
     // XXX: shound test for help-popup
     if (c->grab_key_cb) {
         /* grabber should return codes for quit / fall thru / ungrab */
-        c->grab_key_cb(c->grab_key_opaque, key);
+        c->grab_key_cb(qs, c->grab_key_opaque, key);
         /* allow key_grabber to quit and unget last key */
         if (c->grab_key_cb || qs->ungot_key == -1)
             return;
@@ -6835,6 +6838,8 @@ static void qe_key_process(QEmacsState *qs, int key)
         } else {
             int argval = c->argval;
             int multi_cursor_active = s->multi_cursor_active;
+            EditBuffer *this_buffer = s->b;
+
             if (c->has_arg & HAS_ARG_NEGATIVE)
                 argval = -argval;
             else
@@ -6853,12 +6858,18 @@ static void qe_key_process(QEmacsState *qs, int key)
                 qs->last_key = key;
             }
             exec_command(s, d, argval, key);
-            if (multi_cursor_active && qe_check_window(qs, &s)) {
-                int i;
-                if (s != qs->active_window) {
-                    /* end multi-cursor session upto window change */
+            if (s != qs->active_window || s->b != this_buffer) {
+                if (qe_check_window(qs, &s)) {
+                    /* end multi-cursor session upto window or buffer change */
                     s->multi_cursor_active = 0;
                 }
+                if (!qs->key_ctx.grab_key_cb && qs->active_window) {
+                    qe_check_buffer_file(qs->active_window->b, CBF_CHECK);
+                }
+            } else
+            if (multi_cursor_active) {
+                // dispatch the command to all cursors if multi_cursor was already active
+                int i;
                 s->multi_cursor[0].offset = s->offset;
                 for (i = 1; s->multi_cursor_active && i < s->multi_cursor_len; i++) {
                     swap_int(&s->b->mark, &s->multi_cursor[i].mark);
@@ -7206,8 +7217,6 @@ static void edit_detach(EditState *s)
     /* if window was active, activate target window or default window */
     if (qs->active_window == s) {
         qs->active_window = s->target_window ? s->target_window : qs->first_window;
-        if (qs->active_window)
-            qe_check_buffer_file(qs->active_window->b, CBF_CHECK);
     }
 }
 
@@ -7345,6 +7354,8 @@ void edit_close(EditState **sp)
         /* save current state for later window reattachment */
         switch_to_buffer(s, NULL);
         edit_detach(s);
+        if (s->qs->key_ctx.grab_key_opaque == s)
+            s->qs->key_ctx.grab_key_opaque = NULL;
         /* closing the window mode should have freed it already */
         qe_free_mode_data(s->mode_data);
         qe_free(&s->prompt);
@@ -9102,7 +9113,6 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
     b = qe_find_buffer_filename(qs, filename);
     if (b != NULL) {
         switch_to_buffer(s, b);
-        qe_check_buffer_file(b, CBF_CHECK);
         return 0;
     }
 
@@ -9368,14 +9378,14 @@ static void put_save_message(EditState *s, const char *filename, int nb)
 
 void do_save_buffer(EditState *s)
 {
+    if (qe_check_buffer_file(s->b, CBF_SAVE) == CBF_PROMPT)
+        return;
+
     if (!s->b->modified) {
         /* CG: This behaviour bugs me! */
         put_status(s, "(No changes need to be saved)");
         return;
     }
-    if (qe_check_buffer_file(s->b, CBF_SAVE) == CBF_PROMPT)
-        return;
-
     put_save_message(s, s->b->filename, eb_save_buffer(s->b));
 }
 
@@ -9399,10 +9409,15 @@ void do_write_region(EditState *s, const char *filename)
                      eb_write_buffer(s->b, s->b->mark, s->offset, filename));
 }
 
-static void qe_check_buffer_file_key(EditBuffer *b, int ch, int save)
+static void qe_check_buffer_file_key(QEmacsState *qs, EditBuffer *b, int ch, int save)
 {
-    QEmacsState *qs = b->qs;
     EditState *s = qs->active_window;
+
+    if (!b) {
+        qe_ungrab_keys(qs);
+        put_error(s, "&Deleted");
+        return;
+    }
 
     switch (ch) {
     case KEY_CTRL('g'): /* abort */
@@ -9447,6 +9462,7 @@ static void qe_check_buffer_file_key(EditBuffer *b, int ch, int save)
         put_error(s, "Diff not supported");
 #else
         qe_ungrab_keys(qs);
+        put_status(s, "");
         qe_diff_buffer_with_file(s, b);
 #endif
         break;
@@ -9477,14 +9493,14 @@ static void qe_check_buffer_file_key(EditBuffer *b, int ch, int save)
     qe_display(qs);
 }
 
-static void qe_check_buffer_file_key_read(void *opaque, int ch)
+static void qe_check_buffer_file_key_read(QEmacsState *qs, void *opaque, int ch)
 {
-    qe_check_buffer_file_key(opaque, ch, FALSE);
+    qe_check_buffer_file_key(qs, opaque, ch, FALSE);
 }
 
-static void qe_check_buffer_file_key_save(void *opaque, int ch)
+static void qe_check_buffer_file_key_save(QEmacsState *qs, void *opaque, int ch)
 {
-    qe_check_buffer_file_key(opaque, ch, TRUE);
+    qe_check_buffer_file_key(qs, opaque, ch, TRUE);
 }
 
 int qe_check_buffer_file(EditBuffer *b, int mode)
@@ -9595,8 +9611,8 @@ typedef struct QuitState {
     QEmacsState *qs;
 } QuitState;
 
-static void quit_examine_buffers(QuitState *is);
-static void quit_key(void *opaque, int ch);
+static void quit_examine_buffers(QEmacsState *qs, QuitState *is);
+static void quit_key(QEmacsState *qs, void *opaque, int ch);
 static void quit_confirm_cb(void *opaque, char *reply, CompletionDef *completion);
 
 static void do_suspend_qemacs(EditState *s, int argval)
@@ -9628,13 +9644,12 @@ void do_exit_qemacs(EditState *s, int argval)
 
     qe_stop_macro(qs);
     qe_grab_keys(qs, quit_key, is);
-    quit_examine_buffers(is);
+    quit_examine_buffers(qs, is);
 }
 
 /* analyse next buffer and ask question if needed */
-static void quit_examine_buffers(QuitState *is)
+static void quit_examine_buffers(QEmacsState *qs, QuitState *is)
 {
-    QEmacsState *qs = is->qs;
     EditBuffer *b;
 
     while (is->b != NULL) {
@@ -9677,10 +9692,16 @@ static void quit_examine_buffers(QuitState *is)
     qe_free(&is);
 }
 
-static void quit_key(void *opaque, int ch)
+static void quit_key(QEmacsState *qs, void *opaque, int ch)
 {
     QuitState *is = opaque;
     EditBuffer *b;
+
+    if (!is || !(b = qe_check_buffer(qs, &is->b))) {
+        qe_ungrab_keys(qs);
+        put_error(qs->active_window, "&Deleted");
+        return;
+    }
 
     switch (ch) {
     case 'y':
@@ -9705,20 +9726,19 @@ static void quit_key(void *opaque, int ch)
         /* save current and exit */
         is->state = QS_NOSAVE;
     do_save:
-        b = is->b;
         eb_save_buffer(b);
         break;
     case KEY_CTRL('g'):
         /* abort */
-        qe_ungrab_keys(is->qs);
-        put_error(is->qs->active_window, "&Quit");
+        qe_ungrab_keys(qs);
+        put_error(qs->active_window, "&Quit");
         return;
     default:
         /* get another key */
         return;
     }
-    is->b = is->b->next;
-    quit_examine_buffers(is);
+    is->b = b->next;
+    quit_examine_buffers(qs, is);
 }
 
 static void quit_confirm_cb(qe__unused__ void *opaque,
@@ -9972,7 +9992,6 @@ void do_other_window(EditState *s)
         if (e->flags & WF_MINIBUF)
             edit_invalidate(e, 0);
         s->qs->active_window = e;
-        qe_check_buffer_file(e->b, CBF_CHECK);
     }
 }
 
@@ -9981,7 +10000,6 @@ void do_previous_window(EditState *s)
     EditState *e = get_previous_window(s, 0, 0);
     if (e) {
         s->qs->active_window = e;
-        qe_check_buffer_file(e->b, CBF_CHECK);
     }
 }
 
@@ -10056,8 +10074,6 @@ void do_delete_window(EditState *s, int force)
     }
     if (qs->active_window == s) {
         qs->active_window = e1 ? e1 : qs->first_window;
-        if (qs->active_window)
-            qe_check_buffer_file(qs->active_window->b, CBF_CHECK);
     }
     edit_close(&s);
     if (qs->first_window)
