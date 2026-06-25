@@ -76,6 +76,51 @@ int is_player = 1;    /* Start in dired mode when invoked with no arguments */
 static int free_everything;
 #endif
 
+/* buffer examination */
+
+enum { SB_OK = 0, SB_SUSPEND = 1, SB_ABORTED = 2 };
+
+static int save_buffers_request_flags;
+static int save_buffers_request_completed;
+
+int qe_save_buffers(QEmacsState *qs, int flags)
+{
+    EditBuffer *b;
+    int modified = 0;
+
+    /* command was previously suspended */
+    if (flags && save_buffers_request_completed)
+        return SB_OK;
+
+    for (b = qs->first_buffer; b != NULL; b = b->next) {
+        if (b->modified && b->filename[0] != '\0'
+        &&  !(b->flags & (BF_SYSTEM | BF_DIRED | BF_SHELL))) {
+            modified = 1;
+            break;
+        }
+    }
+
+    if (!modified)
+        return SB_OK;
+
+    if (flags & (SBF_EXAMINE | SBF_CONFIRM)) {
+        save_buffers_request_flags = flags;
+        return SB_SUSPEND;
+    }
+
+    /* synchronous saving is requested */
+    for (; b != NULL; b = b->next) {
+        if (!b->modified || b->filename[0] == '\0'
+        ||  (b->flags & (BF_SYSTEM | BF_DIRED | BF_SHELL)))
+            continue;
+
+        if (eb_save_buffer(b) < 0)
+            return SB_ABORTED;
+    }
+
+    return SB_OK;
+}
+
 /* mode handling */
 
 static int default_mode_init(EditState *s, EditBuffer *b, int flags) { return 0; }
@@ -5411,6 +5456,7 @@ typedef struct ExecCmdState {
     unsigned char args_type[MAX_CMD_ARGS];
     CmdArg args[MAX_CMD_ARGS];
     char default_input[512]; /* default input if none given */
+    QESaveBufferState ss[1];
 } ExecCmdState;
 
 /* Signature based dispatcher.
@@ -5627,6 +5673,8 @@ int qe_get_prototype(const CmdDef *d, char *buf, int size) {
     return out->len;
 }
 
+static void qe_stop_macro(QEmacsState *qs);
+
 static void arg_edit_cb(void *opaque, char *str, CompletionDef *completion);
 static void parse_arguments(ExecCmdState *es);
 static void free_cmd(ExecCmdState **esp);
@@ -5685,7 +5733,77 @@ void exec_command(EditState *s, const CmdDef *d, int argval, int key)
     es->nb_args++;
     es->ptype = argdesc;
 
+    save_buffers_request_completed = 0;
+
     parse_arguments(es);
+}
+
+static void cmd_save_buffer_key(QEmacsState *qs, void *opaque, int ch)
+{
+    ExecCmdState *es = opaque;
+    EditBuffer *b;
+
+    if (!es || !(b = qe_check_buffer(qs, &es->ss->b))) {
+        qe_ungrab_keys(qs);    // XXX: free grab data
+        put_error(qs->active_window, "&Deleted");
+        return;
+    }
+
+    switch (ch) {
+    case 'y':
+    case ' ':
+        /* save buffer */
+        goto do_save;
+    case 'n':
+    case KEY_DELETE:
+        es->ss->modified = 1;
+        break;
+    case 'q':
+    case KEY_RET:
+    case KEY_LF:
+        es->ss->state = SBS_NOSAVE;
+        es->ss->modified = 1;
+        break;
+    case '!':
+        /* save all buffers */
+        es->ss->state = SBS_SAVE;
+        goto do_save;
+    case '.':
+        /* save current and exit */
+        es->ss->state = SBS_NOSAVE;
+    do_save:
+        eb_save_buffer(b);
+        break;
+    case KEY_CTRL('g'):
+        /* abort */
+        qe_ungrab_keys(qs); // XXX: free grab data
+        put_error(qs->active_window, "&Quit");
+        return;
+    default:
+        /* get another key */
+        return;
+    }
+
+    es->ss->b = b->next;
+    parse_arguments(es);
+    qe_display(qs);
+}
+
+static void cmd_save_buffer_confirm_cb(void *opaque, char *reply, CompletionDef *completion)
+{
+    ExecCmdState *es = opaque;
+    if (!reply)
+        goto fail;
+    if (reply[0] == 'y' || reply[0] == 'Y') {
+        es->ss->flags &= ~SBF_EXAMINE;
+        save_buffers_request_completed = 1;
+        parse_arguments(es);
+    } else {
+    fail:
+        save_buffers_request_completed = 0;
+        free_cmd(&es);
+    }
+    qe_free(&reply);
 }
 
 /* parse as much arguments as possible. ask value to user if possible */
@@ -5778,6 +5896,42 @@ static void parse_arguments(ExecCmdState *es)
         }
     }
 
+    if (es->ss->flags & SBF_EXAMINE) {
+       /* scan each buffer and ask to save it if it was modified */
+        while (es->ss->b != NULL) {
+            EditBuffer *b = es->ss->b;
+            if (b->modified && b->filename[0] != '\0'
+            &&  !(b->flags & (BF_SYSTEM | BF_DIRED | BF_SHELL))) {
+                switch (es->ss->state) {
+                case SBS_ASK:
+                    qe_stop_macro(qs);
+                    qe_grab_keys(qs, cmd_save_buffer_key, es);
+                    put_status(s, "&Save file %s? (y, n, !, ., q) ", b->filename);
+                    return;
+                case SBS_NOSAVE:
+                    es->ss->modified = 1;
+                    break;
+                case SBS_SAVE:
+                    eb_save_buffer(b);
+                    break;
+                }
+            }
+            es->ss->b = es->ss->b->next;
+        }
+        qe_ungrab_keys(qs);
+
+        /* now optionally ask for confirmation then execute */
+        if (es->ss->modified && (es->ss->flags & SBF_CONFIRM)) {
+            qe_stop_macro(qs);
+            minibuffer_edit(s, NULL, "Modified buffers exist; proceed anyway? (yes or no) ",
+                            NULL, NULL, cmd_save_buffer_confirm_cb, es);
+            qe_display(qs);
+            return;
+        }
+        es->ss->flags &= ~SBF_EXAMINE;
+        put_status(s, "");
+    }
+
     /* all arguments are parsed: we can now execute the command */
     /* if not taken as argument, argval is handled as repetition count.
        A negative or zero count prevents executing the command, unless it
@@ -5809,6 +5963,11 @@ static void parse_arguments(ExecCmdState *es)
         this_buffer = s->b;
         call_func(d->sig, d->action, es->nb_args, es->args, es->args_type);
         qs->ec = ec;
+
+        /* asynchronous signal received */
+        if (save_buffers_request_flags)
+            break;
+
         if (s != qs->active_window || s->b != this_buffer) {
             // Stop repeating if window or buffer changed
             // XXX: maybe should follow qs->active_window
@@ -5818,6 +5977,19 @@ static void parse_arguments(ExecCmdState *es)
         }
         /* CG: This doesn't work if the function needs input */
         /* CG: Should test for abort condition */
+    }
+
+    if (save_buffers_request_flags) {
+        es->ss->flags = save_buffers_request_flags;
+        save_buffers_request_flags = 0;
+        save_buffers_request_completed = 1;
+
+        es->ss->b = qs->first_buffer;
+        es->ss->state = SBS_ASK;
+        es->ss->modified = 0;
+
+        parse_arguments(es);
+        return;
     }
 
     elapsed_time = get_clock_ms() - qs->cmd_start_time;
@@ -9657,23 +9829,6 @@ int qe_check_buffer_file(EditBuffer *b, int mode)
     return CBF_PROMPT;
 }
 
-enum QSState {
-    QS_ASK,
-    QS_NOSAVE,
-    QS_SAVE,
-};
-
-typedef struct QuitState {
-    enum QSState state;
-    int modified;
-    EditBuffer *b;
-    QEmacsState *qs;
-} QuitState;
-
-static void quit_examine_buffers(QEmacsState *qs, QuitState *is);
-static void quit_key(QEmacsState *qs, void *opaque, int ch);
-static void quit_confirm_cb(void *opaque, char *reply, CompletionDef *completion);
-
 static void do_suspend_qemacs(EditState *s, int argval)
 {
     QEditScreen *sp = s->screen;
@@ -9684,131 +9839,20 @@ static void do_suspend_qemacs(EditState *s, int argval)
 void do_exit_qemacs(EditState *s, int argval)
 {
     QEmacsState *qs = s->qs;
-    QuitState *is;
 
     if (argval != NO_ARG) {
         url_exit();
         return;
     }
 
-    is = qe_mallocz(QuitState);
-    if (!is)
+    if (qe_save_buffers(qs, SBF_EXAMINE | SBF_CONFIRM))
         return;
 
-    /* scan each buffer and ask to save it if it was modified */
-    is->modified = 0;
-    is->state = QS_ASK;
-    is->b = qs->first_buffer;
-    is->qs = qs;
-
-    qe_stop_macro(qs);
-    qe_grab_keys(qs, quit_key, is);
-    quit_examine_buffers(qs, is);
-}
-
-/* analyse next buffer and ask question if needed */
-static void quit_examine_buffers(QEmacsState *qs, QuitState *is)
-{
-    EditBuffer *b;
-
-    while (is->b != NULL) {
-        b = is->b;
-        if (b->modified && b->filename[0] != '\0'
-        &&  !(b->flags & (BF_SYSTEM | BF_DIRED | BF_SHELL))) {
-            switch (is->state) {
-            case QS_ASK:
-                /* XXX: display cursor */
-                put_status(qs->active_window,
-                           "&Save file %s? (y, n, !, ., q) ", b->filename);
-                /* will wait for a key */
-                return;
-            case QS_NOSAVE:
-                is->modified = 1;
-                break;
-            case QS_SAVE:
-                eb_save_buffer(b);
-                break;
-            }
-        }
-        is->b = is->b->next;
-    }
-    qe_ungrab_keys(qs);
-
-    /* now asks for confirmation or exit directly */
-    if (is->modified) {
-        qe_stop_macro(qs);
-        minibuffer_edit(qs->active_window,
-                        NULL, "Modified buffers exist; exit anyway? (yes or no) ",
-                        NULL, NULL, quit_confirm_cb, NULL);
-        qe_display(qs);
-    } else {
 #ifdef CONFIG_SESSION
-        if (use_session_file)
-            do_save_session(qs->active_window, 0);
+    if (use_session_file)
+        do_save_session(qs->active_window, 0);
 #endif
-        url_exit();
-    }
-    qe_free(&is);
-}
-
-static void quit_key(QEmacsState *qs, void *opaque, int ch)
-{
-    QuitState *is = opaque;
-    EditBuffer *b;
-
-    if (!is || !(b = qe_check_buffer(qs, &is->b))) {
-        qe_ungrab_keys(qs);
-        put_error(qs->active_window, "&Deleted");
-        return;
-    }
-
-    switch (ch) {
-    case 'y':
-    case ' ':
-        /* save buffer */
-        goto do_save;
-    case 'n':
-    case KEY_DELETE:
-        is->modified = 1;
-        break;
-    case 'q':
-    case KEY_RET:
-    case KEY_LF:
-        is->state = QS_NOSAVE;
-        is->modified = 1;
-        break;
-    case '!':
-        /* save all buffers */
-        is->state = QS_SAVE;
-        goto do_save;
-    case '.':
-        /* save current and exit */
-        is->state = QS_NOSAVE;
-    do_save:
-        eb_save_buffer(b);
-        break;
-    case KEY_CTRL('g'):
-        /* abort */
-        qe_ungrab_keys(qs);
-        put_error(qs->active_window, "&Quit");
-        return;
-    default:
-        /* get another key */
-        return;
-    }
-    is->b = b->next;
-    quit_examine_buffers(qs, is);
-}
-
-static void quit_confirm_cb(qe__unused__ void *opaque,
-                            char *reply,
-                            qe__unused__ CompletionDef *completion)
-{
-    if (!reply)
-        return;
-    if (reply[0] == 'y' || reply[0] == 'Y')
-        url_exit();
-    qe_free(&reply);
+    url_exit();
 }
 
 /*----------------*/

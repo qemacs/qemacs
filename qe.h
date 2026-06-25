@@ -1404,6 +1404,22 @@ static inline void cp_set_style1(QETermStyle *p, int style) {
     *p = style;
 }
 
+/* buffer examination */
+
+typedef struct QESaveBufferState {
+    int modified;
+#define SBF_EXAMINE   1  // modified buffers should be examined
+#define SBF_CONFIRM   2  // command execution should be confirmed if modified
+    int flags : 16;
+#define SBS_ASK       1
+#define SBS_SAVE      2
+#define SBS_NOSAVE    3
+    int state : 16;
+    EditBuffer *b;
+} QESaveBufferState;
+
+int qe_save_buffers(QEmacsState *qs, int flags);
+
 /* input.c */
 
 #define INPUTMETHOD_NOMATCH   (-1)
