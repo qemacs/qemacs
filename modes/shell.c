@@ -3443,9 +3443,11 @@ static void shell_delete_bytes(EditState *e, int offset, int size)
 
 static void do_shell_newline(EditState *e)
 {
-    struct timespec ts;
-
     if (e->interactive) {
+        struct timespec ts;
+
+        if (qe_save_buffers(e->qs, SBF_EXAMINE))
+            return;
         shell_write_char(e, '\r');
         /* give the process a chance to handle the input */
         ts.tv_sec = 0;
@@ -3922,6 +3924,9 @@ static void do_compile(EditState *s, const char *cmd)
     EditBuffer *b;
 
     if (s->flags & (WF_POPUP | WF_MINIBUF))
+        return;
+
+    if (qe_save_buffers(s->qs, SBF_EXAMINE))
         return;
 
     get_default_path(s->b, s->offset, curpath, sizeof curpath);
