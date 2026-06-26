@@ -1894,9 +1894,9 @@ static const CmdDef dired_commands[] = {
     CMD1( "dired-right", "right",
           "Select the current entry in preview mode",
           dired_select, 0)
-    CMD0( "dired-tab", "TAB",
+    CMD3( "dired-tab", "TAB",
           "Move focus to the current file",
-          do_other_window)
+          do_other_window, ESi, "#" "v", 1)
     /* dired-abort should restore previous buffer in right-window */
     CMD1( "dired-abort", "C-g, q",
           "Quit the dired mode",
@@ -2140,12 +2140,12 @@ static int filelist_mode_init(EditState *s, EditBuffer *b, int flags)
 }
 
 static const CmdDef filelist_commands[] = {
-    CMD2( "filelist-select", "RET, LF, right",
+    CMD3( "filelist-select", "RET, LF, right",
           "Select the current entry",
-          do_other_window, ES, "#")
-    CMD2( "filelist-tab", "TAB",
-          "Select the current entry",
-          do_other_window, ES, "#")
+          do_other_window, ESi, "#" "p", 1)
+    CMD3( "filelist-tab", "TAB",
+          "Move focus to the current file",
+          do_other_window, ESi, "#" "v", 1)
     /* filelist-abort should restore previous buffer in right-window
      * or at least exit preview mode */
     CMD1( "filelist-abort", "C-g",
