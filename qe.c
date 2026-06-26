@@ -5688,6 +5688,7 @@ void exec_command(EditState *s, const CmdDef *d, int argval, int key)
 static void parse_arguments(ExecCmdState *es)
 {
     EditState *s = es->s;
+    EditBuffer *this_buffer;
     QEmacsState *qs = s->qs;
     QErrorContext ec;
     const CmdDef *d = es->d;
@@ -5801,11 +5802,18 @@ static void parse_arguments(ExecCmdState *es)
         /* Save and restore ec context */
         ec = qs->ec;
         qs->ec.function = d->name;
+        this_buffer = s->b;
         call_func(d->sig, d->action, es->nb_args, es->args, es->args_type);
         qs->ec = ec;
+        if (s != qs->active_window || s->b != this_buffer) {
+            // Stop repeating if window or buffer changed
+            // XXX: maybe should follow qs->active_window
+            if (qe_check_window(qs, &s))
+                s->multi_cursor_active = 0;
+            break;
+        }
         /* CG: This doesn't work if the function needs input */
         /* CG: Should test for abort condition */
-        /* CG: Should follow qs->active_window ? */
     }
 
     elapsed_time = get_clock_ms() - qs->cmd_start_time;
@@ -8560,7 +8568,7 @@ void do_switch_to_buffer(EditState *s, const char *bufname)
 
 int qe_count_buffers(QEmacsState *qs, EditBuffer *b0, int *countp, int mask, int val) {
     EditBuffer *b;
-    int index = 0, count = 0;
+    int index = -1, count = 0;
     for (b = qs->first_buffer; b; b = b->next) {
         if (b == b0)
             index = count;
@@ -8590,14 +8598,13 @@ void do_buffer_navigation(EditState *s, int n)
 {
     QEmacsState *qs = s->qs;
     int buffer_index, buffer_count, new_index;
-    EditBuffer *b;
 
     /* ignore command from the minibuffer and popups */
     if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
 
     buffer_index = qe_count_buffers(qs, s->b, &buffer_count, BF_SYSTEM, 0);
-    if (buffer_count < 1)
+    if (buffer_count < 1 || buffer_index < 0)
         return;
     if (!qs->first_transient_key) {
         put_status(s, "Buffer navigation, repeat with <left> and <right>");
@@ -8606,7 +8613,7 @@ void do_buffer_navigation(EditState *s, int n)
     }
     new_index = (buffer_index + n % buffer_count + buffer_count) % buffer_count;
     if (new_index != buffer_index) {
-        b = qe_get_buffer_from_index(qs, new_index, BF_SYSTEM, 0);
+        EditBuffer *b = qe_get_buffer_from_index(qs, new_index, BF_SYSTEM, 0);
         if (b)
             switch_to_buffer(s, b);
     }
@@ -9933,6 +9940,32 @@ void do_refresh_complete(EditState *s)
     }
 }
 
+static int qe_count_windows(QEmacsState *qs, EditState *s0, int *countp, int mask, int val) {
+    EditState *s;
+    int index = -1, count = 0;
+    for (s = qs->first_window; s; s = s->next_window) {
+        if (s == s0)
+            index = count;
+        if ((s->flags & mask) == val)
+            count++;
+    }
+    if (countp)
+        *countp = count;
+    return index;
+}
+
+static EditState *qe_get_window_from_index(QEmacsState *qs, int index, int mask, int val) {
+    EditState *s;
+    for (s = qs->first_window; s; s = s->next_window) {
+        if ((s->flags & mask) == val) {
+            if (index == 0)
+                return s;
+            index--;
+        }
+    }
+    return NULL;
+}
+
 EditState *get_next_window(EditState *s, int mask, int val)
 {
     QEmacsState *qs = s->qs;
@@ -9983,23 +10016,24 @@ static EditState **get_window_link(EditState *s)
     return NULL;
 }
 
-void do_other_window(EditState *s)
+void do_other_window(EditState *s, int n)
 {
-    EditState *e = get_next_window(s, 0, 0);
-    if (e) {
-        if (e->flags & WF_POPUP)
-            return;
-        if (e->flags & WF_MINIBUF)
-            edit_invalidate(e, 0);
-        s->qs->active_window = e;
-    }
-}
+    QEmacsState *qs = s->qs;
+    int window_index, window_count, new_index;
 
-void do_previous_window(EditState *s)
-{
-    EditState *e = get_previous_window(s, 0, 0);
-    if (e) {
-        s->qs->active_window = e;
+    /* ignore command from popups */
+    if (s->flags & WF_POPUP)
+        return;
+
+    window_index = qe_count_windows(qs, s, &window_count, WF_POPUP | WF_HIDDEN, 0);
+    if (window_count < 1 || window_index < 0)
+        return;
+
+    new_index = (window_index + n % window_count + window_count) % window_count;
+    if (new_index != window_index) {
+        EditState *e = qe_get_window_from_index(qs, new_index, WF_POPUP | WF_HIDDEN, 0);
+        if (e)
+            qs->active_window = e;
     }
 }
 
@@ -11830,13 +11864,13 @@ static const CmdDef basic_commands[] = {
     /* should merge these functions */
     CMD2( "other-window", "C-x o",
           "Move the focus to another window",
-          do_other_window, ES, "#")
+          do_other_window, ESi, "#" "p")
     CMD2( "next-window", "C-x n",
           "Move the focus to the next window",
-          do_other_window, ES, "#")
+          do_other_window, ESi, "#" "p")
     CMD2( "previous-window", "C-x p",
           "Move the focus to the previous window",
-          do_previous_window, ES, "#")
+          do_other_window, ESi, "#" "q")
     CMD2( "window-swap-states", "C-x /",
           "Swap the states of the current and next windows",
           do_window_swap_states, ES, "#")

@@ -1556,9 +1556,7 @@ void qe_kill_buffer(QEmacsState *qs, EditBuffer *b);
 int get_glyph_width(QEditScreen *screen, EditState *s, QETermStyle style, char32_t c);
 int get_line_height(QEditScreen *screen, EditState *s, QETermStyle style);
 void do_refresh(EditState *s);
-// should take direction argument
-void do_other_window(EditState *s);
-void do_previous_window(EditState *s);
+void do_other_window(EditState *s, int n);
 void do_window_swap_states(EditState *s);
 void do_delete_window(EditState *s, int force);
 #define SW_STACKED       0x01
