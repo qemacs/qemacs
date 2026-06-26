@@ -326,7 +326,7 @@ static QVarType qe_variable_set_value_style(EditState *s, VarDef *vp, void *ptr,
                                             const char *value, int num)
 {
     QETermStyle style = num;
-    if (value && qe_term_get_style(&style, value)) {
+    if (value && qe_term_style_parse(&style, value)) {
         const char *p;
         style = strtol_c(value, &p, 0);
         if (*p)

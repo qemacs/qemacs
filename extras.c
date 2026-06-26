@@ -1748,7 +1748,7 @@ static int str_get_word7(char *buf, int size, const char *p, const char **pp)
     return len;
 }
 
-int qe_term_get_style(QETermStyle *style, const char *str)
+int qe_term_style_parse(QETermStyle *style, const char *str)
 {
     char buf[128];
     QEColor fg_color, bg_color;
@@ -1790,6 +1790,55 @@ int qe_term_get_style(QETermStyle *style, const char *str)
     bg = qe_map_color(bg_color, xterm_colors, QE_TERM_BG_COLORS, NULL);
 
     *style = QE_TERM_COMPOSITE | attr | QE_TERM_MAKE_COLOR(fg, bg);
+    return 0;
+}
+
+int qe_styledef_parse(QEStyleDef *stp, const char *str)
+{
+    char buf[128];
+    QEColor bg_color = COLOR_TRANSPARENT;
+    QEColor fg_color = COLOR_TRANSPARENT;
+    short font_style = 0;
+    short font_size = 12;
+    const char *p = str;
+
+    while (str_get_word7(buf, sizeof(buf), p, &p)) {
+
+        if (strfind("bold|strong", buf)) {
+            font_style |= QE_FONT_STYLE_BOLD;
+            continue;
+        }
+        if (strfind("italic|italics", buf)) {
+            font_style |= QE_FONT_STYLE_ITALIC;
+            continue;
+        }
+        if (strfind("underlined|underline", buf)) {
+            font_style |= QE_FONT_STYLE_UNDERLINE;
+            continue;
+        }
+        if (strfind("blinking|blink", buf)) {
+            font_style |= QE_FONT_STYLE_BLINK;
+            continue;
+        }
+        if (!css_get_color(&fg_color, buf)) {
+            continue;
+        }
+        if (strfind("/|on", buf)) {
+            str_get_word7(buf, sizeof(buf), p, &p);
+            if (!css_get_color(&bg_color, buf))
+                continue;
+        }
+        // XXX parse font name, type...
+        if (qe_isdigit((unsigned char)*p)) {
+            font_size = (short)strtol_c(p, &p, 10);
+            strstart(p, "pt", &p);
+        }
+        return 1;
+    }
+    stp->bg_color = bg_color;
+    stp->fg_color = fg_color;
+    stp->font_style = font_style;
+    stp->font_size = font_size;
     return 0;
 }
 
@@ -1915,6 +1964,45 @@ static void do_set_style_color(EditState *e, const char *stylestr, const char *v
     e->qs->complete_refresh = 1;
 }
 
+static void do_set_default_style(EditState *s, const char *str)
+{
+    QEStyleDef styledef;
+
+    if (qe_styledef_parse(&styledef, str)) {
+        put_error(s, "Invalid style: %s", str);
+        return;
+    }
+
+    qe_styles[QE_STYLE_DEFAULT] = styledef;
+    s->qs->complete_refresh = 1;
+}
+
+static void do_set_background_color(EditState *s, const char *str)
+{
+    QEColor bg_color;
+
+    if (css_get_color(&bg_color, str)) {
+        put_error(s, "Invalid color '%s'", str);
+        return;
+    }
+
+    qe_styles[QE_STYLE_DEFAULT].bg_color = bg_color;
+    s->qs->complete_refresh = 1;
+}
+
+static void do_set_foreground_color(EditState *s, const char *str)
+{
+    QEColor fg_color;
+
+    if (css_get_color(&fg_color, str)) {
+        put_error(s, "Invalid color '%s'", str);
+        return;
+    }
+
+    qe_styles[QE_STYLE_DEFAULT].fg_color = fg_color;
+    s->qs->complete_refresh = 1;
+}
+
 static void do_set_region_color(EditState *s, const char *str)
 {
     int offset, size;
@@ -1923,7 +2011,7 @@ static void do_set_region_color(EditState *s, const char *str)
     /* deactivate region hilite */
     s->region_style = 0;
 
-    if (qe_term_get_style(&style, str)) {
+    if (qe_term_style_parse(&style, str)) {
         put_error(s, "Invalid color '%s'", str);
         return;
     }
@@ -2261,6 +2349,7 @@ static void do_describe_window(EditState *s, int argval)
     eb_print_field(b1, "force_highlight", "%d\n", s->force_highlight);
     eb_print_field(b1, "mouse_force_highlight", "%d\n", s->mouse_force_highlight);
     eb_print_field(b1, "colorize_mode", "%s\n", s->colorize_mode ? s->colorize_mode->name : "none");
+    // XXX display style definition
     eb_print_field(b1, "default_style", "%lld\n", (long long)s->default_style);
     eb_print_field(b1, "buffer", "%s\n", s->b->name);
     if (s->last_buffer)
@@ -3638,6 +3727,18 @@ static const CmdDef extra_commands[] = {
           do_describe_prefix_bindings, ESs, "@{C-x RET}")
 
     /* XXX: should take region as argument, implicit from keyboard */
+    CMD2( "set-default-style", "",
+          "Set the definition of the default style",
+          do_set_default_style, ESs,
+          "s{Style definition: }[style]|style|")
+    CMD2( "set-background-color", "",
+          "Set the default background color for current frame",
+          do_set_background_color, ESs,
+          "s{Select color: }[.color]|color|")
+    CMD2( "set-foreground-color", "",
+          "Set the default text color for current frame",
+          do_set_foreground_color, ESs,
+          "s{Select color: }[.color]|color|")
     CMD2( "set-region-color", "C-c c",
           "Set the color for the current region",
           do_set_region_color, ESs,

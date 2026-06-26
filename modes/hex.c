@@ -169,12 +169,7 @@ static const CmdDef hex_commands[] = {
 static int binary_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
-        int num_width;
-
-        /* get typical number width */
-        num_width = get_glyph_width(s->screen, s, QE_STYLE_DEFAULT, '0');
-
-        s->dump_width = s->screen->width / num_width;
+        s->dump_width = s->screen->width / s->char_width;
         if (s->b->flags & BF_PREVIEW)
             s->dump_width = s->dump_width * 4 / 5;
 

@@ -238,7 +238,7 @@ static int x11_dpy_init(QEditScreen *s, QEmacsState *qs, int w, int h)
     /* At this point, we should be able to ask for metrics */
     if (font_ptsize)
         qe_styles[0].font_size = font_ptsize;
-    get_style(NULL, &default_style, 0);
+    get_style(&default_style, 0, 0);
     font = x11_dpy_open_font(s, default_style.font_style,
                           default_style.font_size);
     if (!font) {

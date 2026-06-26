@@ -38,9 +38,11 @@ typedef struct HistoryEntry {
     char name[32];
 } HistoryEntry;
 
-void print_at_byte(QEditScreen *screen,
-                   int x, int y, int width, int height,
-                   const char *str, QETermStyle style);
+enum { PB_DEFAULT = 0, PB_RIGHT = 1, PB_NO_TEXT = 4 };
+static void print_at_byte(QEditScreen *screen,
+                          int x, int y, int width, int height,
+                          const char *str, QETermStyle style1,
+                          QETermStyle style2, int flags);
 static EditBuffer *predict_switch_to_buffer(EditState *s);
 static void qe_key_process(QEmacsState *qs, int key);
 
@@ -3479,7 +3481,9 @@ void display_mode_line(EditState *s)
         if (!strequal(buf, s->modeline_shadow)) {
             print_at_byte(s->screen, s->xleft, y, s->width,
                           s->qs->mode_line_height,
-                          buf, QE_STYLE_MODE_LINE);
+                          buf, QE_STYLE_MODE_LINE,
+                          !(s->flags & (WF_ACTIVE | WF_POPUP | WF_MINIBUF)) ?
+                          QE_STYLE_MODE_LINE_INACTIVE : 0, PB_DEFAULT);
             pstrcpy(s->modeline_shadow, sizeof(s->modeline_shadow), buf);
         }
     }
@@ -3531,7 +3535,9 @@ void display_window_borders(EditState *e)
                     for (len = 0; len < 256 && e->caption[len]; len++) {
                         buf[len] = e->caption[len];
                     }
-                    get_style(e, &styledef, QE_STYLE_WINDOW_BORDER);
+                    get_style(&styledef, QE_STYLE_WINDOW_BORDER,
+                              !(e->flags & (WF_ACTIVE | WF_POPUP | WF_MINIBUF)) ?
+                              QE_STYLE_WINDOW_BORDER_INACTIVE : 0);
                     font = select_font(qs->screen,
                                        styledef.font_style, styledef.font_size);
                     text_metrics(qs->screen, font, &metrics, buf, len);
@@ -3623,14 +3629,14 @@ static void apply_style(QEStyleDef *stp, QETermStyle style)
     }
 }
 
-void get_style(EditState *e, QEStyleDef *stp, QETermStyle style)
+void get_style(QEStyleDef *stp, QETermStyle window_style, QETermStyle style)
 {
     /* get root default style */
     *stp = qe_styles[QE_STYLE_DEFAULT];
 
     /* apply window default style */
-    if (e && e->default_style != 0)
-        apply_style(stp, e->default_style);
+    if (window_style)
+        apply_style(stp, window_style);
 
     /* apply specific style */
     if (style != 0)
@@ -3926,7 +3932,15 @@ void display_init(DisplayState *ds, EditState *e, enum DisplayType do_disp,
         }
     }
     /* select default values */
-    get_style(e, &styledef, QE_STYLE_DEFAULT);
+    e->window_style = QE_STYLE_WINDOW;
+    if (!(e->flags & (WF_ACTIVE | WF_POPUP | WF_MINIBUF)))
+        e->window_style = QE_STYLE_WINDOW_INACTIVE;
+    if (e->mode && e->mode->default_style)
+        e->window_style = e->mode->default_style;
+    if (e->default_style)
+        e->window_style = e->default_style;
+    ds->window_style = e->window_style;
+    get_style(&styledef, ds->window_style, 0);
     font = select_font(e->screen, styledef.font_style, styledef.font_size);
     ds->default_line_height = font->ascent + font->descent;
     ds->space_width = glyph_width(e->screen, font, ' ');
@@ -4085,7 +4099,8 @@ static void flush_line(DisplayState *ds,
             }
             if (ds->line_num < e->shadow_nb_lines && !disable_crc) {
                 QELineShadow *ls;
-                uint64_t crc = ds->line_style + e->region_style * 0x100L + e->default_style * 0x10000L;
+                uint64_t crc = ds->line_style + e->region_style * 0x100L +
+                    e->window_style * 0x10000L + e->flags * 0x1000000L;
 
                 crc = compute_crc(fragments, sizeof(*fragments) * nb_fragments, crc);
                 crc = compute_crc(ds->line_chars, sizeof(*ds->line_chars) * ds->line_index, crc);
@@ -4105,15 +4120,7 @@ static void flush_line(DisplayState *ds,
         if (!no_display) {
             /* display */
             QEStyleDef default_style;
-#if 1
-            get_style(e, &default_style, ds->line_style);
-#else
-            default_style = qe_styles[QE_STYLE_DEFAULT];
-            if (e && e->default_style != 0)
-                apply_style(&default_style, e->default_style);
-            if (ds->line_style)
-                apply_style(&default_style, ds->line_style);
-#endif
+            get_style(&default_style, ds->window_style, ds->line_style);
             x = ds->x_start;
             y = ds->y;
 
@@ -4121,7 +4128,7 @@ static void flush_line(DisplayState *ds,
             /* XXX: should coalesce rectangles with identical style */
             if (ds->left_gutter > 0) {
                 /* erase space before the line display, aka left gutter */
-                get_style(e, &styledef, QE_STYLE_GUTTER);
+                get_style(&styledef, ds->window_style, QE_STYLE_GUTTER);
                 fill_rectangle(screen, e->xleft + x, e->ytop + y,
                                ds->left_gutter, line_height, styledef.bg_color);
             }
@@ -4130,13 +4137,9 @@ static void flush_line(DisplayState *ds,
             // XXX: handle curline_style and other line styles
             for (i = 0; i < nb_fragments && x < x1; i++) {
                 frag = &fragments[i];
-#if 0
-                get_style(e, &styledef, frag->style);
-#else
                 styledef = default_style;
                 if (frag->style)
                     apply_style(&styledef, frag->style);
-#endif
                 // XXX: should not fill if transparent
                 fill_rectangle(screen, e->xleft + x, e->ytop + y,
                                frag->width, line_height, styledef.bg_color);
@@ -4149,7 +4152,7 @@ static void flush_line(DisplayState *ds,
             }
             if (x1 < e->width) {
                 /* right gutter like space beyond terminal right margin */
-                get_style(e, &styledef, QE_STYLE_GUTTER);
+                get_style(&styledef, ds->window_style, QE_STYLE_GUTTER);
                 fill_rectangle(screen, e->xleft + x1, e->ytop + y,
                                e->width - x1, line_height, styledef.bg_color);
             }
@@ -4162,13 +4165,9 @@ static void flush_line(DisplayState *ds,
                 frag = &fragments[i];
                 x += frag->width;
                 if (x > 0) {
-#if 0
-                    get_style(e, &styledef, frag->style);
-#else
                     styledef = default_style;
                     if (frag->style)
                         apply_style(&styledef, frag->style);
-#endif
                     font = select_font(screen,
                                        styledef.font_style, styledef.font_size);
                     draw_text(screen, font,
@@ -4361,7 +4360,7 @@ static void flush_fragment(DisplayState *ds)
     }
 
     style = ds->last_style;
-    get_style(ds->edit_state, &styledef, style);
+    get_style(&styledef, ds->window_style, style);
     /* select font according to current style */
     font = select_font(screen, styledef.font_style, styledef.font_size);
     j = ds->line_index;
@@ -5351,7 +5350,7 @@ static void generic_text_display(EditState *s)
     /* display the remaining region */
     if (ds->y < s->height) {
         QEStyleDef default_style;
-        get_style(s, &default_style, QE_STYLE_DEFAULT);
+        get_style(&default_style, ds->window_style, QE_STYLE_DEFAULT);
         fill_rectangle(s->screen, s->xleft, s->ytop + ds->y,
                        s->width, s->height - ds->y,
                        default_style.bg_color);
@@ -5973,6 +5972,15 @@ void qe_display(QEmacsState *qs)
         }
     }
 
+    if (qs->complete_refresh) {
+        // erase status area
+        QEStyleDef styledef;
+        get_style(&styledef, QE_STYLE_STATUS, 0);
+        fill_rectangle(qs->screen, 0, qs->screen->height - qs->status_height,
+                       qs->screen->width, qs->status_height,
+                       styledef.bg_color);
+    }
+
     /* refresh normal windows and minibuf with popup kludge */
     for (s = qs->first_window; s != NULL; s = s->next_window) {
         if (s->flags & WF_POPUP)
@@ -6010,13 +6018,11 @@ void qe_display(QEmacsState *qs)
 
         if (*qs->status_shadow && !has_minibuf) {
             print_at_byte(qs->screen, x, y, width, height,
-                          qs->status_shadow, QE_STYLE_STATUS);
+                          qs->status_shadow, QE_STYLE_STATUS, 0, PB_DEFAULT);
         }
         if (*qs->diag_shadow) {
-            int w = strlen(qs->diag_shadow) + 1;
-            w *= get_glyph_width(qs->screen, NULL, QE_STYLE_STATUS, '0');
-            print_at_byte(qs->screen, x + width - w, y, w, height,
-                          qs->diag_shadow, QE_STYLE_STATUS);
+            print_at_byte(qs->screen, x, y, width, height,
+                          qs->diag_shadow, QE_STYLE_STATUS, 0, PB_RIGHT);
         }
     }
 
@@ -6867,12 +6873,29 @@ static void qe_key_process(QEmacsState *qs, int key)
             }
             exec_command(s, d, argval, key);
             if (s != qs->active_window || s->b != this_buffer) {
+                if (!qs->active_window && !(qs->active_window = qs->first_window)) {
+                    /* no window left: nothing further to do */
+                    return;
+                }
                 if (qe_check_window(qs, &s)) {
-                    /* end multi-cursor session upto window or buffer change */
+                    /* end multi-cursor session upon window or buffer change */
                     s->multi_cursor_active = 0;
                 }
-                if (!qs->key_ctx.grab_key_cb && qs->active_window) {
-                    qe_check_buffer_file(qs->active_window->b, CBF_CHECK);
+                s = qs->active_window;
+                if (!(s->flags & (WF_MINIBUF | WF_POPUP))) {
+                    /* update active window flag */
+                    EditState *e;
+                    for (e = qs->first_window; e; e = e->next_window) {
+                        if (e->flags & WF_ACTIVE) {
+                            e->flags &= ~WF_ACTIVE;
+                            e->borders_invalid = 1;
+                        }
+                    }
+                    s->flags |= WF_ACTIVE;
+                    s->borders_invalid = 1;
+                }
+                if (!qs->key_ctx.grab_key_cb) {
+                    qe_check_buffer_file(s->b, CBF_CHECK);
                 }
             } else
             if (multi_cursor_active) {
@@ -6930,19 +6953,32 @@ static void qe_key_process(QEmacsState *qs, int key)
 }
 
 /* Print a UTF-8 encoded buffer as unicode */
-void print_at_byte(QEditScreen *screen,
-                   int x, int y, int width, int height,
-                   const char *str, QETermStyle style)
+static void print_at_byte(QEditScreen *screen,
+                          int x, int y, int width, int height,
+                          const char *str, QETermStyle style1,
+                          QETermStyle style2, int flags)
 {
     char32_t ubuf[MAX_SCREEN_WIDTH];
-    int len;
+    int len, space = 0, w;
     QEStyleDef styledef;
+    QECharMetrics metrics;
     QEFont *font;
     CSSRect rect;
 
     len = utf8_to_char32(ubuf, countof(ubuf), str);
-    get_style(NULL, &styledef, style);
+    get_style(&styledef, style1, style2);
+    font = select_font(screen, styledef.font_style, styledef.font_size);
 
+    if (flags & PB_RIGHT) {
+        char32_t buf[1];
+        buf[0] = '0';
+        text_metrics(screen, font, &metrics, buf, 1);
+        space = metrics.width;
+        text_metrics(screen, font, &metrics, ubuf, len);
+        w = min_int(space + metrics.width, width);
+        x += width - w;
+        width = w;
+    }
     /* clip rectangle */
     rect.x1 = x;
     rect.y1 = y;
@@ -6952,8 +6988,8 @@ void print_at_byte(QEditScreen *screen,
 
     /* start rectangle */
     fill_rectangle(screen, x, y, width, height, styledef.bg_color);
-    font = select_font(screen, styledef.font_style, styledef.font_size);
-    draw_text(screen, font, x, y + font->ascent, ubuf, len, styledef.fg_color);
+    if (!(flags & PB_NO_TEXT))
+        draw_text(screen, font, x + space, y + font->ascent, ubuf, len, styledef.fg_color);
     release_font(screen, font);
 }
 
@@ -7085,18 +7121,16 @@ void put_status(EditState *s, const char *fmt, ...)
         if (diag) {
             if (force || !strequal(p, qs->diag_shadow)) {
                 /* right align display and overwrite last diag message */
-                int w = strlen(qs->diag_shadow);
-                w = snprintf(qs->diag_shadow, sizeof(qs->diag_shadow),
-                             "%*s", w, p) + 1;
-                w *= get_glyph_width(qs->screen, NULL, QE_STYLE_STATUS, '0');
-                print_at_byte(qs->screen, x + width - w, y, w, height,
-                              qs->diag_shadow, QE_STYLE_STATUS);
+                print_at_byte(qs->screen, x, y, width, height,
+                              qs->diag_shadow, QE_STYLE_STATUS, 0, PB_RIGHT | PB_NO_TEXT);
                 pstrcpy(qs->diag_shadow, sizeof(qs->diag_shadow), p);
+                print_at_byte(qs->screen, x, y, width, height,
+                              qs->diag_shadow, QE_STYLE_STATUS, 0, PB_RIGHT);
             }
         } else {
             if (force || !strequal(p, qs->status_shadow)) {
                 print_at_byte(qs->screen, x, y, width, height,
-                              p, QE_STYLE_STATUS);
+                              p, QE_STYLE_STATUS, 0, PB_DEFAULT);
                 pstrcpy(qs->status_shadow, sizeof(qs->status_shadow), p);
             }
         }
@@ -9767,7 +9801,7 @@ int get_glyph_width(QEditScreen *screen, EditState *s, QETermStyle style, char32
     QEFont *font;
     int width = 1;
 
-    get_style(s, &styledef, style);
+    get_style(&styledef, s ? s->default_style : QE_STYLE_WINDOW, style);
     font = select_font(screen, styledef.font_style, styledef.font_size);
     if (font) {
         width = glyph_width(screen, font, c);
@@ -9782,7 +9816,7 @@ int get_line_height(QEditScreen *screen, EditState *s, QETermStyle style)
     QEFont *font;
     int height = 1;
 
-    get_style(s, &styledef, style);
+    get_style(&styledef, s ? s->default_style : QE_STYLE_WINDOW, style);
     font = select_font(screen, styledef.font_style, styledef.font_size);
     if (font) {
         height = font->ascent + font->descent;
@@ -12281,7 +12315,7 @@ static int qe_init(void *opaque)
     qe_data_init(qs);
     charset_init(qs);
     qe_input_methods_init(qs);
-    colors_init();
+    colors_init(qe_styles[0].fg_color, qe_styles[0].bg_color);
 
 #ifdef CONFIG_ALL_KMAPS
     if (qe_find_resource_file(qs, filename, sizeof(filename), "kmaps") >= 0)

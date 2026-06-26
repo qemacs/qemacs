@@ -757,6 +757,7 @@ struct EditState {
     ModeDef *colorize_mode;
 
     QETermStyle default_style;  /* default text style */
+    QETermStyle window_style;  /* style for the current display */
 
     /* after this limit, the fields are not saved into the buffer */
     int end_of_saved_data;
@@ -807,6 +808,7 @@ struct EditState {
 #define WF_POPLEFT    0x0008 /* left side window */
 #define WF_HIDDEN     0x0010 /* hidden window, used for temporary changes */
 #define WF_MINIBUF    0x0020 /* true if single line editing */
+#define WF_ACTIVE     0x0040 /* true if window is active or minibuf target */
 #define WF_FILELIST   0x1000 /* window is interactive file list */
 
     OWNED char *prompt;  /* optional window prompt, utf8 */
@@ -902,6 +904,7 @@ struct ModeDef {
     int colorize_flags;
     int auto_indent;
     int default_wrap;
+    QETermStyle default_style;
 
     /* common functions are defined here */
     /* TODO: Should have single move function with move type and argument */
@@ -1327,6 +1330,7 @@ struct DisplayState {
     EditState *edit_state;
     QETermStyle style;   /* current style for display_printf... */
     QETermStyle line_style; /* style of the current line... */
+    QETermStyle window_style;
 
 #if 0
     QEFont *font;
@@ -1721,7 +1725,7 @@ void fill_window_slack(EditState *s, int x, int y, int w, int h, int color);
 int find_style_index(const char *name);
 QEStyleDef *find_style(const char *name);
 void style_complete(CompleteState *cp, CompleteFunc enumerate);
-void get_style(EditState *e, QEStyleDef *stp, QETermStyle style);
+void get_style(QEStyleDef *stp, QETermStyle window_style, QETermStyle style);
 void style_property_complete(CompleteState *cp, CompleteFunc enumerate);
 int find_style_property(const char *name);
 void do_define_color(EditState *e, const char *name, const char *value);
@@ -1905,9 +1909,10 @@ void do_show_bindings(EditState *s, const char *cmd_name);
 void do_describe_bindings(EditState *s, int argval);
 void do_apropos(EditState *s, const char *str);
 
-int qe_term_get_style(QETermStyle *style, const char *str);
-int qe_term_style_string(char *dest, size_t size, QETermStyle style);
+int qe_styledef_parse(QEStyleDef *stp, const char *str);
 int qe_styledef_string(char *dest, size_t size, const QEStyleDef *stp);
+int qe_term_style_parse(QETermStyle *style, const char *str);
+int qe_term_style_string(char *dest, size_t size, QETermStyle style);
 int color_print_entry(CompleteState *cp, EditState *s, const char *name);
 int style_print_entry(CompleteState *cp, EditState *s, const char *name);
 
