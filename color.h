@@ -43,6 +43,7 @@ typedef uint32_t QEColor;
 #define QEARGB(a,r,g,b)    (((unsigned int)(a) << 24) | ((r) << 16) | ((g) << 8) | (b))
 #define QERGB(r,g,b)       QEARGB(0xff, r, g, b)
 #define QERGB25(r,g,b)     QEARGB(1, r, g, b)
+#define COLOR_DEFAULT      0
 #define COLOR_TRANSPARENT  0
 #define QERGB_ALPHA(c)     (((c) >> 24) & 255)
 #define QERGB_RED(c)       (((c) >> 16) & 255)
@@ -97,6 +98,9 @@ typedef uint64_t QETermStyle;
 #define QE_TERM_BG_SHIFT    32
 #define QE_TERM_FG_BITS     25
 #define QE_TERM_FG_SHIFT    0
+#undef QE_TERM_TRANSPARENT
+#define QE_TERM_DEF_FG      7
+#define QE_TERM_DEF_BG      0
 
 #elif 1   /* 8K colors for FG and BG */
 /* 32-bit style layout:
@@ -117,6 +121,9 @@ typedef uint32_t QETermStyle;
 #define QE_TERM_BG_SHIFT    19
 #define QE_TERM_FG_BITS     13
 #define QE_TERM_FG_SHIFT    0
+#define QE_TERM_TRANSPARENT 0x800   // first custom color
+#define QE_TERM_DEF_FG      0x801
+#define QE_TERM_DEF_BG      0x802
 
 #elif 1   /* 256 colors for FG and BG */
 /* 32-bit style layout for 256-color terminals:
@@ -137,6 +144,9 @@ typedef uint32_t QETermStyle;
 #define QE_TERM_BG_SHIFT    16
 #define QE_TERM_FG_BITS     8
 #define QE_TERM_FG_SHIFT    0
+#undef QE_TERM_TRANSPARENT
+#define QE_TERM_DEF_FG      7
+#define QE_TERM_DEF_BG      0
 
 #else   /* 16 colors for FG and 16 color BG */
 /* 16-bit style layout:
@@ -157,11 +167,12 @@ typedef uint16_t QETermStyle;
 #define QE_TERM_BG_SHIFT    0
 #define QE_TERM_FG_BITS     4
 #define QE_TERM_FG_SHIFT    4
+#undef QE_TERM_TRANSPARENT
+#define QE_TERM_DEF_FG      7
+#define QE_TERM_DEF_BG      0
 
 #endif
 
-#define QE_TERM_DEF_FG      7
-#define QE_TERM_DEF_BG      0
 #define QE_TERM_BG_COLORS   (1 << QE_TERM_BG_BITS)
 #define QE_TERM_FG_COLORS   (1 << QE_TERM_FG_BITS)
 #define QE_TERM_BG_MASK     ((QETermStyle)(QE_TERM_BG_COLORS - 1) << QE_TERM_BG_SHIFT)
@@ -178,6 +189,8 @@ typedef struct ColorDef {
 } ColorDef;
 
 extern QEColor const xterm_colors[];
+extern QEColor custom_colors[512];
+extern int nb_custom_colors;
 extern ColorDef *qe_colors;
 extern int nb_qe_colors;
 
@@ -218,7 +231,7 @@ static inline int css_is_inter_rect(const CSSRect *a, const CSSRect *b) {
               a->y2 <= b->y1 || a->y1 >= b->y2));
 }
 
-int colors_init(void);
+int colors_init(QEColor term_fg, QEColor term_bg);
 
 /*---- Font definitions ----*/
 

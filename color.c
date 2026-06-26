@@ -2,7 +2,7 @@
  * Colors for qemacs.
  *
  * Copyright (c) 2001 Fabrice Bellard.
- * Copyright (c) 2002-2024 Charlie Gordon.
+ * Copyright (c) 2002-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -111,6 +111,7 @@ static ColorDef const default_colors[] = {
     { "white",                rgb(255,255,255) }, // #FFFFFF  hsl(0,0%,100%)
     { "yellow",               rgb(255,255,0)   }, // #FFFF00  hsl(60,100%,50%)
     { "transparent",          COLOR_TRANSPARENT },
+    { "default",              COLOR_DEFAULT },
 
     /* CSS Extended color names */
     { "alice-blue",           rgb(240,248,255) }, // #F0F8FF  hsl(208,100%,97.06%)
@@ -684,8 +685,8 @@ static ColorDef const default_colors[] = {
 };
 #define nb_default_colors  countof(default_colors)
 
-static QEColor custom_colors[512];
-static int nb_custom_colors;
+QEColor custom_colors[512];
+int nb_custom_colors;
 
 ColorDef *qe_colors = unconst(ColorDef *)default_colors;
 int nb_qe_colors = nb_default_colors;
@@ -1111,11 +1112,13 @@ unsigned int qe_map_color(QEColor color, QEColor const *colors, int count, int *
 {
     int i, cmin, dmin, d;
 
+#ifdef QE_TERM_TRANSPARENT
     if (color == COLOR_TRANSPARENT) {
         if (dist)
             *dist = 0;
-        return 0x800;
+        return QE_TERM_TRANSPARENT;
     }
+#endif
 
     color &= 0xFFFFFF;  /* mask off the alpha channel */
 
@@ -1226,7 +1229,7 @@ unsigned int qe_map_color(QEColor color, QEColor const *colors, int count, int *
                     dmin = d;
                 }
                 if (dmin) {
-                    for (i = 0; i < nb_custom_colors; i++) {
+                    for (i = 3; i < nb_custom_colors; i++) {
                         if (custom_colors[i] == (color | 0xFF000000)) {
                             cmin = i + 0x800 + (i & 256) * 6;
                             dmin = 0;
@@ -1296,9 +1299,12 @@ static int add_custom_color(QEColor color) {
     return index;
 }
 
-int colors_init(void) {
+int colors_init(QEColor term_fg, QEColor term_bg) {
     int i;
+    nb_custom_colors = 0;
     custom_colors[nb_custom_colors++] = COLOR_TRANSPARENT;
+    custom_colors[nb_custom_colors++] = term_fg;
+    custom_colors[nb_custom_colors++] = term_bg;
     for (i = 0; i < nb_default_colors; i++) {
         /* register colors in the custom palette (if not found) */
         add_custom_color(default_colors[i].color);

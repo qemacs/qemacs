@@ -840,7 +840,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
     QEmacsState *qs = b->qs;
     char buf[MAX_FILENAME_SIZE];
     DiredItem *dip, *cur_item;
-    int i, col, w, width, window_width, top_line, indent;
+    int i, col, width, window_width, top_line, indent;
     int header_lines;
     const char *fname;
 
@@ -850,9 +850,8 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
     header_lines = ds->header_lines;
     /* Try and preserve scroll position */
     if (s) {
-        w = max_int(1, get_glyph_width(s->screen, s, QE_STYLE_DEFAULT, '0'));
         window_width = s->width;
-        width = window_width / w;
+        width = window_width / s->char_width;
 
         eb_get_pos(s->b, &top_line, &col, s->offset_top);
         /* XXX: should use dip->offset and delay to rebuild phase */

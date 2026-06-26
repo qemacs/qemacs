@@ -5,10 +5,18 @@
               QERGB(0xf8, 0xd8, 0xb0), QERGB(0x00, 0x00, 0x00), QE_FONT_FAMILY_FIXED, 12)
 
     /* system styles */
+    STYLE_DEF(QE_STYLE_WINDOW, "window", /* default */
+              COLOR_DEFAULT, COLOR_TRANSPARENT, 0, 0)
+    STYLE_DEF(QE_STYLE_WINDOW_INACTIVE, "window-inactive", /* same */
+              COLOR_DEFAULT, COLOR_TRANSPARENT, 0, 0)
     STYLE_DEF(QE_STYLE_MODE_LINE, "mode-line", /* black on grey88 */
               QERGB(0x00, 0x00, 0x00), QERGB(0xe0, 0xe0, 0xe0), 0, 0)
+    STYLE_DEF(QE_STYLE_MODE_LINE_INACTIVE, "mode-line-inactive", /* same */
+              COLOR_DEFAULT, COLOR_TRANSPARENT, 0, 0)
     STYLE_DEF(QE_STYLE_WINDOW_BORDER, "window-border", /* black on grey88 */
               QERGB(0x00, 0x00, 0x00), QERGB(0xe0, 0xe0, 0xe0), 0, 0)
+    STYLE_DEF(QE_STYLE_WINDOW_BORDER_INACTIVE, "window-border-inactive", /* same */
+              COLOR_DEFAULT, COLOR_TRANSPARENT, 0, 0)
     STYLE_DEF(QE_STYLE_MINIBUF, "minibuf", /* yellow */
               QERGB(0xff, 0xff, 0x00), COLOR_TRANSPARENT, 0, 0)
     STYLE_DEF(QE_STYLE_STATUS, "status", /* yellow */
@@ -25,10 +33,8 @@
               QERGB(0x00, 0x00, 0x00), QERGB(0xf8, 0xd8, 0xb0), 0, 0)
     STYLE_DEF(QE_STYLE_SELECTION, "selection", /* white on blue */
               QERGB(0xff, 0xff, 0xff), QERGB(0x00, 0x00, 0xff), 0, 0)
-    STYLE_DEF(QE_STYLE_ERROR_LOCATION, "error-location",
-              QERGB(0xff, 0xff, 0xff), COLOR_TRANSPARENT,
-              QE_FONT_STYLE_BOLD, 0)
-
+    STYLE_DEF(QE_STYLE_ERROR_LOCATION, "error-location", /* bright-white */
+              QERGB(0xff, 0xff, 0xff), COLOR_TRANSPARENT, QE_FONT_STYLE_BOLD, 0)
 
     /* Generic syntax coloring styles */
     STYLE_DEF(QE_STYLE_COMMENT, "comment", /* #f84400 */
@@ -65,6 +71,10 @@
               QERGB(0xe0, 0xe0, 0xe0), QERGB(0xf0, 0x00, 0xf0), 0, 0)
     STYLE_DEF(QE_STYLE_BLANK_HILITE, "blank-hilite", /* black on red */
               QERGB(0x00, 0x00, 0x00), QERGB(0xff, 0x00, 0x00), 0, 0)
+
+    /* shell windows */
+    STYLE_DEF(QE_STYLE_SHELL, "shell", /* grey */
+              QERGB(0xbb, 0xbb, 0xbb), COLOR_TRANSPARENT, 0, 0)
 
     /* diff/patch styles */
     STYLE_DEF(QE_STYLE_DIFF_HEAD, "diff-head", /* bold bright white */

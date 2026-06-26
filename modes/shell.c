@@ -1359,12 +1359,23 @@ static inline ShellState *shell_get_state(EditState *e, int status)
 static void shell_display_hook(EditState *e)
 {
     ShellState *s;
+    QEColor bg_color, fg_color;
 
     if (e->interactive) {
         if ((s = shell_get_state(e, 0)) != NULL)
             e->offset = s->cur_offset;
         if (s->use_alternate_screen)
             e->offset_top = s->alternate_screen_top;
+    }
+    bg_color = qe_styles[QE_STYLE_SHELL].bg_color;
+    if (!bg_color) bg_color = qe_styles[QE_STYLE_DEFAULT].bg_color;
+    fg_color = qe_styles[QE_STYLE_SHELL].fg_color;
+    if (!fg_color) fg_color = qe_styles[QE_STYLE_DEFAULT].fg_color;
+
+    if (fg_color != custom_colors[1] || bg_color != custom_colors[2]) {
+        custom_colors[1] = fg_color;
+        custom_colors[2] = bg_color;
+        edit_invalidate(e, 0);
     }
 }
 
