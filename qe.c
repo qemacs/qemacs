@@ -4102,6 +4102,7 @@ static void flush_line(DisplayState *ds,
                 uint64_t crc = ds->line_style + e->region_style * 0x100L +
                     e->window_style * 0x10000L + e->flags * 0x1000000L;
 
+                // XXX: should add styles to crc?
                 crc = compute_crc(fragments, sizeof(*fragments) * nb_fragments, crc);
                 crc = compute_crc(ds->line_chars, sizeof(*ds->line_chars) * ds->line_index, crc);
                 ls = &e->line_shadow[ds->line_num];
@@ -4146,9 +4147,11 @@ static void flush_line(DisplayState *ds,
                 x += frag->width;
             }
             if (x < x1 && last != -1) {
-                /* XXX: color may be inappropriate for terminal mode */
+                styledef = default_style;
+                if (ds->eol_style)
+                    apply_style(&styledef, ds->eol_style);
                 fill_rectangle(screen, e->xleft + x, e->ytop + y,
-                               x1 - x, line_height, default_style.bg_color);
+                               x1 - x, line_height, styledef.bg_color);
             }
             if (x1 < e->width) {
                 /* right gutter like space beyond terminal right margin */
@@ -4188,6 +4191,7 @@ static void flush_line(DisplayState *ds,
                     markbuf[0] = '\\';   /* LTR eol mark */
                     x = ds->width;        /* displayed at the right border */
                 }
+                /* XXX: should use style of last character? */
                 font = select_font(screen,
                                    default_style.font_style,
                                    default_style.font_size);
@@ -4825,7 +4829,7 @@ static int get_staticly_colorized_line(QEColorizeContext *cp,
 {
     int len = cp_get_line(cp, offset, offset_ptr);
     int i;
-    for (i = 0; i < len; i++) {
+    for (i = 0; i < len + 1; i++) {
         cp->sbuf[i] = eb_get_style(cp->b, offset);
         offset = eb_next(cp->b, offset);
     }
@@ -4912,7 +4916,7 @@ static int syntax_get_colorized_line(QEColorizeContext *cp,
         SET_STYLE1(cp->sbuf, 0, QE_STYLE_PREPROCESS);
         cp->offset = eb_next(b, cp->offset);
     }
-    cp->combine_stop = len - bom;
+    cp->combine_stop = len + 1 - bom;
     cp->cur_pos -= bom;
     cp->mode_flags = s->colorize_mode->flags;
     cp_colorize_line(cp, cp->buf, bom, len, cp->sbuf, s->colorize_mode);
@@ -5148,6 +5152,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
 #endif
 
     ds->line_style = cp->line_style;
+    ds->eol_style = cp->sbuf[colored_nb_chars];
     bd = embeds + 1;
     char_index = 0;
     for (;;) {
@@ -5939,11 +5944,24 @@ void qe_display(QEmacsState *qs)
     int start_time, elapsed_time;
     int invalidate_popups = qs->complete_refresh;
     static int last_popup_time;
+    QEColor term_bg_color, term_fg_color;
 
     start_time = get_clock_ms();
 
     if (qs->active_window)
         qs->active_window->b->atime = start_time;
+
+    /* detect global palette changes */
+    term_bg_color = qe_styles[QE_STYLE_SHELL].bg_color;
+    if (!term_bg_color) term_bg_color = qe_styles[QE_STYLE_DEFAULT].bg_color;
+    term_fg_color = qe_styles[QE_STYLE_SHELL].fg_color;
+    if (!term_fg_color) term_fg_color = qe_styles[QE_STYLE_DEFAULT].fg_color;
+
+    if (term_fg_color != custom_colors[1] || term_bg_color != custom_colors[2]) {
+        custom_colors[1] = term_fg_color;
+        custom_colors[2] = term_bg_color;
+        qs->complete_refresh = 1;
+    }
 
     /* first call hooks for mode specific fixups */
     for (s = qs->first_window; s != NULL; s = s->next_window) {

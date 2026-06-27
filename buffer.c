@@ -1513,6 +1513,9 @@ char32_t eb_nextc(EditBuffer *b, int offset, int *next_ptr)
 QETermStyle eb_get_style(EditBuffer *b, int offset)
 {
     if (b->b_styles) {
+        if (offset >= b->total_size && b->total_size > 0)
+            offset = b->total_size - (1 << b->style_shift);
+        // Read from style buffer and zero extend (endianness dependent).
         if (b->style_shift == 3) {
             uint64_t style = 0;
             eb_read(b->b_styles, (offset >> b->char_shift) << 3, &style, 8);

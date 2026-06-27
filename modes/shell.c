@@ -879,7 +879,8 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
             if (flags & TG_NOEXTEND)
                 break;
             /* XXX: color may be wrong */
-            s->b->cur_style = QE_STYLE_DEFAULT;
+            //s->b->cur_style = QE_STYLE_DEFAULT;
+            s->b->cur_style = QE_TERM_COMPOSITE | QE_TERM_MAKE_COLOR(QE_TERM_DEF_FG, QE_TERM_DEF_BG);
             //qe_term_set_style(s);
             if (y < desty) {
                 // XXX: potential problem if previous line has s->cols characters
@@ -904,7 +905,8 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
                 } else {
                     if (flags & TG_NOEXTEND)
                         break;
-                    s->b->cur_style = QE_STYLE_DEFAULT;
+                    //s->b->cur_style = QE_STYLE_DEFAULT;
+                    s->b->cur_style = QE_TERM_COMPOSITE | QE_TERM_MAKE_COLOR(QE_TERM_DEF_FG, QE_TERM_DEF_BG);
                     offset += eb_insert_spaces(s->b, offset, destx - x);
                     x = destx;
                 }
@@ -1359,23 +1361,12 @@ static inline ShellState *shell_get_state(EditState *e, int status)
 static void shell_display_hook(EditState *e)
 {
     ShellState *s;
-    QEColor bg_color, fg_color;
 
     if (e->interactive) {
         if ((s = shell_get_state(e, 0)) != NULL)
             e->offset = s->cur_offset;
         if (s->use_alternate_screen)
             e->offset_top = s->alternate_screen_top;
-    }
-    bg_color = qe_styles[QE_STYLE_SHELL].bg_color;
-    if (!bg_color) bg_color = qe_styles[QE_STYLE_DEFAULT].bg_color;
-    fg_color = qe_styles[QE_STYLE_SHELL].fg_color;
-    if (!fg_color) fg_color = qe_styles[QE_STYLE_DEFAULT].fg_color;
-
-    if (fg_color != custom_colors[1] || bg_color != custom_colors[2]) {
-        custom_colors[1] = fg_color;
-        custom_colors[2] = bg_color;
-        edit_invalidate(e, 0);
     }
 }
 
@@ -1884,7 +1875,7 @@ static void qe_term_emulate(ShellState *s, int c)
             break;
         }
         /* Stop string on \a (^G) or ST (ESC \) */
-        if (!(c == '\007' || c == 0234 || (s->lastc == 27 && c == '\\'))) {
+        if (!(c == '\007' || c == 0x9c || (s->lastc == 27 && c == '\\'))) {
             s->lastc = c;
             /* skip ';' following OSC number */
             if (s->osc_len > 0 || (c != ';')) {
@@ -1935,6 +1926,10 @@ static void qe_term_emulate(ShellState *s, int c)
            - OSC 15; c; name... ST  Change colors starting with Tek foreground
            - OSC 16; c; name... ST  Change colors starting with Tek background
            - OSC 17; c; name... ST  Change colors starting with highlight
+           - OSC 22; Pt ST Change pointer cursor shape to Pt.  The parameter
+             Pt sets the pointerShape resource.  If Pt is empty, or does not
+             match any of the standard names, xterm uses the resource's
+             default "xterm" shape.
            - OSC 46; Pt ST  Change Log File to Pt (normally disabled by a
            compile-time option)
            - OSC 50; Pt ST  Set Font to Pt. If Pt begins with a "#", index in
@@ -1983,6 +1978,29 @@ static void qe_term_emulate(ShellState *s, int c)
                 shell_add_cwd(s->b, s->b->offset, cwd, 0);
             }
             break;
+        case 10:
+        case 11:
+            {
+                char *p = s->osc_buf;
+                QEColor color;
+                int n;
+                for (n = s->params[0]; n <= 11; n++) {
+                    char *p1 = strchr(p, ';');
+                    if (p1)
+                        *p1 = '\0';
+                    if (!*p || css_get_color(&color, p))
+                        break;
+                    if (n == 10)
+                        qe_styles[QE_STYLE_SHELL].fg_color = color;
+                    else
+                        qe_styles[QE_STYLE_SHELL].bg_color = color;
+                    if (!p1)
+                        break;
+                    p = p1 + 1;
+                    p += (*p == ';');
+                }
+                break;
+            }
         default:
             TRACE_PRINTF(s, "unhandled string: %.*s", min_int(s->osc_len, 32), s->osc_buf);
             break;
@@ -2456,7 +2474,7 @@ static void qe_term_emulate(ShellState *s, int c)
                 qe_term_write(s, buf2, -1);
             }
             break;
-        case 'p':  /* DECSCL: Set conformance level. */
+        case 'p':  /* DECSCL: Set conformance level. Also redefine keyboard keys */
         case 'q':  /* DECLL: Load LEDs. */
         case ESC2(' ','q'): /* Set cursor style (DECSCUSR, VT520). */
             goto unhandled;
