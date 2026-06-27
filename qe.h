@@ -1331,6 +1331,7 @@ struct DisplayState {
     QETermStyle style;   /* current style for display_printf... */
     QETermStyle line_style; /* style of the current line... */
     QETermStyle window_style;
+    QETermStyle eol_style;
 
 #if 0
     QEFont *font;

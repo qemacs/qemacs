@@ -1455,7 +1455,7 @@ int css_get_color(QEColor *color_ptr, const char *p)
                 v |= (v << 4);
             while (len --> 2)
                 v >>= 4;
-            rgba[i] = v | (v << 4);
+            rgba[i] = v;
             if (*p == '/')
                 p++;
         }
