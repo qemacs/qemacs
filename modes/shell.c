@@ -2670,11 +2670,11 @@ static void shell_mode_free(EditBuffer *b, void *state)
             /* if still not killed, then try harder (useful for shells) */
             sig = SIGKILL;
         }
-        set_pid_handler(s->pid, NULL, NULL);
+        url_set_pid_handler(b->qs->up, s->pid, NULL, NULL);
         s->pid = -1;
     }
     if (s->pty_fd >= 0) {
-        set_read_handler(s->pty_fd, NULL, NULL);
+        url_set_read_handler(b->qs->up, s->pty_fd, NULL, NULL);
         close(s->pty_fd);
         s->pty_fd = -1;
     }
@@ -2697,7 +2697,7 @@ static void shell_pid_cb(void *opaque, int status)
 
     b = s->b;
     qs = s->base.qs;
-    set_pid_handler(s->pid, NULL, NULL);
+    url_set_pid_handler(qs->up, s->pid, NULL, NULL);
     s->exit_status = status;
     s->pid = -1;
 
@@ -2766,7 +2766,7 @@ static void shell_close(ShellState *s)
     }
 
     if (s->pty_fd >= 0) {
-        set_read_handler(s->pty_fd, NULL, NULL);
+        url_set_read_handler(qs->up, s->pty_fd, NULL, NULL);
         close(s->pty_fd);
         s->pty_fd = -1;
     }
@@ -2887,8 +2887,8 @@ EditBuffer *qe_new_shell_buffer(QEmacsState *qs, EditBuffer *b0, EditState *e,
     }
 
     /* XXX: ShellState life cycle is bogus */
-    set_read_handler(s->pty_fd, shell_read_cb, s);
-    set_pid_handler(s->pid, shell_pid_cb, s);
+    url_set_read_handler(qs->up, s->pty_fd, shell_read_cb, s);
+    url_set_pid_handler(qs->up, s->pid, shell_pid_cb, s);
     return b;
 }
 

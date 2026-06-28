@@ -2,7 +2,7 @@
  * Unix main loop for QEmacs
  *
  * Copyright (c) 2002, 2003 Fabrice Bellard.
- * Copyright (c) 2000-2024 Charlie Gordon.
+ * Copyright (c) 2000-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,12 +37,12 @@ typedef int fdesc_t;
 
 /* NOTE: it is strongly inspirated from the 'links' browser API */
 
-typedef struct URLHandler {
+typedef struct IOHandler {
     void *read_opaque;
     void (*read_cb)(void *opaque);
     void *write_opaque;
     void (*write_cb)(void *opaque);
-} URLHandler;
+} IOHandler;
 
 typedef struct PidHandler {
     struct PidHandler *next, *prev;
@@ -57,59 +57,79 @@ typedef struct BottomHalfEntry {
     void *opaque;
 } BottomHalfEntry;
 
-struct QETimer {
+struct URLTimer {
     void *opaque;
     void (*cb)(void *opaque);
     int timeout;
-    struct QETimer *next;
+    struct URLTimer *next;
 };
 
-static fd_set url_rfds, url_wfds;
-static int url_fdmax;
-static URLHandler url_handlers[256];
-static int url_exit_request;
-static int url_display_request;
-static QE_LIST_HEAD(pid_handlers);
-static QE_LIST_HEAD(bottom_halves);
-static QETimer *first_timer;
+struct URLState {
+    fd_set rfds, wfds;
+    int nfds;
+    IOHandler handlers[256];
+    int exit_request;
+    void (*tail_cb)(void *opaque);
+    void *tail_opaque;
+    struct list_head pid_handlers;
+    struct list_head bottom_halves;
+    URLTimer *first_timer;
+};
 
-
-void set_read_handler(int fd, void (*cb)(void *opaque), void *opaque)
-{
-    url_handlers[fd].read_cb = cb;
-    url_handlers[fd].read_opaque = opaque;
-    if (cb) {
-        if (fd >= url_fdmax)
-            url_fdmax = fd;
-        FD_SET((fdesc_t)fd, &url_rfds);
-    } else {
-        FD_CLR((fdesc_t)fd, &url_rfds);
+URLState *url_init(void) {
+    URLState *up = qe_mallocz(URLState);
+    if (up) {
+        FD_ZERO(&up->rfds);
+        FD_ZERO(&up->wfds);
+        QE_LIST_INIT(up->pid_handlers);
+        QE_LIST_INIT(up->bottom_halves);
     }
+    return up;
 }
 
-void set_write_handler(int fd, void (*cb)(void *opaque), void *opaque)
+int url_set_read_handler(URLState *up, int fd, void (*cb)(void *opaque), void *opaque)
 {
-    url_handlers[fd].write_cb = cb;
-    url_handlers[fd].write_opaque = opaque;
+    if (fd < 0 || fd >= countof(up->handlers))
+        return -1;
+
+    up->handlers[fd].read_cb = cb;
+    up->handlers[fd].read_opaque = opaque;
     if (cb) {
-        if (fd >= url_fdmax)
-            url_fdmax = fd;
-        FD_SET((fdesc_t)fd, &url_wfds);
+        if (fd >= up->nfds)
+            up->nfds = fd + 1;
+        FD_SET((fdesc_t)fd, &up->rfds);
     } else {
-        FD_CLR((fdesc_t)fd, &url_wfds);
+        FD_CLR((fdesc_t)fd, &up->rfds);
     }
+    return 0;
+}
+
+int url_set_write_handler(URLState *up, int fd, void (*cb)(void *opaque), void *opaque)
+{
+    if (fd < 0 || fd >= countof(up->handlers))
+        return -1;
+
+    up->handlers[fd].write_cb = cb;
+    up->handlers[fd].write_opaque = opaque;
+    if (cb) {
+        if (fd >= up->nfds)
+            up->nfds = fd + 1;
+        FD_SET((fdesc_t)fd, &up->wfds);
+    } else {
+        FD_CLR((fdesc_t)fd, &up->wfds);
+    }
+    return 0;
 }
 
 /* register a callback which is called when process 'pid'
    terminates. When the callback is set to NULL, it is deleted */
 /* XXX: add consistency check ? */
-int set_pid_handler(int pid,
-                    void (*cb)(void *opaque, int status), void *opaque)
+int url_set_pid_handler(URLState *up, int pid, void (*cb)(void *opaque, int status), void *opaque)
 {
     PidHandler *p;
 
     if (cb == NULL) {
-        list_for_each(p, &pid_handlers) {
+        list_for_each(p, &up->pid_handlers) {
             if (p->pid == pid) {
                 list_del(p);
                 qe_free(&p);
@@ -123,7 +143,7 @@ int set_pid_handler(int pid,
         p->pid = pid;
         p->cb = cb;
         p->opaque = opaque;
-        list_add(p, &pid_handlers);
+        list_add(p, &up->pid_handlers);
     }
     return 0;
 }
@@ -131,25 +151,28 @@ int set_pid_handler(int pid,
 /*
  * add an explicit call back to avoid recursions
  */
-void register_bottom_half(void (*cb)(void *opaque), void *opaque)
+int url_register_bottom_half(URLState *up, void (*cb)(void *opaque), void *opaque)
 {
     BottomHalfEntry *bh;
 
     /* Should not fail */
     bh = qe_mallocz(BottomHalfEntry);
+    if (!bh)
+        return -1;
     bh->cb = cb;
     bh->opaque = opaque;
-    list_add(bh, &bottom_halves);
+    list_add(bh, &up->bottom_halves);
+    return 0;
 }
 
 /*
  * remove bottom half
  */
-void unregister_bottom_half(void (*cb)(void *opaque), void *opaque)
+void url_unregister_bottom_half(URLState *up, void (*cb)(void *opaque), void *opaque)
 {
     BottomHalfEntry *bh, *bh1;
 
-    list_for_each_safe(bh, bh1, &bottom_halves) {
+    list_for_each_safe(bh, bh1, &up->bottom_halves) {
         if (bh->cb == cb && bh->opaque == opaque) {
             list_del(bh);
             qe_free(&bh);
@@ -157,28 +180,28 @@ void unregister_bottom_half(void (*cb)(void *opaque), void *opaque)
     }
 }
 
-QETimer *qe_add_timer(int delay, void *opaque, void (*cb)(void *opaque))
+URLTimer *url_add_timer(URLState *up, int delay, void *opaque, void (*cb)(void *opaque))
 {
-    QETimer *ti;
+    URLTimer *ti;
 
-    ti = qe_mallocz(QETimer);
+    ti = qe_mallocz(URLTimer);
     if (!ti)
         return NULL;
     ti->timeout = get_clock_ms() + delay;
     ti->opaque = opaque;
     ti->cb = cb;
-    ti->next = first_timer;
-    first_timer = ti;
+    ti->next = up->first_timer;
+    up->first_timer = ti;
     return ti;
 }
 
-void qe_kill_timer(QETimer **tip)
+void url_kill_timer(URLState *up, URLTimer **tip)
 {
     if (*tip) {
-        QETimer **pt;
+        URLTimer **pt;
 
         /* remove timer from list of active timers and free it */
-        for (pt = &first_timer; *pt != NULL; pt = &(*pt)->next) {
+        for (pt = &up->first_timer; *pt != NULL; pt = &(*pt)->next) {
             if (*pt == (*tip)) {
                 *pt = (*tip)->next;
                 qe_free(tip);
@@ -190,35 +213,36 @@ void qe_kill_timer(QETimer **tip)
     }
 }
 
+int url_set_tail_handler(URLState *up, void (*cb)(void *opaque), void *opaque)
+{
+    up->tail_cb = cb;
+    up->tail_opaque = opaque;
+    return 0;
+}
+
 /* execute stacked bottom halves */
-static void qe__call_bottom_halves(void)
+static inline void url_call_bottom_halves(URLState *up)
 {
     BottomHalfEntry *bh;
 
-    while (!list_empty(&bottom_halves)) {
-        bh = (BottomHalfEntry *)bottom_halves.prev;
+    while (!list_empty(&up->bottom_halves)) {
+        bh = (BottomHalfEntry *)up->bottom_halves.prev;
         list_del(bh);
         bh->cb(bh->opaque);
         qe_free(&bh);
     }
 }
 
-static inline void call_bottom_halves(void)
-{
-    if (!list_empty(&bottom_halves))
-        qe__call_bottom_halves();
-}
-
 /* call timer callbacks and compute maximum next call time to
    check_timers() */
-static inline int check_timers(int max_delay)
+static inline int url_check_timers(URLState *up, int max_delay)
 {
-    QETimer *ti, **pt;
+    URLTimer *ti, **pt;
     int timeout, cur_time;
 
     cur_time = get_clock_ms();
     timeout = cur_time + max_delay;
-    pt = &first_timer;
+    pt = &up->first_timer;
     for (;;) {
         ti = *pt;
         if (ti == NULL)
@@ -229,7 +253,7 @@ static inline int check_timers(int max_delay)
             /* warning: a new timer can be added in the callback */
             ti->cb(ti->opaque);
             qe_free(&ti);
-            call_bottom_halves();
+            url_call_bottom_halves(up);
         } else {
             if ((ti->timeout - timeout) < 0)
                 timeout = ti->timeout;
@@ -239,25 +263,17 @@ static inline int check_timers(int max_delay)
     return timeout - cur_time;
 }
 
-static void url_block_reset(void)
-{
-    FD_ZERO(&url_rfds);
-    FD_ZERO(&url_wfds);
-    url_fdmax = -1;
-    url_exit_request = 0;
-}
-
 #define MAX_DELAY 500  /* milliseconds */
 
 /* block until one event */
-static void url_block(void)
+static void url_block(URLState *up)
 {
-    URLHandler *uh;
+    IOHandler *uh;
     int ret, i, delay;
     fd_set rfds, wfds;
     struct timeval tv;
 
-    delay = check_timers(MAX_DELAY);
+    delay = url_check_timers(up, MAX_DELAY);
 #if 0
     {
         static int count;
@@ -268,9 +284,9 @@ static void url_block(void)
     tv.tv_sec = delay / 1000;
     tv.tv_usec = (delay % 1000) * 1000;
 
-    rfds = url_rfds;
-    wfds = url_wfds;
-    ret = select(url_fdmax + 1, &rfds, &wfds, NULL, &tv);
+    rfds = up->rfds;
+    wfds = up->wfds;
+    ret = select(up->nfds, &rfds, &wfds, NULL, &tv);
 
     /* call each handler */
     /* extra checks on callback function pointers because a callback
@@ -279,17 +295,23 @@ static void url_block(void)
      * with a huge compressed file while it decompresses.
      * XXX: should break from the loop if callback changed the
      *      structures but need further investigation.
+     * Here is an example of a problem: if a callback closes a resource
+     * and opens another one that happens to get the same unix handle hd,
+     * the state of FD_ISSET(hd) will refer to the original resource and
+     * may erroneously call the new handler on a blocking event.
+     * Similarly, if a callback consumes a resource for a different handle
+     * the FD_ISSET will also be incorrect.
      */
     if (ret > 0) {
-        uh = url_handlers;
-        for (i = 0;i <= url_fdmax; i++) {
+        uh = up->handlers;
+        for (i = 0; i < up->nfds; i++) {
             if (FD_ISSET(i, &rfds) && uh->read_cb) {
                 uh->read_cb(uh->read_opaque);
-                call_bottom_halves();
+                url_call_bottom_halves(up);
             }
             if (FD_ISSET(i, &wfds) && uh->write_cb) {
                 uh->write_cb(uh->write_opaque);
-                call_bottom_halves();
+                url_call_bottom_halves(up);
             }
             uh++;
         }
@@ -301,15 +323,15 @@ static void url_block(void)
         int pid, status;
         PidHandler *ph, *ph1;
 
-        if (list_empty(&pid_handlers))
+        if (list_empty(&up->pid_handlers))
             break;
         pid = waitpid(-1, &status, WNOHANG);
         if (pid <= 0)
             break;
-        list_for_each_safe(ph, ph1, &pid_handlers) {
+        list_for_each_safe(ph, ph1, &up->pid_handlers) {
             if (ph->pid == pid && ph->cb) {
                 ph->cb(ph->opaque, status);
-                call_bottom_halves();
+                url_call_bottom_halves(up);
                 break;
             }
         }
@@ -317,39 +339,26 @@ static void url_block(void)
 #endif
 }
 
-int url_main_loop(int (*init)(void *opaque), void *opaque)
+int url_main_loop(URLState *up)
 {
-    QEArgs *ap = opaque;
-    url_block_reset();
-    if ((*init)(opaque))
-        return 1;
-    for (;;) {
-        if (url_exit_request)
-            break;
-        url_block();
-        if (url_display_request) {
-            QEmacsState *qs = ap->qs;
-
-            //qs->complete_refresh = 1;
-            do_refresh(qs->first_window);
-            qe_display(qs);
-            url_display_request = 0;
+    while (!up->exit_request) {
+        url_block(up);
+        if (*up->tail_cb) {
+            // call one shot tail function
+            void (*cb)(void *opaque) = up->tail_cb;
+            up->tail_cb = NULL;
+            (*cb)(up->tail_opaque);
+            url_call_bottom_halves(up);
         }
     }
+    up->exit_request = 0;
     return 0;
 }
 
 /* exit from url loop */
-void url_exit(void)
+void url_exit(URLState *up)
 {
-    url_exit_request = 1;
-}
-
-/* asynchronous redisplay signal received */
-void url_redisplay(QEditScreen *s)
-{
-    url_display_request = 1;
-    s->qs->complete_refresh = 1;
+    up->exit_request = 1;
 }
 
 int get_clock_ms(void) {
