@@ -81,7 +81,7 @@ typedef struct VideoState {
     pthread_mutex_t pictq_mutex;
     pthread_cond_t pictq_cond;
 
-    QETimer *video_timer;
+    URLTimer *video_timer;
 } VideoState;
 
 static int video_buffer_load(EditBuffer *b, FILE *f)
@@ -231,12 +231,12 @@ static void video_refresh_timer(void *opaque)
     if (is->video_st) {
         if (is->pictq_size == 0) {
             /* if no picture, need to wait */
-            is->video_timer = qe_add_timer(40, s, video_refresh_timer);
+            is->video_timer = url_add_timer(qs->up, 40, s, video_refresh_timer);
         } else {
             vp = &is->pictq[is->pictq_rindex];
 
             /* launch timer for next picture */
-            is->video_timer = qe_add_timer(vp->delay, s, video_refresh_timer);
+            is->video_timer = url_add_timer(qs->up, vp->delay, s, video_refresh_timer);
 
             /* invalidate window */
             edit_invalidate(s, 0);
@@ -256,7 +256,7 @@ static void video_refresh_timer(void *opaque)
         }
     } else if (is->audio_st) {
         /* draw the next audio frame */
-        is->video_timer = qe_add_timer(40, s, video_refresh_timer);
+        is->video_timer = url_add_timer(qs->up, 40, s, video_refresh_timer);
 
         /* if only audio stream, then display the audio bars (better
            than nothing, just to test the implementation */
@@ -268,7 +268,7 @@ static void video_refresh_timer(void *opaque)
         /* display picture */
         qe_display(qs);
     } else {
-        is->video_timer = qe_add_timer(100, s, video_refresh_timer);
+        is->video_timer = url_add_timer(qs->up, 100, s, video_refresh_timer);
     }
 }
 
@@ -451,7 +451,7 @@ static int output_picture(VideoState *is, AVPicture *src_pict)
 
         /* the allocation must be done in the main thread to avoid
            locking problems */
-        qe_add_timer(0, is, alloc_picture);
+        url_add_timer(s->qs->up, 0, is, alloc_picture);
 
         /* wait until the picture is allocated */
         pthread_mutex_lock(&is->pictq_mutex);
@@ -844,7 +844,7 @@ static int video_mode_init(EditState *s, EditBuffer *b, int flags)
         pthread_cond_init(&is->pictq_cond, NULL);
 
         /* add the refresh timer to draw the picture */
-        is->video_timer = qe_add_timer(0, s, video_refresh_timer);
+        is->video_timer = url_add_timer(qs->up, 0, s, video_refresh_timer);
 
         /* if there is already a window with this video playing, then we
            stop this new instance (C-x 2 case) */

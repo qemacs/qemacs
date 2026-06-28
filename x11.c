@@ -397,7 +397,7 @@ static int x11_dpy_init(QEditScreen *s, QEmacsState *qs, int w, int h)
     xv_init(s);
 #endif
     fd = ConnectionNumber(xs->display);
-    set_read_handler(fd, x11_handle_event, s);
+    url_set_read_handler(qs->up, fd, x11_handle_event, s);
     return 0;
 }
 

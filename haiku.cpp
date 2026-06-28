@@ -284,7 +284,7 @@ static int haiku_init(QEditScreen *s, int w, int h)
     ctx->events_rd = event_pipe[0];
     ctx->events_wr = events_wr = event_pipe[1];
 
-    set_read_handler(event_pipe[0], haiku_handle_event, s);
+    url_set_read_handler(s->qs->up, event_pipe[0], haiku_handle_event, s);
 
     ctx->font = BFont(be_fixed_font);
 

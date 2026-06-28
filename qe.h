@@ -78,7 +78,6 @@ typedef struct DisplayState DisplayState;
 typedef struct ModeProbeData ModeProbeData;
 typedef struct QEModeData QEModeData;
 typedef struct ModeDef ModeDef;
-typedef struct QETimer QETimer;
 typedef struct QEColorizeContext QEColorizeContext;
 typedef struct KeyDef KeyDef;
 typedef struct InputMethod InputMethod;
@@ -106,28 +105,21 @@ typedef struct QEProperty QEProperty;
 extern const char str_version[];
 extern const char str_credits[];
 
-/* low level I/O events */
-void set_read_handler(int fd, void (*cb)(void *opaque), void *opaque);
-void set_write_handler(int fd, void (*cb)(void *opaque), void *opaque);
-int set_pid_handler(int pid,
-                    void (*cb)(void *opaque, int status), void *opaque);
-void url_exit(void);
-void url_redisplay(QEditScreen *s);
-void register_bottom_half(void (*cb)(void *opaque), void *opaque);
-void unregister_bottom_half(void (*cb)(void *opaque), void *opaque);
+/* Asynchronous I/O handling modelled after liburlio */
+typedef struct URLState URLState;
+typedef struct URLTimer URLTimer;
 
-QETimer *qe_add_timer(int delay, void *opaque, void (*cb)(void *opaque));
-void qe_kill_timer(QETimer **tip);
-
-/* opaque argument for url_main_loop */
-typedef struct QEArgs {
-    QEmacsState *qs;
-    int argc;
-    char **argv;
-} QEArgs;
-
-/* main loop for Unix programs using liburlio */
-int url_main_loop(int (*init)(void *opaque), void *opaque);
+URLState *url_init(void);
+int url_main_loop(URLState *up);
+void url_exit(URLState *up);
+int url_set_read_handler(URLState *up, int fd, void (*cb)(void *opaque), void *opaque);
+int url_set_write_handler(URLState *up, int fd, void (*cb)(void *opaque), void *opaque);
+int url_set_pid_handler(URLState *up, int pid, void (*cb)(void *opaque, int status), void *opaque);
+int url_set_tail_handler(URLState *up, void (*cb)(void *opaque), void *opaque);
+int url_register_bottom_half(URLState *up, void (*cb)(void *opaque), void *opaque);
+void url_unregister_bottom_half(URLState *up, void (*cb)(void *opaque), void *opaque);
+URLTimer *url_add_timer(URLState *up, int delay, void *opaque, void (*cb)(void *opaque));
+void url_kill_timer(URLState *up, URLTimer **tip);
 
 int get_clock_ms(void);
 int get_clock_usec(void);
@@ -1012,6 +1004,7 @@ struct CmdDefArray {
 
 struct QEmacsState {
     QEditScreen *screen;
+    URLState *up;
     //struct QEDisplay *first_dpy;
     struct ModeDef *first_mode;
     struct KeyDef *first_key;
@@ -1022,7 +1015,6 @@ struct QEmacsState {
     struct CompletionDef *first_completion;
     struct HistoryEntry *first_history;
     //struct QECharset *first_charset;
-    //struct QETimer *first_timer;
     struct VarDef *first_variable;
     InputMethod *input_methods;
     EditState *first_window;

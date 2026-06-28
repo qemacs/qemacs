@@ -847,6 +847,8 @@ static inline void qe__list_del(struct list_head *prev, struct list_head *next)
 
 #define QE_LIST_HEAD(name) struct list_head name = { &name, &name }
 
+#define QE_LIST_INIT(head) (head).prev = (head).next = &(head)
+
 /* add at the head */
 #define list_add(elem, head) \
    qe__list_add((struct list_head *)elem, head, (head)->next)

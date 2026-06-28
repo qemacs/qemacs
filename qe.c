@@ -9841,7 +9841,7 @@ void do_exit_qemacs(EditState *s, int argval)
     QEmacsState *qs = s->qs;
 
     if (argval != NO_ARG) {
-        url_exit();
+        url_exit(qs->up);
         return;
     }
 
@@ -9852,7 +9852,7 @@ void do_exit_qemacs(EditState *s, int argval)
     if (use_session_file)
         do_save_session(qs->active_window, 0);
 #endif
-    url_exit();
+    url_exit(qs->up);
 }
 
 /*----------------*/
@@ -12329,12 +12329,8 @@ static CompletionDef charset_completion = {
 };
 
 /* init function */
-static int qe_init(void *opaque)
+static int qe_init(QEmacsState *qs, int argc, char **argv)
 {
-    QEArgs *args = opaque;
-    QEmacsState *qs = args->qs;
-    int argc = args->argc;
-    char **argv = args->argv;
     EditState *s;
     EditBuffer *b;
     QEDisplay *dpy;
@@ -12346,6 +12342,9 @@ static int qe_init(void *opaque)
     char filename[MAX_FILENAME_SIZE];
 #endif
 
+    qs->up = url_init();
+    if (!qs->up)
+        return -1;
     qs->ec.function = "qe-init";
     qs->macro_key_index = -1; /* no macro executing */
     qs->ungot_key = -1; /* no unget key */
@@ -12546,14 +12545,10 @@ int main(int argc, char **argv)
 #endif
 {
     QEmacsState *qs = &qe_state;
-    QEArgs args;
-    int status;
+    int status = qe_init(qs, argc, argv);
 
-    args.qs = qs;
-    args.argc = argc;
-    args.argv = argv;
-
-    status = url_main_loop(qe_init, &args);
+    if (!status)
+        status = url_main_loop(qs->up);
 
 #ifdef CONFIG_ALL_KMAPS
     /* unmap/free input methods file */

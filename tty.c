@@ -597,7 +597,7 @@ static int tty_dpy_init(QEditScreen *s, QEmacsState *qs,
      * session. */
     fcntl(fileno(s->STDOUT), F_SETFL, 0);
 
-    set_read_handler(fileno(s->STDIN), tty_read_handler, s);
+    url_set_read_handler(qs->up, fileno(s->STDIN), tty_read_handler, s);
 
     tty_dpy_invalidate(s);
 
@@ -653,12 +653,21 @@ static void tty_term_resume(qe__unused__ int sig)
     tty_term_resize(0);
 }
 
+static void tty_term_redisplay(void *opaque) {
+    QEditScreen *s = opaque;
+    QEmacsState *qs = s->qs;
+    //qs->complete_refresh = 1;
+    do_refresh(qs->first_window);
+    qe_display(qs);
+}
+
 static void tty_term_resize(qe__unused__ int sig)
 {
     QEditScreen *s = tty_screen;
 
     if (s) {
-        url_redisplay(s);
+        s->qs->complete_refresh = 1;
+        url_set_tail_handler(s->qs->up, tty_term_redisplay, s);
     }
 }
 
