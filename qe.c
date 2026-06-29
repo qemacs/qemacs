@@ -218,7 +218,7 @@ void qe_register_mode(QEmacsState *qs, ModeDef *m, int flags)
     if (!m->mode_init)
         m->mode_init = default_mode_init;
     /* if no syntax probing function, use extension matcher */
-    if (!m->mode_probe && m->extensions)
+    if (!m->mode_probe && (m->extensions || m->filenames))
         m->mode_probe = generic_mode_probe;
     if (!m->display)
         m->display = generic_text_display;
