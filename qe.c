@@ -5994,7 +5994,7 @@ static void parse_arguments(ExecCmdState *es)
 
     elapsed_time = get_clock_ms() - qs->cmd_start_time;
     qs->cmd_start_time += elapsed_time;
-    if (elapsed_time >= 100)
+    if (s && elapsed_time >= 100)
         put_status(s, "|%s: %dms", d->name, elapsed_time);
 
     qs->last_cmd_func = qs->this_cmd_func;
