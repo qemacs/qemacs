@@ -206,6 +206,7 @@ const char *css_get_color_name(char *dest, size_t size, QEColor color, int looku
 void css_free_colors(void);
 int css_get_font_family(const char *str);
 int css_get_enum(const char *str, const char *enum_str);
+int css_get_enum_bits(const char *str, const char *enum_str);
 int color_dist(QEColor c1, QEColor c2);
 static inline int color_y(QEColor c) {
     return 30 * ((c >> 16) & 0xff) + 59 * ((c >> 8) & 0xff) + 11 * (c & 0xff);
@@ -235,24 +236,44 @@ int colors_init(QEColor term_fg, QEColor term_bg);
 
 /*---- Font definitions ----*/
 
-#define QE_FONT_STYLE_NORM         0x0001
-#define QE_FONT_STYLE_BOLD         0x0002
-#define QE_FONT_STYLE_ITALIC       0x0004
-#define QE_FONT_STYLE_UNDERLINE    0x0008
-#define QE_FONT_STYLE_LINE_THROUGH 0x0010
-#define QE_FONT_STYLE_BLINK        0x0020
-#define QE_FONT_STYLE_MASK         0x00ff
-
 #define NB_FONT_FAMILIES           3
-#define QE_FONT_FAMILY_SHIFT       8
-#define QE_FONT_FAMILY_MASK        0xff00
-#define QE_FONT_FAMILY_FIXED       0x0100
-#define QE_FONT_FAMILY_SERIF       0x0200
-#define QE_FONT_FAMILY_SANS        0x0300 /* sans serif */
+#define QE_FONT_FAMILY_INHERIT     0x0000
+#define QE_FONT_FAMILY_FIXED       0x0001
+#define QE_FONT_FAMILY_SERIF       0x0002
+#define QE_FONT_FAMILY_SANS        0x0003
+#define QE_FONT_FAMILY_MASK        0x0003
+#define QE_FONT_SET_FAMILY         0x0003
+
+#define QE_FONT_STYLE_BOLD         0x0010
+#define QE_FONT_STYLE_ITALIC       0x0020
+#define QE_FONT_STYLE_BLINK        0x0040
+#define QE_FONT_REGULAR_MASK       0x0070
+
+#define QE_FONT_STYLE_UNDERLINE    0x0100
+#define QE_FONT_STYLE_OVERLINE     0x0200
+#define QE_FONT_STYLE_LINE_THROUGH 0x0400
+#define QE_FONT_STYLE_BOX          0x0800
+#define QE_FONT_DECORATION_MASK    0x0f00
+#define QE_FONT_NORMAL_MASK        0x0ff0
+
+#define QE_FONT_STYLE_MASK         0x0fff
+
+#define QE_FONT_SET_BG_COLOR       0x1000
+#define QE_FONT_SET_FG_COLOR       0x2000
+#define QE_FONT_SET_SIZE           0x4000
 
 /* fallback font handling */
-#define QE_FONT_FAMILY_FALLBACK_SHIFT  16
-#define QE_FONT_FAMILY_FALLBACK_MASK   0xff0000
+#define QE_FONT_FALLBACK_SHIFT  16
+#define QE_FONT_FALLBACK_MASK   0xff0000
+
+typedef struct QEStyleDef {
+    const char *name;
+    /* if any style is 0, then default edit style applies */
+    QEColor fg_color, bg_color;
+    short style_bits;
+    short font_style;
+    short font_size;
+} QEStyleDef;
 
 typedef struct QEFont {
     int refcount;

@@ -679,7 +679,7 @@ static void value_complete(CompleteState *cp, CompleteFunc enumerate) {
 }
 
 static int value_print_entry(CompleteState *cp, EditState *s, const char *name) {
-    if (find_style(name))
+    if (find_style(name, NULL))
         return style_print_entry(cp, s, name);
     else
         return color_print_entry(cp, s, name);

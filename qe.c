@@ -759,6 +759,17 @@ void do_cd(EditState *s, const char *path)
     }
 }
 
+static void color_name_complete(CompleteState *cp, CompleteFunc enumerate) {
+    ColorDef const *def = qe_colors;
+    int count = nb_qe_colors;
+
+    while (count > 0) {
+        (*enumerate)(cp, def->name, CT_STRX);
+        def++;
+        count--;
+    }
+}
+
 void color_complete(CompleteState *cp, CompleteFunc enumerate) {
     const char *name = cp->current;
     char buf[32];
@@ -794,13 +805,8 @@ void color_complete(CompleteState *cp, CompleteFunc enumerate) {
     } else
 #endif
     {
-        ColorDef const *def = qe_colors;
-        int count = nb_qe_colors;
-        while (count > 0) {
-            (*enumerate)(cp, def->name, CT_STRX);
-            def++;
-            count--;
-        }
+        color_name_complete(cp, enumerate);
+
         if (name[0] == 'p' && !qe_isalpha(name[1])) {
             for (i = 0; i < 8192; i++) {
                 snprintf(buf, sizeof buf, "p%d", i);
@@ -824,12 +830,21 @@ static int color_sort_func(const void *p1, const void *p2)
     return qe_strcollate(item1->str, item2->str);
 }
 
+static CompletionDef color_name_completion = {
+    "color-name", color_name_complete,
+#ifndef CONFIG_TINY
+    color_print_entry,
+#endif
+    .sort_func = color_sort_func,
+};
+
 static CompletionDef color_completion = {
     "color", color_complete,
 #ifndef CONFIG_TINY
     color_print_entry,
 #endif
     .sort_func = color_sort_func,
+    .flags = CF_SPACE_OK,
 };
 
 /* basic editing functions */
@@ -3374,18 +3389,18 @@ void do_what_cursor_position(EditState *s)
             if (bits == 8 || bits == QE_TERM_STYLE_BITS) {
                 buf_put_byte(out, ':');
                 if (style & QE_TERM_UNDERLINE)
-                    buf_puts(out, " underline");
+                    buf_put_word(out, "underline");
                 if (style & QE_TERM_BOLD)
-                    buf_puts(out, " bold");
+                    buf_put_word(out, "bold");
                 if (style & QE_TERM_ITALIC)
-                    buf_puts(out, " italic");
+                    buf_put_word(out, "italic");
                 if (style & QE_TERM_BLINK)
-                    buf_puts(out, " blink");
+                    buf_put_word(out, "blink");
                 if (style & QE_TERM_COMPOSITE) {
                     buf_printf(out, " %d/%d", QE_TERM_GET_FG(style),
                                QE_TERM_GET_BG(style));
                 } else {
-                    buf_printf(out, " %s", qe_styles[style].name);
+                    buf_put_word(out, qe_styles[style].name);
                 }
             }
             buf_put_byte(out, '}');
@@ -3642,10 +3657,10 @@ static void apply_style(QEStyleDef *stp, QETermStyle style)
                 fg |= 8;
             }
         }
-        if (style & QE_TERM_UNDERLINE)
-            stp->font_style |= QE_FONT_STYLE_UNDERLINE;
         if (style & QE_TERM_ITALIC)
             stp->font_style |= QE_FONT_STYLE_ITALIC;
+        if (style & QE_TERM_UNDERLINE)
+            stp->font_style |= QE_FONT_STYLE_UNDERLINE;
         if (style & QE_TERM_BLINK)
             stp->font_style |= QE_FONT_STYLE_BLINK;
         fg_color = qe_unmap_color(fg, QE_TERM_FG_COLORS);
@@ -3688,7 +3703,7 @@ void get_style(QEStyleDef *stp, QETermStyle window_style, QETermStyle style)
         apply_style(stp, style);
 }
 
-void style_complete(CompleteState *cp, CompleteFunc enumerate) {
+static void style_name_complete(CompleteState *cp, CompleteFunc enumerate) {
     int i;
     QEStyleDef *stp;
 
@@ -3698,33 +3713,46 @@ void style_complete(CompleteState *cp, CompleteFunc enumerate) {
     }
 }
 
-int find_style_index(const char *name)
+void style_complete(CompleteState *cp, CompleteFunc enumerate) {
+    style_name_complete(cp, enumerate);
+#ifndef CONFIG_TINY
+    style_attr_complete(cp, enumerate);
+#endif
+}
+
+QEStyleDef *find_style(const char *name, int *index)
 {
-    int i;
     QEStyleDef *stp;
+    int i;
 
     stp = qe_styles;
     for (i = 0; i < QE_STYLE_NB; i++, stp++) {
-        if (strequal(stp->name, name))
-            return i;
+        if (strequal(stp->name, name)) {
+            if (index)
+                *index = i;
+            return stp;
+        }
     }
+    // XXX: support tailwind style attribute style-12 ?
     if (qe_isdigit(*name)) {
-        i = strtol(name, NULL, 0);
-        if (i < QE_STYLE_NB)
-            return i;
+        const char *p;
+        long n = strtol_c(name, &p, 0);
+        if (!*p && n >= 0 && n < QE_STYLE_NB) {
+            if (index)
+                *index = (int)n;
+            return &qe_styles[n];
+        }
     }
-    return -1;
+    return NULL;
 }
 
-QEStyleDef *find_style(const char *name)
-{
-    int i = find_style_index(name);
-
-    if (i >= 0 && i < QE_STYLE_NB)
-        return qe_styles + i;
-    else
-        return NULL;
-}
+static CompletionDef style_name_completion = {
+    .name = "style-name",
+    .enumerate = style_name_complete,
+#ifndef CONFIG_TINY
+    .print_entry = style_print_entry,
+#endif
+};
 
 static CompletionDef style_completion = {
     .name = "style",
@@ -3732,8 +3760,10 @@ static CompletionDef style_completion = {
 #ifndef CONFIG_TINY
     .print_entry = style_print_entry,
 #endif
+    .flags = CF_SPACE_OK,
 };
 
+// XXX: should rename these css_properties
 static const char * const qe_style_properties[] = {
 #define CSS_PROP_COLOR  0
     "color",            /* color */
@@ -3749,7 +3779,7 @@ static const char * const qe_style_properties[] = {
 #define CSS_PROP_FONT_SIZE  5
     "font-size",        /* font_size: inherit / size */
 #define CSS_PROP_TEXT_DECORATION  6
-    "text-decoration",  /* text_decoration: none / underline */
+    "text-decoration",  /* text_decoration: none / underline / overline / line-through, box */
 };
 
 void style_property_complete(CompleteState *cp, CompleteFunc enumerate) {
@@ -3777,80 +3807,156 @@ int find_style_property(const char *name)
 }
 
 /* Note: we use the same syntax as CSS styles to ease merging */
-void do_set_style(EditState *e, const char *stylestr,
-                  const char *propstr, const char *value)
+void do_set_style(EditState *e, const char *style_name,
+                  const char *prop_name, const char *value)
 {
+    QEStyleDef styledef;
     QEStyleDef *stp;
-    int v, prop_index;
+    int style_index, v, prop_index;
+    const char *p;
 
-    stp = find_style(stylestr);
+    stp = find_style(style_name, &style_index);
     if (!stp) {
-        put_error(e, "Unknown style '%s'", stylestr);
+        put_error(e, "Unknown named style '%s'", style_name);
         return;
     }
 
-    prop_index = find_style_property(propstr);
+    styledef = *stp;
+    prop_index = find_style_property(prop_name);
     if (prop_index < 0) {
-        put_error(e, "Unknown property '%s'", propstr);
+        put_error(e, "Unknown CSS property '%s'", prop_name);
         return;
     }
 
     switch (prop_index) {
     case CSS_PROP_COLOR:
-        if (css_get_color(&stp->fg_color, value))
+        if (css_get_color(&styledef.fg_color, value))
             goto bad_color;
         break;
     case CSS_PROP_BACKGROUND_COLOR:
-        if (css_get_color(&stp->bg_color, value))
+        if (css_get_color(&styledef.bg_color, value))
             goto bad_color;
         break;
     bad_color:
         put_error(e, "Unknown color '%s'", value);
         return;
     case CSS_PROP_FONT_FAMILY:
-        v = css_get_font_family(value);
-        stp->font_style = (stp->font_style & ~QE_FONT_FAMILY_MASK) | v;
+        v = styledef.font_style & ~QE_FONT_FAMILY_MASK;
+        v |= css_get_font_family(value);
+        styledef.font_style = v;
         break;
     case CSS_PROP_FONT_STYLE:
         /* XXX: cannot handle inherit correctly */
-        v = stp->font_style;
+        v = styledef.font_style;
         if (strequal(value, "italic")) {
             v |= QE_FONT_STYLE_ITALIC;
         } else
         if (strequal(value, "normal")) {
             v &= ~QE_FONT_STYLE_ITALIC;
         }
-        stp->font_style = v;
+        styledef.font_style = v;
         break;
     case CSS_PROP_FONT_WEIGHT:
         /* XXX: cannot handle inherit correctly */
-        v = stp->font_style;
+        v = styledef.font_style;
         if (strequal(value, "bold")) {
             v |= QE_FONT_STYLE_BOLD;
         } else
         if (strequal(value, "normal")) {
             v &= ~QE_FONT_STYLE_BOLD;
         }
-        stp->font_style = v;
+        styledef.font_style = v;
         break;
     case CSS_PROP_FONT_SIZE:
         if (strequal(value, "inherit")) {
-            stp->font_size = 0;
+            styledef.font_size = 0;
         } else {
-            stp->font_size = strtol(value, NULL, 0);
+            styledef.font_size = strtol(value, NULL, 0);
         }
         break;
     case CSS_PROP_TEXT_DECORATION:
         /* XXX: cannot handle inherit correctly */
-        if (strequal(value, "none")) {
-            stp->font_style &= ~QE_FONT_STYLE_UNDERLINE;
-        } else
-        if (strequal(value, "underline")) {
-            stp->font_style |= QE_FONT_STYLE_UNDERLINE;
+        for (p = value; *p; ) {
+            if (strstart(p, "none", &p)) {
+                styledef.font_style &= ~QE_FONT_DECORATION_MASK;
+            } else
+            if (strstart(p, "underline", &p)) {
+                styledef.font_style |= QE_FONT_STYLE_UNDERLINE;
+            } else
+            if (strstart(p, "overline", &p)) {
+                styledef.font_style |= QE_FONT_STYLE_OVERLINE;
+            } else
+            if (strstart(p, "line-through", &p)) {
+                styledef.font_style |= QE_FONT_STYLE_LINE_THROUGH;
+            } else
+            if (strstart(p, "box", &p)) {
+                styledef.font_style |= QE_FONT_STYLE_BOX;
+            }
+            while (qe_isalnum((unsigned char)*p) || *p == '-')
+                p++;
+            if (*p == ',')
+                p++;
+            while (*p == ' ')
+                p++;
         }
         break;
     }
+    if (!style_index)
+        check_default_style(stp);
+    *stp = styledef;
     e->qs->complete_refresh = 1;
+    do_refresh(e);
+}
+
+void check_default_style(QEStyleDef *stp)
+{
+    QEStyleDef *def = &qe_styles[0];
+    if (stp->bg_color == COLOR_TRANSPARENT)
+        stp->bg_color = def->bg_color;
+    if (stp->fg_color == COLOR_DEFAULT)
+        stp->fg_color = def->fg_color;
+    if (stp->fg_color == stp->bg_color)
+        stp->fg_color ^= 0x808080;
+    if ((stp->font_style & QE_FONT_FAMILY_MASK) == QE_FONT_FAMILY_INHERIT)
+        stp->font_style |= QE_FONT_FAMILY_FIXED;
+    if (stp->font_size == 0)
+        stp->font_size = 12;
+}
+
+void do_modify_style(EditState *s, const char *style_name, const char *str)
+{
+#ifndef CONFIG_TINY
+    QEStyleDef styledef, style2;
+    QEStyleDef *stp;
+    int index, style_bits;
+
+    stp = find_style(style_name, &index);
+    if (!stp) {
+        put_error(s, "Unknown style '%s'", style_name);
+        return;
+    }
+
+    style_bits = qe_styledef_parse(&styledef, str);
+    if (style_bits < 0) {
+        put_error(s, "Invalid style: %s", str);
+        return;
+    }
+
+    style2 = *stp;
+    style2.font_style &= ~(style_bits & QE_FONT_STYLE_MASK);
+    style2.font_style |= styledef.font_style;
+    if (style_bits & QE_FONT_SET_FG_COLOR)
+        style2.fg_color = styledef.fg_color;
+    if (style_bits & QE_FONT_SET_BG_COLOR)
+        style2.bg_color = styledef.bg_color;
+    if (style_bits & QE_FONT_SET_SIZE)
+        style2.font_size = styledef.font_size;
+    if (!index)
+        check_default_style(&style2);
+    *stp = style2;
+    s->qs->complete_refresh = 1;
+    do_refresh(s);
+#endif
 }
 
 void do_define_color(EditState *e, const char *name, const char *value)
@@ -3892,13 +3998,15 @@ void do_toggle_mode_line(EditState *s)
 
 void do_set_window_style(EditState *s, const char *stylestr)
 {
-    int style_index = find_style_index(stylestr);
+#ifndef CONFIG_TINY
+    QETermStyle style;
 
-    if (style_index < 0) {
+    if (qe_term_style_parse(&style, stylestr)) {
         put_error(s, "Unknown style '%s'", stylestr);
         return;
     }
-    s->default_style = style_index;
+    s->default_style = style;
+#endif
 }
 
 void do_set_system_font(EditState *s, const char *qe_font_name,
@@ -3914,7 +4022,8 @@ void do_set_system_font(EditState *s, const char *qe_font_name,
     }
     pstrcpy(qs->system_fonts[font_type], sizeof(qs->system_fonts[0]),
             system_fonts);
-    //qs->complete_refresh = 1;
+    qs->complete_refresh = 1;
+    do_refresh(s);
 }
 
 static void display_bol_bidir(DisplayState *ds, DirType base,
@@ -12096,14 +12205,19 @@ static const CmdDef basic_commands[] = {
     CMD2( "define-color", "",
           "Define a named color",
           do_define_color, ESss,
-          "s{Color name: }[color]|color|"
+          "s{Color name: }[color-name]|color-name|"
           "s{Color value: }[color]|color|")
     CMD2( "set-style", "",
           "Set a property for a named style",
           do_set_style, ESsss,
-          "s{Style: }[style]|style|"
+          "s{Style: }[style-name]|style-name|"
           "s{CSS Property Name: }[style-property]|style-property|"
           "s{CSS Property Value: }|value|")
+    CMD2( "modify-style", "",
+          "Modify a named style properties",
+          do_modify_style, ESss,
+          "s{Style: }[style-name]|style-name|"
+          "s{Style attributes: }[.style-attr]|style|")
     CMD2( "set-display-size", "",
           "Set the dimensions of the graphics screen",
           do_set_display_size, ESii,
@@ -12253,7 +12367,7 @@ QEStyleDef qe_styles[QE_STYLE_NB] = {
 
 #define STYLE_DEF(constant, name, fg_color, bg_color, \
                   font_style, font_size) \
-{ name, fg_color, bg_color, font_style, font_size },
+    { name, fg_color, bg_color, 0, font_style, font_size },
 
 #include "qestyles.h"
 
@@ -12394,10 +12508,12 @@ static int qe_init(QEmacsState *qs, int argc, char **argv)
 
     qe_register_completion(qs, &buffer_completion);
     qe_register_completion(qs, &charset_completion);
+    qe_register_completion(qs, &color_name_completion);
     qe_register_completion(qs, &color_completion);
     qe_register_completion(qs, &command_completion);
     qe_register_completion(qs, &file_completion);
     qe_register_completion(qs, &mode_completion);
+    qe_register_completion(qs, &style_name_completion);
     qe_register_completion(qs, &style_completion);
     qe_register_completion(qs, &style_property_completion);
 #ifndef CONFIG_TINY

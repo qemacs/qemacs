@@ -1506,24 +1506,21 @@ int css_get_color(QEColor *color_ptr, const char *p)
 /* return 0 if unknown font */
 int css_get_font_family(const char *str)
 {
-    int v;
-
     if (!strcasecmp(str, "serif") ||
         !strcasecmp(str, "times"))
-        v = QE_FONT_FAMILY_SERIF;
+        return QE_FONT_FAMILY_SERIF;
     else
     if (!strcasecmp(str, "sans") ||
         !strcasecmp(str, "arial") ||
         !strcasecmp(str, "helvetica"))
-        v = QE_FONT_FAMILY_SANS;
+        return QE_FONT_FAMILY_SANS;
     else
     if (!strcasecmp(str, "fixed") ||
         !strcasecmp(str, "monospace") ||
         !strcasecmp(str, "courier"))
-        v = QE_FONT_FAMILY_FIXED;
+        return QE_FONT_FAMILY_FIXED;
     else
-        v = 0; /* inherit */
-    return v;
+        return QE_FONT_FAMILY_INHERIT;
 }
 #endif  /* style stuff */
 
@@ -1547,6 +1544,43 @@ int css_get_enum(const char *str, const char *enum_str) {
         val++;
     }
     return -1;
+}
+
+/* scans space separated items in str for
+   a comma separated list of entries,
+   return 0 for 'none', a combination of bits or -1 */
+int css_get_enum_bits(const char *str, const char *enum_str) {
+    int val, len, bit;
+    const char *s, *s0;
+
+    val = 0;
+    if (strequal(str, "none"))
+        return val;
+
+    for (;;) {
+        while (*str == ' ')
+            str++;
+        if (!*str)
+            break;
+        for (len = 0; str[len] && str[len] != ' '; len++)
+            continue;
+        s = enum_str;
+        for (bit = 1;; bit += bit) {
+            for (s0 = s; *s && *s != ','; s++)
+                continue;
+            if (s - s0 == len && !memcmp(s0, str, len)) {
+                val |= bit;
+                break;
+            }
+            if (!*s) {
+                // item not found: ignore?
+                break;
+            }
+            s++;
+        }
+        str += len;
+    }
+    return val;
 }
 
 /* a = a union b */

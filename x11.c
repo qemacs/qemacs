@@ -245,8 +245,8 @@ static int x11_dpy_init(QEditScreen *s, QEmacsState *qs, int w, int h)
         fprintf(stderr, "Could not open default font\n");
         exit(1);
     }
-    font_ysize = font->ascent + font->descent;
-    font_xsize = glyph_width(s, font, 'x');
+    font_ysize = max_int(font->ascent + font->descent, 1);
+    font_xsize = max_int(glyph_width(s, font, 'x'), 1);
     x11_dpy_close_font(s, &font);
 
     if (w > 0 && h > 0) {
@@ -263,7 +263,7 @@ static int x11_dpy_init(QEditScreen *s, QEmacsState *qs, int w, int h)
                 p++;
             ysize = strtol_c(p, &p, 0);
 
-            if (xsize <= 0 || ysize <=0) {
+            if (xsize <= 0 || ysize <= 0) {
                 fprintf(stderr, "Invalid geometry '%s'\n", geometry_str);
                 exit(1);
             }
@@ -739,15 +739,15 @@ static QEFont *x11_dpy_open_font(QEditScreen *s, int style, int size)
         return NULL;
 
     /* get font name */
-    font_index = ((style & QE_FONT_FAMILY_MASK) >> QE_FONT_FAMILY_SHIFT) - 1;
+    font_index = (style & QE_FONT_FAMILY_MASK) - 1;
     if ((unsigned)font_index >= NB_FONT_FAMILIES)
         font_index = 0; /* fixed font is default */
     family_list = s->qs->system_fonts[font_index];
     if (family_list[0] == '\0')
         family_list = default_x11_fonts[font_index];
 
-    /* take the nth font number in family list */
-    font_fallback = (style & QE_FONT_FAMILY_FALLBACK_MASK) >> QE_FONT_FAMILY_FALLBACK_SHIFT;
+    /* take the nth font number in fallback list */
+    font_fallback = (style & QE_FONT_FALLBACK_MASK) >> QE_FONT_FALLBACK_SHIFT;
     p = family_list;
     for (i = 0; i < font_fallback; i++) {
         p = strchr(p, ',');
@@ -909,8 +909,7 @@ static XCharStruct *handle_fallback(QEditScreen *s, QEFont **out_font,
 
     /* fallback case */
     for (fallback_count = 1; fallback_count < 5; fallback_count++) {
-        font1 = select_font(s, font->style |
-                            (fallback_count << QE_FONT_FAMILY_FALLBACK_SHIFT),
+        font1 = select_font(s, font->style | (fallback_count << QE_FONT_FALLBACK_SHIFT),
                             font->size);
         if (!font1)
             break;
@@ -963,7 +962,7 @@ static void x11_dpy_text_metrics(QEditScreen *s, QEFont *font,
 }
 
 static void x11_dpy_draw_text(QEditScreen *s, QEFont *font,
-                              int x1, int y, const char32_t *str, int len,
+                              int x0, int y_base, const char32_t *str, int len,
                               QEColor color)
 {
     X11State *xs = s->priv_data;
@@ -985,7 +984,7 @@ static void x11_dpy_draw_text(QEditScreen *s, QEFont *font,
     XSetForeground(xs->display, xs->gc, xcolor);
     q = x11_str;
     i = 0;
-    x = x1;
+    x = x0;
     x_start = x;
     last_font = font;
     while (i < len) {
@@ -1007,8 +1006,8 @@ static void x11_dpy_draw_text(QEditScreen *s, QEFont *font,
             xfont = last_font->priv_data;
             l = q - x11_str;
             XSetFont(xs->display, xs->gc, xfont->fid);
-            XDrawString16(xs->display, xs->dbuffer, xs->gc, x_start, y, x11_str, l);
-            update_rect(xs, x_start, y - last_font->ascent, x, y + last_font->descent);
+            XDrawString16(xs->display, xs->dbuffer, xs->gc, x_start, y_base, x11_str, l);
+            update_rect(xs, x_start, y_base - last_font->ascent, x, y_base + last_font->descent);
             x_start = x;
             q = x11_str;
         }
@@ -1026,23 +1025,33 @@ static void x11_dpy_draw_text(QEditScreen *s, QEFont *font,
         xfont = last_font->priv_data;
         l = q - x11_str;
         XSetFont(xs->display, xs->gc, xfont->fid);
-        XDrawString16(xs->display, xs->dbuffer, xs->gc, x_start, y, x11_str, l);
-        update_rect(xs, x_start, y - last_font->ascent, x, y + last_font->descent);
+        XDrawString16(xs->display, xs->dbuffer, xs->gc, x_start, y_base, x11_str, l);
+        update_rect(xs, x_start, y_base - last_font->ascent, x, y_base + last_font->descent);
     }
-    /* underline synthesis */
-    if (font->style & (QE_FONT_STYLE_UNDERLINE | QE_FONT_STYLE_LINE_THROUGH)) {
-        int dy, h, w;
-        h = (font->descent + 2) / 4;
-        if (h < 1)
-            h = 1;
-        w = x - x1;
+    /* text decoration synthesis */
+    if (font->style & QE_FONT_DECORATION_MASK) {
+        int y0 = y_base - font->ascent;
+        int x1 = x;
+        int y1 = y_base + font->descent;
+        int w = x1 - x0;
+        int h = y1 - y0;
+        int dh = max_int((font->descent + 2) / 4, 1);
+        int dw = dh;    // assume 1.0 aspect ratio
         if (font->style & QE_FONT_STYLE_UNDERLINE) {
-            dy = (font->descent + 1) / 3;
-            XFillRectangle(xs->display, xs->dbuffer, xs->gc, x1, y + dy, w, h);
+            int y = y_base + (font->descent + 1) / 3;
+            XFillRectangle(xs->display, xs->dbuffer, xs->gc, x0, y, w, dh);
         }
         if (font->style & QE_FONT_STYLE_LINE_THROUGH) {
-            dy = -(font->ascent / 2 - 1);
-            XFillRectangle(xs->display, xs->dbuffer, xs->gc, x1, y + dy, w, h);
+            int y = y_base - (font->ascent / 2 - 1);
+            XFillRectangle(xs->display, xs->dbuffer, xs->gc, x0, y, w, dh);
+        }
+        if (font->style & (QE_FONT_STYLE_OVERLINE | QE_FONT_STYLE_BOX)) {
+            XFillRectangle(xs->display, xs->dbuffer, xs->gc, x0, y0 - dh, w, dh);
+        }
+        if (font->style & QE_FONT_STYLE_BOX) {
+            XFillRectangle(xs->display, xs->dbuffer, xs->gc, x0 - dw, y0 - dh, dw, h + dh + dh);
+            XFillRectangle(xs->display, xs->dbuffer, xs->gc, x1, y0 - dh, dw, h + dh + dh);
+            XFillRectangle(xs->display, xs->dbuffer, xs->gc, x0, y1, w, dh);
         }
     }
 }

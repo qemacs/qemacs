@@ -323,7 +323,7 @@ QEFont *select_font(QEditScreen *s, int style, int size)
     }
     fc = open_font(s, style, size);
     if (!fc) {
-        if (style & QE_FONT_FAMILY_FALLBACK_MASK)
+        if (style & QE_FONT_FALLBACK_MASK)
             return NULL;
 
         dpy_error(s, "open_font: cannot open style=%X size=%d",
