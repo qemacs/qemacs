@@ -2,7 +2,7 @@
  * CSS2 parser for qemacs.
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2007-2025 Charlie Gordon.
+ * Copyright (c) 2007-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -394,6 +394,11 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
             }
             if (type & CSS_TYPE_ENUM) {
                 val = css_get_enum(buf, def->name + strlen(def->name) + 1);
+                if (val >= 0)
+                    goto got_val;
+            }
+            if (type & CSS_TYPE_ENUM_BITS) {
+                val = css_get_enum_bits(buf, def->name + strlen(def->name) + 1);
                 if (val >= 0)
                     goto got_val;
             }

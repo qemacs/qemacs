@@ -2,7 +2,7 @@
  * CSS core for qemacs.
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2007-2025 Charlie Gordon.
+ * Copyright (c) 2007-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -83,8 +83,10 @@ enum CSSProperties {
     CSS_font_size,
     CSS_text_decoration,
 #define CSS_TEXT_DECORATION_NONE         0
-#define CSS_TEXT_DECORATION_UNDERLINE    1
-#define CSS_TEXT_DECORATION_LINE_THROUGH 2
+#define CSS_TEXT_DECORATION_UNDERLINE    (1 << 0)
+#define CSS_TEXT_DECORATION_LINE_THROUGH (1 << 1)
+#define CSS_TEXT_DECORATION_OVERLINE     (1 << 2)
+#define CSS_TEXT_DECORATION_BOX          (1 << 3)
     CSS_text_align,
 #define CSS_TEXT_ALIGN_LEFT    0
 #define CSS_TEXT_ALIGN_RIGHT   1
@@ -244,6 +246,7 @@ typedef struct CSSPropertyDef {
 #define CSS_TYPE_COUNTER       0x00000200 /* counter(x[,type]) */
 #define CSS_TYPE_LIST_STYLE    0x00000400
 #define CSS_TYPE_IDENT         0x00000800
+#define CSS_TYPE_ENUM_BITS     0x00001000
 
 } CSSPropertyDef;
 

@@ -2,6 +2,7 @@
  * Frame buffer low level functions for QEmacs
  *
  * Copyright (c) 2001, 2002 Fabrice Bellard.
+ * Copyright (c) 2002-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -251,17 +252,19 @@ static void cfb32_draw_glyph(QEditScreen *s1,
 }
 
 static void cfb_draw_text(QEditScreen *s, QEFont *font,
-                          int x_start, int y, const unsigned int *str, int len,
+                          int x0, int y_base, const unsigned int *str, int len,
                           QEColor color)
 {
     CFBContext *cfb = s->priv_data;
-    GlyphCache *g;
-    unsigned char *glyph_ptr;
-    int i, x1, y1, x2, y2, wrap, x;
-    unsigned int cc;
+    int i, x;
 
-    x = x_start;
-    for (i = 0;i < len; i++) {
+    x = x0;
+    for (i = 0; i < len; i++) {
+        int x1, y1, x2, y2, wrap;
+        unsigned char *glyph_ptr;
+        unsigned int cc;
+        GlyphCache *g;
+
         cc = str[i];
         g = decode_cached_glyph(s, font, cc);
         if (!g)
@@ -269,7 +272,7 @@ static void cfb_draw_text(QEditScreen *s, QEFont *font,
 
         x1 = x + g->x;
         x2 = x1 + g->w;
-        y2 = y - g->y;
+        y2 = y_base - g->y;
         y1 = y2 - g->h;
         glyph_ptr = g->data;
         wrap = g->w;
@@ -302,24 +305,33 @@ static void cfb_draw_text(QEditScreen *s, QEFont *font,
         x += g->xincr;
     }
 
-    /* underline synthesis */
-    if (font->style & (QE_FONT_STYLE_UNDERLINE | QE_FONT_STYLE_LINE_THROUGH)) {
-        int dy, h, w;
-        h = (font->descent + 2) / 4;
-        if (h < 1)
-            h = 1;
-        w = x - x_start;
+    /* text decoration synthesis */
+    if (font->style & QE_FONT_DECORATION_MASK) {
+        int y0 = y_base - font->ascent;
+        int x1 = x;
+        int y1 = y_base + font->descent;
+        int w = x1 - x0;
+        int h = y1 - y0;
+        int dh = max_int((font->descent + 2) / 4, 1);
+        int dw = dh;    // assume 1.0 aspect ratio
         if (font->style & QE_FONT_STYLE_UNDERLINE) {
-            dy = (font->descent + 1) / 3;
-            fill_rectangle(s, x_start, y + dy, w, h, color);
+            int y = y_base + (font->descent + 1) / 3;
+            fill_rectangle(s, x0, y, w, dh, color);
         }
         if (font->style & QE_FONT_STYLE_LINE_THROUGH) {
-            dy = -(font->ascent / 2 - 1);
-            fill_rectangle(s, x_start, y + dy, w, h, color);
+            int y = y_base - (font->ascent / 2 - 1);
+            fill_rectangle(s, x0, y, w, dh, color);
+        }
+        if (font->style & (QE_FONT_STYLE_OVERLINE | QE_FONT_STYLE_BOX)) {
+            fill_rectangle(s, x0, y0 - dh, w, dh, color);
+        }
+        if (font->style & QE_FONT_STYLE_BOX) {
+            fill_rectangle(s, x0 - dw, y0 - dh, dw, h + dh + dh, color);
+            fill_rectangle(s, x1, y0 - dh, dw, h + dh + dh, color);
+            fill_rectangle(s, x0, y1, w, dh, color);
         }
     }
 }
-
 
 static void cfb_set_clip(qe__unused__ QEditScreen *s,
                          qe__unused__ int x, qe__unused__ int y,

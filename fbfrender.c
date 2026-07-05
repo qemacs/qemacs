@@ -187,7 +187,7 @@ GlyphCache *decode_cached_glyph(QEditScreen *s, QEFont *font, int code)
         g = fbf_decode_glyph1(font, code);
         if (!g) {
             /* try with fallback font */
-            font1 = select_font(s, font->style | (1 << QE_FONT_FAMILY_FALLBACK_SHIFT),
+            font1 = select_font(s, font->style | (1 << QE_FONT_FALLBACK_SHIFT),
                                 font->size);
             g = fbf_decode_glyph1(font1, code);
             release_font(s, font1);
@@ -239,22 +239,23 @@ QEFont *fbf_open_font(qe__unused__ QEditScreen *s, int style, int size)
     UniFontData *uf, *uf_found;
     int d, dmin;
     UniFontData *fonts[MAX_MATCHES];
-    int nb_fonts, i;
+    int nb_fonts, i, family_type;
 
     font = qe_mallocz(QEFont);
     if (!font)
         return NULL;
 
-    if ((style & QE_FONT_FAMILY_FALLBACK_MASK) != 0) {
+    if ((style & QE_FONT_FALLBACK_MASK) != 0) {
         uf_found = fallback_font;
     } else {
         /* convert to unifont family types */
-        style = ((style & QE_FONT_FAMILY_MASK) >> QE_FONT_FAMILY_SHIFT) - 1;
+        family_type = (style & QE_FONT_FAMILY_MASK);
+        if (family_type) family_type--;
 
         /* first match style */
         nb_fonts = 0;
         for (uf = first_font; uf != NULL; uf = uf->next_font) {
-            if (uf->family_type == style) {
+            if (uf->family_type == family_type) {
                 fonts[nb_fonts++] = uf;
             }
         }

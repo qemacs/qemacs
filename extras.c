@@ -1748,34 +1748,91 @@ static int str_get_word7(char *buf, int size, const char *p, const char **pp)
     return len;
 }
 
+typedef struct QEStyleAttr QEStyleAttr;
+struct QEStyleAttr {
+    char name[16];
+    short attr, mask;
+    int term_attr;
+};
+
+static QEStyleAttr const style_attrs[] = {
+    { "normal",     0,                       QE_FONT_NORMAL_MASK,      0 },
+    { "regular",    0,                       QE_FONT_REGULAR_MASK,     0 },
+    { "bold",       QE_FONT_STYLE_BOLD,      QE_FONT_STYLE_BOLD,      QE_TERM_BOLD },
+    { "strong",     QE_FONT_STYLE_BOLD,      QE_FONT_STYLE_BOLD,      QE_TERM_BOLD },
+    { "italic",     QE_FONT_STYLE_ITALIC,    QE_FONT_STYLE_ITALIC,    QE_TERM_ITALIC },
+    { "blink",      QE_FONT_STYLE_BLINK,     QE_FONT_STYLE_BLINK,     QE_TERM_BLINK },
+    { "underline",  QE_FONT_STYLE_UNDERLINE, QE_FONT_STYLE_UNDERLINE, QE_TERM_UNDERLINE },
+    { "overline",   QE_FONT_STYLE_OVERLINE,  QE_FONT_STYLE_OVERLINE,  0 },
+    { "box",        QE_FONT_STYLE_BOX,       QE_FONT_STYLE_BOX,       0 },
+    { "line-through", QE_FONT_STYLE_LINE_THROUGH, QE_FONT_STYLE_LINE_THROUGH, 0 },
+    { "strike-through", QE_FONT_STYLE_LINE_THROUGH, QE_FONT_STYLE_LINE_THROUGH, 0 },
+    { "fixed",      QE_FONT_FAMILY_FIXED,    QE_FONT_FAMILY_MASK,     0 },
+    { "mono",       QE_FONT_FAMILY_FIXED,    QE_FONT_FAMILY_MASK,     0 },
+    { "sans",       QE_FONT_FAMILY_SANS,     QE_FONT_FAMILY_MASK,     0 },
+    { "arial",      QE_FONT_FAMILY_SANS,     QE_FONT_FAMILY_MASK,     0 },
+    { "helv",       QE_FONT_FAMILY_SANS,     QE_FONT_FAMILY_MASK,     0 },
+    { "serif",      QE_FONT_FAMILY_SERIF,    QE_FONT_FAMILY_MASK,     0 },
+    { "times",      QE_FONT_FAMILY_SERIF,    QE_FONT_FAMILY_MASK,     0 },
+};
+
+void style_attr_complete(CompleteState *cp, CompleteFunc enumerate) {
+    const QEStyleAttr *attrp = style_attrs;
+    int nattrs = countof(style_attrs);
+
+    while (nattrs-- > 0) {
+        (*enumerate)(cp, attrp->name, CT_STRX);
+        attrp++;
+    }
+    if (*cp->current) {
+        color_complete(cp, enumerate);
+    }
+}
+
+static CompletionDef style_attr_completion = {
+    .name = "style-attr",
+    .enumerate = style_attr_complete,
+    .print_entry = style_print_entry,
+    .flags = CF_SPACE_OK | CF_NO_AUTO_SUBMIT,
+};
+
 int qe_term_style_parse(QETermStyle *style, const char *str)
 {
     char buf[128];
     QEColor fg_color, bg_color;
-    unsigned int fg, bg, attr;
+    unsigned int fg, bg, term_attr;
+    int style_index;
     const char *p = str;
 
-    attr = 0;
+    if (find_style(str, &style_index)) {
+        *style = style_index;
+        return 0;
+    }
+
+    term_attr = 0;
     fg_color = COLOR_TRANSPARENT;
     bg_color = COLOR_TRANSPARENT;
-    while (str_get_word7(buf, sizeof(buf), p, &p)) {
 
-        if (strfind("bold|strong", buf)) {
-            attr |= QE_TERM_BOLD;
-            continue;
+    while (str_get_word7(buf, sizeof(buf), p, &p)) {
+        const QEStyleAttr *attrp = style_attrs;
+        int nattrs = countof(style_attrs);
+        int found = 0;
+
+        while (nattrs-- > 0) {
+            if (stristart(buf, attrp->name, NULL)) {
+                if (!attrp->term_attr) {
+                    // unknown attribute
+                    return 1;
+                }
+                term_attr |= attrp->term_attr;
+                found = 1;
+                break;
+            }
+            attrp++;
         }
-        if (strfind("italic|italics", buf)) {
-            attr |= QE_TERM_ITALIC;
+        if (found)
             continue;
-        }
-        if (strfind("underlined|underline", buf)) {
-            attr |= QE_TERM_UNDERLINE;
-            continue;
-        }
-        if (strfind("blinking|blink", buf)) {
-            attr |= QE_TERM_BLINK;
-            continue;
-        }
+
         if (!css_get_color(&fg_color, buf)) {
             continue;
         }
@@ -1784,12 +1841,13 @@ int qe_term_style_parse(QETermStyle *style, const char *str)
             if (!css_get_color(&bg_color, buf))
                 continue;
         }
+        // unknown attribute
         return 1;
     }
     fg = qe_map_color(fg_color, xterm_colors, QE_TERM_FG_COLORS, NULL);
     bg = qe_map_color(bg_color, xterm_colors, QE_TERM_BG_COLORS, NULL);
 
-    *style = QE_TERM_COMPOSITE | attr | QE_TERM_MAKE_COLOR(fg, bg);
+    *style = QE_TERM_COMPOSITE | term_attr | QE_TERM_MAKE_COLOR(fg, bg);
     return 0;
 }
 
@@ -1798,48 +1856,68 @@ int qe_styledef_parse(QEStyleDef *stp, const char *str)
     char buf[128];
     QEColor bg_color = COLOR_TRANSPARENT;
     QEColor fg_color = COLOR_TRANSPARENT;
-    short font_style = 0;
-    short font_size = 12;
+    int font_style = 0;
+    int style_bits = 0;
+    int font_size = 0;
     const char *p = str;
 
     while (str_get_word7(buf, sizeof(buf), p, &p)) {
+        const QEStyleAttr *attrp = style_attrs;
+        int nattrs = countof(style_attrs);
+        int found = 0;
+        const char *p1 = buf;
+        int mask = QE_FONT_STYLE_MASK;
 
-        if (strfind("bold|strong", buf)) {
-            font_style |= QE_FONT_STYLE_BOLD;
-            continue;
+        p1 += (*p1 == '+');
+        if (*p1 == '-' || *p1 == '~') {
+            p1++;
+            mask = 0;
         }
-        if (strfind("italic|italics", buf)) {
-            font_style |= QE_FONT_STYLE_ITALIC;
-            continue;
+
+        while (nattrs-- > 0) {
+            if (stristart(p1, attrp->name, NULL)) {
+                style_bits |= attrp->mask;
+                font_style &= ~attrp->mask;
+                font_style |= attrp->attr & mask;
+                found = 1;
+                break;
+            }
+            attrp++;
         }
-        if (strfind("underlined|underline", buf)) {
-            font_style |= QE_FONT_STYLE_UNDERLINE;
+        if (found)
             continue;
-        }
-        if (strfind("blinking|blink", buf)) {
-            font_style |= QE_FONT_STYLE_BLINK;
-            continue;
-        }
+
         if (!css_get_color(&fg_color, buf)) {
+            style_bits |= QE_FONT_SET_FG_COLOR;
             continue;
         }
         if (strfind("/|on", buf)) {
             str_get_word7(buf, sizeof(buf), p, &p);
-            if (!css_get_color(&bg_color, buf))
+            if (!css_get_color(&bg_color, buf)) {
+                style_bits |= QE_FONT_SET_BG_COLOR;
                 continue;
+            }
         }
-        // XXX parse font name, type...
-        if (qe_isdigit((unsigned char)*p)) {
-            font_size = (short)strtol_c(p, &p, 10);
-            strstart(p, "pt", &p);
+        // XXX use tailwind syntax size-12 ?
+        if (qe_isdigit((unsigned char)*buf)) {
+            const char *q;
+            int v = (int)strtol_c(buf, &q, 10);
+            strstart(q, "pt", &q);
+            if (!*q) {
+                style_bits |= QE_FONT_SET_SIZE;
+                font_size = v;
+                continue;
+            }
         }
-        return 1;
+        // XXX parse font name...
+        return -1;
     }
     stp->bg_color = bg_color;
     stp->fg_color = fg_color;
-    stp->font_style = font_style;
-    stp->font_size = font_size;
-    return 0;
+    stp->style_bits = (short)style_bits;
+    stp->font_style = (short)font_style;
+    stp->font_size = (short)font_size;
+    return style_bits;
 }
 
 int qe_styledef_string(char *dest, size_t size, const QEStyleDef *stp)
@@ -1857,14 +1935,22 @@ int qe_styledef_string(char *dest, size_t size, const QEStyleDef *stp)
         buf_put_word(out, "underlined");
     if (stp->font_style & QE_FONT_STYLE_BLINK)
         buf_put_word(out, "blinking");
-    p = css_get_color_name(buf, sizeof buf, stp->fg_color, TRUE);
-    buf_put_word(out, p);
-    if (stp->bg_color != COLOR_TRANSPARENT) {
-        p = css_get_color_name(buf, sizeof buf, stp->bg_color, TRUE);
-        buf_put_word(out, "on");
+    if (stp->font_style & QE_FONT_STYLE_OVERLINE)
+        buf_put_word(out, "overlined");
+    if (stp->font_style & QE_FONT_STYLE_LINE_THROUGH)
+        buf_put_word(out, "line-through");
+    if (stp->font_style & QE_FONT_STYLE_BOX)
+        buf_put_word(out, "box");
+    if (stp->fg_color != COLOR_DEFAULT || stp->bg_color != COLOR_TRANSPARENT) {
+        p = css_get_color_name(buf, countof(buf), stp->fg_color, TRUE);
         buf_put_word(out, p);
+        if (stp->bg_color != COLOR_TRANSPARENT) {
+            buf_put_word(out, "on");
+            p = css_get_color_name(buf, countof(buf), stp->bg_color, TRUE);
+            buf_put_word(out, p);
+        }
     }
-    switch (stp->font_style) {
+    switch (stp->font_style & QE_FONT_FAMILY_MASK) {
     case QE_FONT_FAMILY_SERIF:
         buf_put_word(out, "times");
         break;
@@ -1901,17 +1987,19 @@ int qe_term_style_string(char *dest, size_t size, QETermStyle style)
             buf_put_word(out, "underlined");
         if (style & QE_TERM_BLINK)
             buf_put_word(out, "blinking");
-        // FIXME: should support default foreground
         fg = QE_TERM_GET_FG(style);
         fg_color = qe_unmap_color(fg, QE_TERM_FG_COLORS);
-        p = css_get_color_name(buf, sizeof buf, fg_color, TRUE);
-        buf_put_word(out, p);
-        // FIXME: should support transparent background
+        if (fg_color != COLOR_DEFAULT) {
+            p = css_get_color_name(buf, sizeof buf, fg_color, TRUE);
+            buf_put_word(out, p);
+        }
         bg = QE_TERM_GET_BG(style);
         bg_color = qe_unmap_color(bg, QE_TERM_BG_COLORS);
-        p = css_get_color_name(buf, sizeof buf, bg_color, TRUE);
-        buf_put_word(out, "on");
-        buf_put_word(out, p);
+        if (bg_color != COLOR_TRANSPARENT) {
+            p = css_get_color_name(buf, sizeof buf, bg_color, TRUE);
+            buf_put_word(out, "on");
+            buf_put_word(out, p);
+        }
     } else {
         if (style < QE_STYLE_NUM && qe_styles[style].name) {
             buf_put_word(out, qe_styles[style].name);
@@ -1929,22 +2017,26 @@ int qe_term_style_string(char *dest, size_t size, QETermStyle style)
 /* Note: we use the same syntax as CSS styles to ease merging */
 static void do_set_style_color(EditState *e, const char *stylestr, const char *value)
 {
+    QEStyleDef styledef;
     QEStyleDef *stp;
+    int style_index;
     char buf[32];
     const char *p;
 
-    stp = find_style(stylestr);
+    stp = find_style(stylestr, &style_index);
     if (!stp) {
         put_error(e, "Unknown style '%s'", stylestr);
         return;
     }
 
     /* accept "fgcolor", "[fgcolor]/bgcolor", "fgcolor on bgcolor" */
+    // XXX: should use str_get_word7(buf, sizeof(buf), p, &p)
+    styledef = *stp;
     p = value + strcspn(value, " /");
     if (p > value) {
         pstrncpy(buf, sizeof buf, value, p - value);
-        if (css_get_color(&stp->fg_color, buf)) {
-            put_error(e, "Unknown fgcolor '%s'", buf);
+        if (css_get_color(&styledef.fg_color, buf)) {
+            put_error(e, "Unknown foreground color '%s'", buf);
             return;
         }
     }
@@ -1956,25 +2048,15 @@ static void do_set_style_color(EditState *e, const char *stylestr, const char *v
     }
     qe_skip_spaces(&p);
     if (*p) {
-        if (css_get_color(&stp->bg_color, p)) {
-            put_error(e, "Unknown bgcolor '%s'", p);
+        if (css_get_color(&styledef.bg_color, p)) {
+            put_error(e, "Unknown background '%s'", p);
             return;
         }
     }
+    if (!style_index)
+        check_default_style(&styledef);
+    *stp = styledef;
     e->qs->complete_refresh = 1;
-}
-
-static void do_set_default_style(EditState *s, const char *str)
-{
-    QEStyleDef styledef;
-
-    if (qe_styledef_parse(&styledef, str)) {
-        put_error(s, "Invalid style: %s", str);
-        return;
-    }
-
-    qe_styles[QE_STYLE_DEFAULT] = styledef;
-    s->qs->complete_refresh = 1;
 }
 
 static void do_set_background_color(EditState *s, const char *str)
@@ -2046,21 +2128,34 @@ static void do_read_color(EditState *s, const char *str, int argval)
     }
 }
 
+static void do_set_default_style(EditState *s, const char *str)
+{
+    QEStyleDef styledef;
+
+    if (qe_styledef_parse(&styledef, str) < 0) {
+        put_error(s, "Invalid style: %s", str);
+        return;
+    }
+
+    styledef.name = qe_styles[QE_STYLE_DEFAULT].name;
+    check_default_style(&styledef);
+    qe_styles[QE_STYLE_DEFAULT] = styledef;
+    s->qs->complete_refresh = 1;
+    do_refresh(s);
+}
+
 static void do_set_region_style(EditState *s, const char *str)
 {
     int offset, size;
     QETermStyle style;
-    QEStyleDef *st;
 
     /* deactivate region hilite */
     s->region_style = 0;
 
-    st = find_style(str);
-    if (!st) {
+    if (qe_term_style_parse(&style, str)) {
         put_error(s, "Invalid style '%s'", str);
         return;
     }
-    style = st - qe_styles;
 
     offset = s->b->mark;
     size = s->offset - offset;
@@ -2656,11 +2751,15 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
     eb_set_charset(b1, b->charset, b->eol_type);
 
     for (i = 0; i < lines; i++) {
+        int start = chunk_array[i].start;
+        // include trailing newline if any
+        int end = eb_next(b, chunk_array[i].end);
         /* XXX: should keep track of point if sorting full buffer */
-        eb_insert_buffer_convert(b1, b1->total_size, b, chunk_array[i].start,
-                                 chunk_array[i].end - chunk_array[i].start);
-        // XXX: style issue. Should include newline from source buffer
-        eb_putc(b1, '\n');
+        eb_insert_buffer_convert(b1, b1->total_size, b, start, end - start);
+        if (end == chunk_array[i].end) {
+            // append newline if source line did not have one
+            eb_putc(b1, '\n');
+        }
         if ((i & 8191) == 8191 && !(flags & SF_SILENT)) {
             put_status(b->qs->active_window, "&Sorting: %d%%", (int)(90 + i * 10LL / lines));
         }
@@ -3004,50 +3103,55 @@ int color_print_entry(CompleteState *cp, EditState *s, const char *name) {
     return eb_print_color(s->b, name);
 }
 
-static int eb_print_style_entry(EditBuffer *b, const char *name, int style) {
-    QEStyleDef *stp = NULL;
+int style_print_entry(CompleteState *cp, EditState *s, const char *name) {
     char buf[80];
-    int i, len;
+    int len, index;
+    EditBuffer *b = s->b;
+    QEStyleDef *stp;
+    QETermStyle style = 0;
+    int show_sample = 0;
 
-    if (name != NULL) {
-        for (i = 0; i < QE_STYLE_NB; i++) {
-            if (!strcmp(name, qe_styles[i].name)) {
-                style = i;
-                break;
-            }
-        }
+    len = eb_print_style(b, QE_STYLE_FUNCTION, "%s", name);
+    b->tab_width = max_int(b->tab_width, len + 2);
+    if ((stp = find_style(name, &index)) != NULL) {
+        style = index;
+        qe_styledef_string(buf, countof(buf), stp);
+        show_sample = 1;
+    } else
+    if (!qe_term_style_parse(&style, name)) {
+        qe_term_style_string(buf, countof(buf), style);
+        show_sample = 1;
     }
-    if (style >= 0 && style < QE_STYLE_NB) {
-        stp = &qe_styles[style];
-        name = stp->name;
+    if (show_sample) {
+        len += eb_putc(b, '\t');
+        len += eb_print_style(b, style, "[  Sample  ]");
+        len += eb_printf(b, "  %s", buf);
     }
-    len = eb_print_style(b, QE_STYLE_FUNCTION, "%s\t", name);
-    b->tab_width = max_int(b->tab_width, len + 1);
-    len += eb_print_style(b, style, "[  Sample  ]");
-
-    *buf = '\0';
-    if (stp) {
-        qe_styledef_string(buf, sizeof buf, stp);
-    }
-    len += eb_printf(b, " %-40s", buf);
     return len;
 }
 
-int style_print_entry(CompleteState *cp, EditState *s, const char *name) {
-    return eb_print_style_entry(s->b, name, QE_STYLE_DEFAULT);
-}
-
-static void do_list_styles(EditState *s) {
+static void do_list_styles(EditState *s, int argval) {
+    char buf[80];
+    int i, len, start, stop;
     EditBuffer *b;
-    int i;
 
-    b = new_help_buffer(s);
+    b = qe_new_buffer(s->qs, "*Styles*", BC_CLEAR | BF_SYSTEM | BF_UTF8 | BF_STYLE8);
     if (!b)
         return;
 
+    start = b->offset;
     for (i = 0; i < QE_STYLE_NB; i++) {
-        eb_print_style_entry(b, NULL, i);
-        eb_putc(b, '\n');
+        len = eb_print_style(b, QE_STYLE_FUNCTION, "%s", qe_styles[i].name);
+        b->tab_width = max_int(b->tab_width, len + 2);
+        eb_putc(b, '\t');
+        eb_printf(b, "%2d  ", i);
+        eb_print_style(b, i, "[  Sample  ]");
+        qe_styledef_string(buf, countof(buf), &qe_styles[i]);
+        eb_printf(b, "  %s\n", buf);
+    }
+    stop = b->offset;
+    if (argval == 1) {
+        eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_NUMBER | SF_SILENT);
     }
     show_popup(s, b, "Quick Emacs Styles");
 }
@@ -3730,7 +3834,7 @@ static const CmdDef extra_commands[] = {
     CMD2( "set-default-style", "",
           "Set the definition of the default style",
           do_set_default_style, ESs,
-          "s{Style definition: }[style]|style|")
+          "s{Style definition: }[.style-attr]|style|")
     CMD2( "set-background-color", "",
           "Set the default background color for current frame",
           do_set_background_color, ESs,
@@ -3746,14 +3850,14 @@ static const CmdDef extra_commands[] = {
     CMD2( "set-region-style", "C-c s",
           "Set the style for the current region",
           do_set_region_style, ESs,
-          "s{Select style: }[style]|style|")
+          "s{Select style: }[.style]|style|")
     CMD0( "drop-styles", "",
           "Remove all styles for the current buffer",
           do_drop_styles)
     CMD2( "set-style-color", "C-c x",
           "Set the color(s) for a named style",
           do_set_style_color, ESss,
-          "s{Style: }[style]|style|"
+          "s{Style: }[style-name]|style-name|"
           "s{Style color: }[.color]|color|")
     CMD2( "read-color", "C-c #",
           "Read a color and produce its hex RGB value",
@@ -3764,7 +3868,7 @@ static const CmdDef extra_commands[] = {
           do_list_colors, ESi, "p")
     CMD2( "list-styles", "C-c S",
           "List available styles and their definitions",
-          do_list_styles, ES, "")
+          do_list_styles, ESi, "p")
 
     CMD2( "set-eol-type", "",
           "Set the end of line style: [0=Unix, 1=Dos, 2=Mac]",
@@ -3864,6 +3968,7 @@ static const CmdDef extra_commands[] = {
 
 static int extras_init(QEmacsState *qs) {
     qe_register_commands(qs, NULL, extra_commands, countof(extra_commands));
+    qe_register_completion(qs, &style_attr_completion);
     qe_register_completion(qs, &tag_completion);
     qe_register_completion(qs, &charname_completion);
 

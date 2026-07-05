@@ -11,6 +11,8 @@ This is the TODO list for qemacs
 * fix warning: `int (*eb_printf_fun)(EditBuffer *b, const char *fmt, ...) = (void*)eb_printf;`
 * fix crash bug on `C-X C-B C-X C-F xxx RET`
 * fix cursor positioning beyond end of screen
+* fix crash bug in xqe **qe-doc.html** on `M-x docbook-mode RET C-x C-k RET`. Also when cycling through modes from ghtml.
+* fix bug in popup on `CF_NO_AUTO_SUBMIT`: `M-: TAB RET RET`
 
 # Core - Buffers - Files
 
@@ -173,10 +175,10 @@ This is the TODO list for qemacs
 
 ## Colors and Styles
 
-* only use styles in `get_colorized_line()`, not combined colors, to improve
-  block navigation and indentation
-* handle `MODEF_NO_TRAILING_BLANKS` more generically
-* add line style in `QEColorizeContext` and combine in `flush_line()`
+* fix font cache mess
+* mask irrelevant `font_style` bits in `select_font`
+* split css parts of color.h/c into libqhtml/css_color.h/c
+* only use styles in `get_colorized_line()`, not combined colors, to improve block navigation and indentation
 * colorize git conflict markers: make this generic using line styles or colored regions
 <\<\<\<\<\<\< HEAD
             }
@@ -190,14 +192,10 @@ This is the TODO list for qemacs
 * add command line options for color support
 * add script variable for color support
 * from emacs:
-  - `set-background-color`
-    Set the background color of the selected frame to COLOR-NAME.
   - `set-border-color`
     Set the color of the border of the selected frame to COLOR-NAME.
   - `set-cursor-color`
     Set the text cursor color of the selected frame to COLOR-NAME.
-  - `set-foreground-color`
-    Set the foreground color of the selected frame to COLOR-NAME.
   These commands provide a multi-column completion window
 * evaluate colors in expressions: `rgb(r,g,b)`, `hsl(h,s,l)`, `hsv(h,s,v)`
 * `-color_code` command line option to display available colors on terminal

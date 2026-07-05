@@ -2,7 +2,7 @@
  * CSS core for qemacs.
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2007-2025 Charlie Gordon.
+ * Copyright (c) 2007-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -79,7 +79,11 @@ const CSSPropertyDef css_properties[NB_PROPERTIES] = {
     CSSDEF("font-style\0normal,italic,oblique", font_style, 1, CSS_TYPE_ENUM)
     CSSDEF("font-weight\0normal,bold,bolder,lighter", font_weight, 1, CSS_TYPE_ENUM)
     CSSDEF("font-size\0xx-small,x-small,small,medium,large,x-large,xx-large,smaller,larger", font_size, 1, CSS_TYPE_LENGTH | CSS_TYPE_ENUM)
-    CSSDEF("text-decoration\0none,underline,line-through", text_decoration, 1, CSS_TYPE_ENUM)
+    // XXX: should have special handling to support text-decoration as a shorthand for
+    //        text-decoration-color, text-decoration-inset, text-decoration-line, text-decoration-skip
+    //        text-decoration-skip-ink, text-decoration-style, text-decoration-thickness
+    //      box is an extension.
+    CSSDEF("text-decoration\0underline,line-through,overline,box", text_decoration, 1, CSS_TYPE_ENUM_BITS)
     CSSDEF("text-align\0left,right,center,justify", text_align, 1, CSS_TYPE_ENUM)
     CSSDEF("width", width, 0, CSS_TYPE_LENGTH | CSS_TYPE_AUTO)
     CSSDEF("height", height, 0, CSS_TYPE_LENGTH | CSS_TYPE_AUTO)
@@ -2066,10 +2070,14 @@ static QEFont *css_select_font(QEditScreen *screen, CSSState *props)
     if (props->font_weight == CSS_FONT_WEIGHT_BOLD ||
         props->font_weight == CSS_FONT_WEIGHT_BOLDER)
         style |= QE_FONT_STYLE_BOLD;
-    if (props->text_decoration == CSS_TEXT_DECORATION_UNDERLINE)
+    if (props->text_decoration & CSS_TEXT_DECORATION_UNDERLINE)
         style |= QE_FONT_STYLE_UNDERLINE;
-    else if (props->text_decoration == CSS_TEXT_DECORATION_LINE_THROUGH)
+    if (props->text_decoration & CSS_TEXT_DECORATION_OVERLINE)
+        style |= QE_FONT_STYLE_OVERLINE;
+    if (props->text_decoration & CSS_TEXT_DECORATION_LINE_THROUGH)
         style |= QE_FONT_STYLE_LINE_THROUGH;
+    if (props->text_decoration & CSS_TEXT_DECORATION_BOX)
+        style |= QE_FONT_STYLE_BOX;
 
     style |= props->font_family;
     return select_font(screen, style, props->font_size);

@@ -2,7 +2,7 @@
  * HTML to PPM converter using the qHTML library
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2002-2025 Charlie Gordon.
+ * Copyright (c) 2002-2026 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -321,7 +321,7 @@ void test_display(QEditScreen *screen)
                    QERGB(0xff, 0x00, 0x00));
     len = utf8_to_char32(buf, countof(buf), "Hello World !");
 
-    font = select_font(screen, QE_FONT_FAMILY_FIXED | QE_FONT_STYLE_NORM, 12);
+    font = select_font(screen, QE_FONT_FAMILY_FIXED, 12);
 
     draw_text(screen, font, screen->width / 2, screen->height / 2,
               buf, len, QERGB(0x00, 0x00, 0x00));

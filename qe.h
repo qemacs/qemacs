@@ -958,15 +958,6 @@ enum QEStyle {
     QE_STYLE_NB,
 };
 
-typedef struct QEStyleDef {
-    const char *name;
-    /* if any style is 0, then default edit style applies */
-    // FIXME: should also have attributes */
-    QEColor fg_color, bg_color;
-    short font_style;
-    short font_size;
-} QEStyleDef;
-
 /* CG: Should register styles as well */
 extern QEStyleDef qe_styles[QE_STYLE_NB];
 
@@ -1731,15 +1722,16 @@ void do_set_indent_width(EditState *s, int indent_width);
 void do_set_indent_tabs_mode(EditState *s, int val);
 void display_window_borders(EditState *e);
 void fill_window_slack(EditState *s, int x, int y, int w, int h, int color);
-int find_style_index(const char *name);
-QEStyleDef *find_style(const char *name);
+void check_default_style(QEStyleDef *stp);
+QEStyleDef *find_style(const char *name, int *index);
 void style_complete(CompleteState *cp, CompleteFunc enumerate);
 void get_style(QEStyleDef *stp, QETermStyle window_style, QETermStyle style);
 void style_property_complete(CompleteState *cp, CompleteFunc enumerate);
 int find_style_property(const char *name);
 void do_define_color(EditState *e, const char *name, const char *value);
-void do_set_style(EditState *e, const char *stylestr,
-                  const char *propstr, const char *value);
+void do_set_style(EditState *e, const char *style_name,
+                  const char *prop_name, const char *value);
+void do_modify_style(EditState *s, const char *style_name, const char *str);
 void do_set_display_size(EditState *s, int w, int h);
 void do_toggle_mode_line(EditState *s);
 void do_set_system_font(EditState *s, const char *qe_font_name,
@@ -1924,6 +1916,7 @@ int qe_term_style_parse(QETermStyle *style, const char *str);
 int qe_term_style_string(char *dest, size_t size, QETermStyle style);
 int color_print_entry(CompleteState *cp, EditState *s, const char *name);
 int style_print_entry(CompleteState *cp, EditState *s, const char *name);
+void style_attr_complete(CompleteState *cp, CompleteFunc enumerate);
 
 int eb_skip_whitespace(EditBuffer *b, int offset, int dir);
 int eb_skip_blank_lines(EditBuffer *b, int offset, int dir);

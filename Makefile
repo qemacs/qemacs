@@ -592,6 +592,9 @@ qe-doc.info: qe-doc.texi Makefile
 qe-doc.pdf: qe-doc.texi Makefile
 	LANGUAGE=en_US LC_ALL=en_US.UTF-8 texi2pdf -o $@ $<
 
+%.png: %.html $(TARGETS) Makefile
+	./html2png$(EXE) -w 800 -o $@ $<
+
 #
 # Maintenance targets
 #

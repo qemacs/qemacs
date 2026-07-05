@@ -2,7 +2,7 @@
  * Haiku driver for QEmacs
  *
  * Copyright (c) 2013 Francois Revol.
- * Copyright (c) 2015-2024 Charlie Gordon.
+ * Copyright (c) 2015-2026 Charlie Gordon.
  * Copyright (c) 2002 Fabrice Bellard.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -693,16 +693,14 @@ static QEFont *haiku_open_font(QEditScreen *s, int style, int size)
         f = new BFont(be_fixed_font);
         break;
     }
-    if (style & QE_FONT_STYLE_NORM)
+    if (style & (QE_FONT_STYLE_BOLD | QE_FONT_STYLE_ITALIC)) {
+        if (style & QE_FONT_STYLE_BOLD)
+            face |= B_BOLD_FACE;
+        if (style & QE_FONT_STYLE_ITALIC)
+            face |= B_ITALIC_FACE;
+    } else {
         face |= B_REGULAR_FACE;
-    if (style & QE_FONT_STYLE_BOLD)
-        face |= B_BOLD_FACE;
-    if (style & QE_FONT_STYLE_ITALIC)
-        face |= B_ITALIC_FACE;
-    if (style & QE_FONT_STYLE_UNDERLINE)
-        face |= B_UNDERSCORE_FACE; // not really supported IIRC
-    if (style & QE_FONT_STYLE_LINE_THROUGH)
-        face |= B_STRIKEOUT_FACE; // not really supported IIRC
+    }
     if (face)
         f->SetFace(face);
 
@@ -745,7 +743,7 @@ static void haiku_text_metrics(QEditScreen *s, QEFont *font,
 }
 
 static void haiku_draw_text(QEditScreen *s, QEFont *font,
-                            int x1, int y, const char32_t *str, int len,
+                            int x0, int y_base, const char32_t *str, int len,
                             QEColor color)
 {
     WindowState *ctx = (WindowState *)s->priv_data;
@@ -760,7 +758,7 @@ static void haiku_draw_text(QEditScreen *s, QEFont *font,
     ctx->v->SetHighColor(c);
     ctx->v->SetLowColor(B_TRANSPARENT_COLOR);
     ctx->v->SetFont(f);
-    ctx->v->MovePenTo(x1, y - 1);
+    ctx->v->MovePenTo(x0, y_base - 1);  // XXX: why not y_base?
 
     char buf[10];
     char32_t cc;
@@ -773,21 +771,29 @@ static void haiku_draw_text(QEditScreen *s, QEFont *font,
     }
     ctx->v->DrawString(text.String());
 
-    /* underline synthesis */
-    if (font->style & (QE_FONT_STYLE_UNDERLINE | QE_FONT_STYLE_LINE_THROUGH)) {
-        int dy, h, w;
+    /* text decoration synthesis */
+    if (font->style & QE_FONT_DECORATION_MASK) {
+        int y0 = y_base - font->ascent;
         BFont *f = (BFont *)font->priv_data;
-        h = (font->descent + 2) / 4 - 1;
-        if (h < 0)
-            h = 0;
-        w = (int)f->StringWidth(text.String()) - 1;
+        int x1 = x0 + (int)f->StringWidth(text.String()) - 1;
+        int y1 = y_base + font->descent;
+        int dh = max_int((font->descent + 2) / 4, 1);
+        int dw = dh;    // assume 1.0 aspect ratio
         if (font->style & QE_FONT_STYLE_UNDERLINE) {
-            dy = (font->descent + 1) / 3;
-            ctx->v->FillRect(BRect(x1, y + dy, x1 + w, y + dy + h));
+            int y = y_base + (font->descent + 1) / 3;
+            ctx->v->FillRect(BRect(x0, y, x1, y + dh));
         }
         if (font->style & QE_FONT_STYLE_LINE_THROUGH) {
-            dy = -(font->ascent / 2 - 1);
-            ctx->v->FillRect(BRect(x1, y + dy, x1 + w, y + dy + h));
+            int y = y_base - (font->ascent / 2 - 1);
+            ctx->v->FillRect(BRect(x0, y, x1, y + dh));
+        }
+        if (font->style & (QE_FONT_STYLE_OVERLINE | QE_FONT_STYLE_BOX)) {
+            ctx->v->FillRect(BRect(x0, y0 - dh, x1, y0));
+        }
+        if (font->style & QE_FONT_STYLE_BOX) {
+            ctx->v->FillRect(BRect(x0 - dw, y0 - dh, x0, y1 + dh));
+            ctx->v->FillRect(BRect(x1, y0 - dh, x1 + dw, y1 + dh));
+            ctx->v->FillRect(BRect(x0, y1, x1, y1 + dh));
         }
     }
 
