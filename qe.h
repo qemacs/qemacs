@@ -134,6 +134,7 @@ struct CompleteState {
     char current[MAX_FILENAME_SIZE];
 };
 
+int is_abs_path(const char *path);
 void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const char *path1);
 void canonicalize_absolute_buffer_path(EditBuffer *b, int offset,
                                        char *buf, int buf_size,

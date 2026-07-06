@@ -375,6 +375,7 @@ int fbf_render_init(const char *font_path)
             fprintf(stderr, "Could not load font '%s'\n", filename);
         }
     }
+    find_file_close(&ffs);
     return 0;
 }
 
