@@ -35,14 +35,14 @@
 #include "config.h"     /* for CONFIG_WIN32 */
 #include "util.h"
 
-int qe_shell_match(const char *string, const char *pattern) {
+int qe_shell_match(const char *str, const char *pattern) {
     /*@API utils
        Test whether a filename or pathname matches a shell-style pattern
-       @argument `string` a valid pointer to a string representing a
+       @argument `str` a valid pointer to a string representing a
        filename
        @argument `pattern` a valid pointer to a file pattern using `?`
        and `*` with the classic semantics used by unix shells
-       @return non zero if `string` matches `pattern`.
+       @return non zero if `str` matches `pattern`.
        @note this function is a simplified version of POSIX function
        `fnmatch` defined in header `<fnmatch.h>`
      */
@@ -51,22 +51,22 @@ int qe_shell_match(const char *string, const char *pattern) {
         if (c == '*') {
             if (*pattern == '\0')
                 return 1;
-            while (*string) {
-                if (qe_shell_match(string, pattern))
+            while (*str) {
+                if (qe_shell_match(str, pattern))
                     return 1;
-                string++;
+                str++;
             }
             return 0;
         } else
         if (c == '?') {
-            if (*string++ == '\0')
+            if (*str++ == '\0')
                 return 0;
         } else
-        if (c != *string++) {
+        if (c != *str++) {
             return 0;
         }
     }
-    return *string == '\0';
+    return *str == '\0';
 }
 
 #define MAX_FILENAME_SIZE    1024       /* Size for a filename buffer */
@@ -78,6 +78,7 @@ struct FindFileState {
     const char *bufptr;
     int flags;
     int depth;
+    size_t dirlen;
     DIR *dir;
     DIR *parent_dir[FF_DEPTH];
     size_t parent_len[FF_DEPTH];
@@ -89,19 +90,26 @@ FindFileState *find_file_open(const char *path, const char *pattern, int flags) 
        @argument `path` the initial directory for the enumeration.
        @argument `pattern` a file pattern using `?` and `*` with the classic
        semantics used by unix shells
+       @argument `flags` a combination of options:
+       - `FF_PATH`: the `path` argument is a list of directories
+       - `FF_NODIR`: do not match directory names
+       - `FF_NOXXDIR`: do not match `.` or `..`
+       - `FF_ONLYDIR`: do not match non directories
+       - 0 ... 15: maximum subdirectory depth for recursive matching
        @return a pointer to an opaque FindFileState structure.
      */
-    // XXX: should check if pattern has wildcards
     FindFileState *s;
 
     s = qe_mallocz(FindFileState);
-    if (!s)
-        return NULL;
-    pstrcpy(s->path, sizeof(s->path), path);
-    pstrcpy(s->pattern, sizeof(s->pattern), pattern);
-    s->bufptr = s->path;
-    s->dir = NULL;
-    s->flags = flags;
+    if (s) {
+        pstrcpy(s->path, sizeof(s->path), path);
+        pstrcpy(s->pattern, sizeof(s->pattern), pattern);
+        s->bufptr = s->path;
+        s->dir = NULL;
+        s->flags = flags;
+        if (!s->pattern[strcspn(s->pattern, "*?")])
+            s->flags |= FF_NOPAT;
+    }
     return s;
 }
 
@@ -113,7 +121,7 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max) {
        array in bytes.
        @return `0` if there is a match, `-1` if no more files match the pattern.
      */
-    // XXX: should match wildcards in directory names
+    struct stat st;
     struct dirent *dirent;
     const char *p;
 
@@ -127,7 +135,8 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max) {
                 s->depth--;
                 s->dir = s->parent_dir[s->depth];
                 s->parent_dir[s->depth] = NULL;
-                s->dirpath[s->parent_len[s->depth]] = '\0';
+                s->dirlen = s->parent_len[s->depth];
+                s->dirpath[s->dirlen] = '\0';
                 continue;
             }
             p = s->bufptr;
@@ -137,10 +146,25 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max) {
                 p += strcspn(p, ":");
             else
                 p += strlen(p);
-            pstrncpy(s->dirpath, sizeof(s->dirpath), s->bufptr, p - s->bufptr);
+            pstrncpy(s->dirpath, countof(s->dirpath), s->bufptr, p - s->bufptr);
             if (*p == ':')
                 p++;
             s->bufptr = p;
+        new_dir:
+            s->dirlen = strlen(s->dirpath);
+            if (s->flags & FF_NOPAT) {
+                makepath(s->dirpath, countof(s->dirpath), s->dirpath, s->pattern);
+                if (!stat(s->dirpath, &st)) {
+                    if ((S_ISDIR(st.st_mode) && !(s->flags & FF_NODIR))
+                    ||  (S_ISREG(st.st_mode) && !(s->flags & FF_ONLYDIR))) {
+                        pstrcpy(filename, filename_size_max, s->dirpath);
+                        return 0;
+                    }
+                }
+                s->dirpath[s->dirlen] = '\0';
+                if (!(s->flags & FF_DEPTH))
+                    continue;
+            }
             s->dir = opendir(s->dirpath);
         } else {
             int isdir = 0;
@@ -160,11 +184,11 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max) {
                 } else {
                     if (s->depth < (s->flags & FF_DEPTH)) {
                         s->parent_dir[s->depth] = s->dir;
-                        s->parent_len[s->depth] = strlen(s->dirpath);
+                        s->parent_len[s->depth] = s->dirlen;
                         s->depth++;
-                        makepath(s->dirpath, sizeof(s->dirpath), s->dirpath, dirent->d_name);
-                        s->dir = opendir(s->dirpath);
-                        continue;
+                        s->dir = NULL;
+                        makepath(s->dirpath, countof(s->dirpath), s->dirpath, dirent->d_name);
+                        goto new_dir;
                     }
                 }
                 if (s->flags & FF_NODIR)
@@ -173,6 +197,8 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max) {
                 if (s->flags & FF_ONLYDIR)
                     continue;
             }
+            if (s->flags & FF_NOPAT)
+                continue;
             if (qe_shell_match(dirent->d_name, s->pattern)) {
                 makepath(filename, filename_size_max,
                          s->dirpath, dirent->d_name);

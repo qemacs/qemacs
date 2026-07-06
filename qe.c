@@ -9078,7 +9078,7 @@ void qe_kill_buffer(QEmacsState *qs, EditBuffer *b)
 }
 
 /* return TRUE if absolute path. works for files and URLs */
-static int is_abs_path(const char *path)
+int is_abs_path(const char *path)
 {
     size_t prefix;
 

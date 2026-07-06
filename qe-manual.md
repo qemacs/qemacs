@@ -2038,6 +2038,13 @@ Start a directory enumeration.
 * argument `pattern` a file pattern using `?` and `*` with the classic
 semantics used by unix shells
 
+* argument `flags` a combination of options:
+- `FF_PATH`: the `path` argument is a list of directories
+- `FF_NODIR`: do not match directory names
+- `FF_NOXXDIR`: do not match `.` or `..`
+- `FF_ONLYDIR`: do not match non directories
+- 0 ... 15: maximum subdirectory depth for recursive matching
+
 Return a pointer to an opaque FindFileState structure.
 
 ### `int from_hex(int c);`
@@ -2461,17 +2468,17 @@ and insertion sort for small chunks. The GNU lib C on linux also
 has a function `qsort_r()` with similar semantics but a different
 calling convention.
 
-### `int qe_shell_match(const char *string, const char *pattern);`
+### `int qe_shell_match(const char *str, const char *pattern);`
 
 Test whether a filename or pathname matches a shell-style pattern
 
-* argument `string` a valid pointer to a string representing a
+* argument `str` a valid pointer to a string representing a
 filename
 
 * argument `pattern` a valid pointer to a file pattern using `?`
 and `*` with the classic semantics used by unix shells
 
-Return non zero if `string` matches `pattern`.
+Return non zero if `str` matches `pattern`.
 
 Note: this function is a simplified version of POSIX function
 `fnmatch` defined in header `<fnmatch.h>`

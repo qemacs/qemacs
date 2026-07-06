@@ -144,12 +144,13 @@ static int match_error(EditBuffer *b, int start_offset, ShellError *dest);
 
 static void set_error_offset(EditBuffer *b, int offset)
 {
-    pstrcpy(error_state.buffer, sizeof(error_state.buffer), b ? b->name : "");
-    error_state.offset = offset - 1;
-    error_state.line_num = error_state.col_num = -1;
-    *error_state.filename = '\0';
-    error_state.msg_offset = offset;
-    *error_state.message = '\0';
+    ShellError *sep = &error_state;
+    pstrcpy(sep->buffer, sizeof(sep->buffer), b ? b->name : "");
+    sep->offset = offset - 1;
+    sep->line_num = sep->col_num = -1;
+    *sep->filename = '\0';
+    sep->msg_offset = offset;
+    *sep->message = '\0';
 }
 
 static QEProperty *shell_add_cwd(EditBuffer *b, int offset, const char *cwd, int force) {
@@ -3960,7 +3961,6 @@ static void do_compile(EditState *s, const char *cmd)
 static int match_error(EditBuffer *b, int start_offset, ShellError *dest)
 {
     char filename[MAX_FILENAME_SIZE];
-    char fullpath[MAX_FILENAME_SIZE];
     buf_t fname[1];
     int line_num, col_num, len;
     int offset = start_offset;
@@ -4015,19 +4015,15 @@ static int match_error(EditBuffer *b, int start_offset, ShellError *dest)
         c = eb_nextc(b, offset, &offset);
     }
     if (dest) {
-        canonicalize_absolute_buffer_path(b, start_offset,
-                                          fullpath, countof(fullpath),
-                                          filename);
         if (line_num != dest->line_num
         ||  col_num != dest->col_num
-        ||  !strequal(fullpath, dest->filename)) {
+        ||  !strequal(filename, dest->filename)) {
             dest->offset = start_offset;
             dest->msg_offset = offset;
             dest->line_num = line_num;
             dest->col_num = col_num;
-            pstrcpy(dest->filename, countof(dest->filename), fullpath);
-            len = eb_fgets(b, dest->message, countof(dest->message),
-                           offset, &offset);
+            pstrcpy(dest->filename, countof(dest->filename), filename);
+            len = eb_fgets(b, dest->message, countof(dest->message), offset, &offset);
             dest->message[len] = '\0';   /* strip the trailing newline if any */
             return 2;  // new error
         }
@@ -4037,7 +4033,9 @@ static int match_error(EditBuffer *b, int start_offset, ShellError *dest)
 
 static void do_next_error(EditState *s, int arg, int dir)
 {
+    char fullname[MAX_FILENAME_SIZE];
     QEmacsState *qs = s->qs;
+    ShellError *sep = &error_state;
     EditState *e;
     EditBuffer *b;
     int offset;
@@ -4058,7 +4056,7 @@ static void do_next_error(EditState *s, int arg, int dir)
         set_error_offset(s->b, s->offset);
     }
 
-    if ((b = qe_find_buffer_name(qs, error_state.buffer)) == NULL) {
+    if ((b = qe_find_buffer_name(qs, sep->buffer)) == NULL) {
         if (s->b->flags & BF_ERROR) {
             b = s->b;
         } else {
@@ -4080,7 +4078,7 @@ static void do_next_error(EditState *s, int arg, int dir)
     }
 
     /* find next/prev error */
-    offset = error_state.offset;
+    offset = sep->offset;
 
     /* CG: should use higher level parsing */
     for (;;) {
@@ -4097,22 +4095,32 @@ static void do_next_error(EditState *s, int arg, int dir)
             }
             offset = eb_prev_line(b, offset);
         }
-        if (match_error(b, offset, &error_state) > 1) {
+        if (match_error(b, offset, sep) > 1) {
             // found a new error
             break;
         }
     }
 
+    canonicalize_absolute_buffer_path(b, sep->offset, fullname, countof(fullname), sep->filename);
+    if ((stat(fullname, &sb) < 0 || !S_ISREG(sb.st_mode))
+    &&  !is_abs_path(sep->filename) && *sep->filename != '~') {
+        // try and locate filename in a subdirectory up to 2 levels down
+        char path[MAX_FILENAME_SIZE];
+        FindFileState *ffs;
+        get_default_path(b, offset, path, countof(path));
+        ffs = find_file_open(path, sep->filename, FF_NODIR | 2);
+        find_file_next(ffs, fullname, sizeof(fullname));
+        find_file_close(&ffs);
+    }
+
     /* check file and go to the error */
-    if (stat(error_state.filename, &sb) < 0) {
-        // XXX: should prompt for fullpath as a fallback
-        put_error(qs->active_window, "Cannot find error in '%s': %s",
-                  error_state.filename, strerror(errno));
+    if (stat(fullname, &sb) < 0) {
+        put_error(s, "Cannot locate file '%s': %s",
+                  fullname, strerror(errno));
         return;
     } else
     if (!S_ISREG(sb.st_mode)) {
-        put_error(qs->active_window, "Cannot find error in '%s': %s",
-                  error_state.filename, "not a regular file");
+        put_error(s, "Cannot load '%s': not a regular file", fullname);
         return;
     }
 
@@ -4134,15 +4142,15 @@ static void do_next_error(EditState *s, int arg, int dir)
     if (e) {
         /* update error window to show the error at top */
         e->interactive = 0;
-        e->offset_top = e->offset = error_state.offset;
+        e->offset_top = e->offset = sep->offset;
         if (qs->shell_buffer_read_only)
             b->flags |= BF_READONLY;
     }
 
     /* set and update active window */
     qs->active_window = s;
-    do_find_file(s, error_state.filename, 0);
-    do_goto_line(s, error_state.line_num, error_state.col_num);
+    do_find_file(s, fullname, 0);
+    do_goto_line(s, sep->line_num, sep->col_num);
     do_center_cursor(s, 1);
 
 #if 0  // conflicts with muscle memory (chqrlie)
@@ -4151,7 +4159,7 @@ static void do_next_error(EditState *s, int arg, int dir)
         qe_register_transient_binding(qs, "previous-error", "M-p");
     }
 #endif
-    put_status(s, "=> %s", error_state.message);
+    put_status(s, "=> %s", sep->message);
 }
 
 static int match_digits(const char32_t *buf, int n, char32_t sep) {

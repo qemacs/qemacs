@@ -53,6 +53,7 @@ typedef struct FindFileState FindFileState;
 #define FF_NODIR    0x020  /* only match regular files */
 #define FF_NOXXDIR  0x040  /* do not match . or .. */
 #define FF_ONLYDIR  0x080  /* do not match non directories */
+#define FF_NOPAT    0x100  /* do not use shell matching */
 #define FF_DEPTH    0x00f  /* max recursion depth */
 
 FindFileState *find_file_open(const char *path, const char *pattern, int flags);
