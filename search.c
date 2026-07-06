@@ -1038,8 +1038,8 @@ static void query_replace_help(QueryReplaceState *is) {
         return;
 
     // XXX: encode strings?
-    eb_print_style(b, DESCRIBE_STYLE_HEAD, "Query replacing %s with %s\n",
-                   is->search_str, is->replace_str);
+    eb_style_printf(b, DESCRIBE_STYLE_HEAD, "Query replacing %s with %s\n",
+                    is->search_str, is->replace_str);
 
     eb_printf(b, "Type Space or `y' to replace one match, Delete or `n' to skip to next,\n"
               "RET or `q' to exit, Period to replace one match and exit,\n"

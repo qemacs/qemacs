@@ -936,12 +936,10 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
     eb_clear(b);
 
     if (ds->header_lines == 1) {
-        b->cur_style = DIRED_STYLE_HEADER;
-        eb_puts(b, "  Explorer \n");
+        eb_style_puts(b, DIRED_STYLE_HEADER, "  Explorer \n");
     } else {
         int seq = ' ';
-        b->cur_style = DIRED_STYLE_HEADER;
-        eb_puts(b, "  Directory of ");
+        eb_style_puts(b, DIRED_STYLE_HEADER, "  Directory of ");
         b->cur_style = DIRED_STYLE_DIRECTORY;
         eb_put_filename(b, ds->path, ds->pf_flags);
         b->cur_style = DIRED_STYLE_HEADER;

@@ -313,7 +313,7 @@ int eb_command_print_entry(EditBuffer *b, const CmdDef *d, EditState *s) {
     int len = 0;
 
     if (d) {
-        len = eb_print_style(b, QE_STYLE_FUNCTION, "%s", d->name);
+        len = eb_style_puts(b, QE_STYLE_FUNCTION, d->name);
         qe_get_prototype(d, buf, sizeof buf);
         len += eb_puts(b, buf);
 #ifndef CONFIG_TINY
@@ -324,7 +324,7 @@ int eb_command_print_entry(EditBuffer *b, const CmdDef *d, EditState *s) {
             } else {
                 b->tab_width = 40;
             }
-            len += eb_print_style(b, QE_STYLE_COMMENT, "  bound to %s", buf);
+            len += eb_style_printf(b, QE_STYLE_COMMENT, "  bound to %s", buf);
         }
 #endif
     }
@@ -10724,7 +10724,7 @@ void do_help_for_help(EditState *s)
     if (!b)
         return;
 
-    eb_print_style(b, DESCRIBE_STYLE_HEAD, "QEmacs help for help - Press q to quit:\n\n");
+    eb_style_puts(b, DESCRIBE_STYLE_HEAD, "QEmacs help for help - Press q to quit:\n\n");
     eb_puts(b,
             "C-h C-h   Show this help\n"
             "C-h b     Display table of all key bindings\n"

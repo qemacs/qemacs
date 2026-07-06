@@ -1048,7 +1048,7 @@ static void do_fractal_help(EditState *s)
     if (!b)
         return;
 
-    eb_print_style(b, DESCRIBE_STYLE_HEAD, "Fractal description:\n\n");
+    eb_style_puts(b, DESCRIBE_STYLE_HEAD, "Fractal description:\n\n");
 
     b->tab_width = 16;
     eb_print_field(b, "type", "%s\n", fractal_type[ms->type].name);
@@ -1063,7 +1063,7 @@ static void do_fractal_help(EditState *s)
     eb_print_field(b, "maxiter", "%d\n", ms->maxiter);
     eb_print_field(b, "colors", "cb=%d nc=%d shift=%d\n", ms->cb, ms->nc, ms->shift);
 
-    eb_print_style(b, DESCRIBE_STYLE_HEAD, "\nFractal navigator:\n\n");
+    eb_style_puts(b, DESCRIBE_STYLE_HEAD, "\nFractal navigator:\n\n");
 
     // XXX: should use print_bindings(b, "Fractal commands", 0, &fractal_mode);
 
