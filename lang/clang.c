@@ -39,6 +39,7 @@
 #define CLANG_LINECONT    0x10000   /* support \<newline> as line continuation */
 #define CLANG_NEST_COMMENTS  0x20000  /* block comments are nested */
 #define CLANG_T_TYPES     0x40000   /* _t suffix indicates type identifier */
+#define CLANG_C_DEFS      0x80000   /* word followed by another word is a definition */
 
 /* FIXME: need flags for
    '@' in identifiers(start / next),
@@ -49,8 +50,9 @@
  */
 
 /* all C language features */
-#define CLANG_CC          (CLANG_LINECONT | CLANG_WLITERALS | CLANG_PREPROC | \
-                           CLANG_C_KEYWORDS | CLANG_C_TYPES | CLANG_T_TYPES)
+#define CLANG_CC  (CLANG_LINECONT | CLANG_WLITERALS | CLANG_PREPROC | \
+                   CLANG_C_KEYWORDS | CLANG_C_TYPES | CLANG_T_TYPES | \
+                   CLANG_C_DEFS)
 
 static const char c_keywords[] = {
     "auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
@@ -59,9 +61,11 @@ static const char c_keywords[] = {
     /* C99 and C11 keywords */
     "_Alignas|_Alignof|_Atomic|_Generic|_Noreturn|_Pragma|"
     "_Static_assert|_Thread_local|"
-    /* C2x keywords */
+    /* C23 keywords */
     "alignas|alignof|static_assert|thread_local|"
-    "constexpr|false|nullptr|true|typeof|typeof_unqual"
+    "constexpr|false|nullptr|true|typeof|typeof_unqual|"
+    /* C2y keywords */
+    "countof|"
 };
 
 static const char c_types[] = {
@@ -70,7 +74,7 @@ static const char c_types[] = {
     "FILE|va_list|jmp_buf|"
     /* C99 and C11 types */
     "_Bool|_Complex|_Imaginary|bool|complex|imaginary|"
-    /* C2x types */
+    /* C23 types */
     "_BitInt|_Decimal128|_Decimal32|_Decimal64|"
 };
 
@@ -164,6 +168,12 @@ int get_c_identifier(char *dest, int size, char32_t c,
     return i - i0;
 }
 
+static int has_c_decl(const char32_t *str, int i, int flavor) {
+    while (str[i] == ' ' || str[i] == '\t' || str[i] == '*')
+        i++;
+    return is_c_identifier_start(str[i], flavor);
+}
+
 enum {
     C_STYLE_DEFAULT    = 0,
     C_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
@@ -210,7 +220,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                             const char32_t *str, int n,
                             QETermStyle *sbuf, ModeDef *syn)
 {
-    int i = 0, start, i1, i2, indent, level;
+    int i = 0, start, i1, i2, indent, level, type_start;
     int style, style0, style1, type_decl, tag;
     char32_t c, delim;
     char kbuf[64];
@@ -219,6 +229,7 @@ static void c_colorize_line(QEColorizeContext *cp,
     int state = cp->colorize_state;
 
     indent = cp_skip_blanks(str, 0, n);
+    type_start = indent;
     tag = !indent && cp->s->mode == syn;
     start = i;
     type_decl = 0;
@@ -667,6 +678,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 ||  ((mode_flags & CLANG_C_KEYWORDS) && strfind(c_keywords, kbuf))
                 ||  ((flavor == CLANG_CSS) && str[i] == ':')) {
                     SET_STYLE(sbuf, start, i, C_STYLE_KEYWORD);
+                    type_start = i + 1;
                     continue;
                 }
 
@@ -685,6 +697,8 @@ static void c_colorize_line(QEColorizeContext *cp,
                 ||   ((mode_flags & CLANG_C_TYPES) && strfind(c_types, kbuf))
                 ||   ((mode_flags & CLANG_T_TYPES) && strend(kbuf, "_t", NULL))
                 ||   ((mode_flags & CLANG_CAP_TYPE) && qe_isupper(c) && qe_haslower(kbuf))
+                ||   ((mode_flags & CLANG_C_DEFS) && (!indent || type_start == start) &&
+                       has_c_decl(str, i, flavor))
                 ||   (flavor == CLANG_HAXE && qe_isupper(c) && qe_haslower(kbuf) &&
                       (start == 0 || !qe_findchar("(", str[start - 1]))))) {
                     /* if not cast, assume type declaration */
