@@ -88,9 +88,9 @@ static void do_list_equivalents(EditState *s, int argval)
         return;
 
     for (ep = qs->first_equivalent; ep; ep = ep->next) {
-        eb_print_style(b, QE_STYLE_STRING, "  \"%s\"", ep->str1);
+        eb_style_printf(b, QE_STYLE_STRING, "  \"%s\"", ep->str1);
         eb_printf(b, " <-> ");
-        eb_print_style(b, QE_STYLE_STRING, "  \"%s\"", ep->str2);
+        eb_style_printf(b, QE_STYLE_STRING, "  \"%s\"", ep->str2);
         eb_putc(b, '\n');
     }
 
@@ -1472,13 +1472,8 @@ static void print_bindings(EditBuffer *b, ModeDef *mode)
         for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
             if (qe_list_bindings(qs, d, mode, 0, buf, sizeof(buf))) {
                 if (!gfound) {
-                    if (mode) {
-                        eb_print_style(b, DESCRIBE_STYLE_HEAD,
-                                       "\n%s mode bindings:\n\n", mode->name);
-                    } else {
-                        eb_print_style(b, DESCRIBE_STYLE_HEAD,
-                                       "\nGlobal bindings:\n\n");
-                    }
+                    eb_style_printf(b, DESCRIBE_STYLE_HEAD, "\n%s bindings:\n\n",
+                                    mode ? mode->name : "Global");
                     start = b->offset;
                     gfound = 1;
                 }
@@ -1523,7 +1518,8 @@ static void mode_wall_chart(EditBuffer *b, ModeDef *mode, ModeDef *mode0, const 
 
     head = b->offset;
     if (separate) {
-        eb_print_style(b, DESCRIBE_STYLE_HEAD, "\n%s bindings:\n\n", mode ? mode->name : "Global");
+        eb_style_printf(b, DESCRIBE_STYLE_HEAD, "\n%s bindings:\n\n",
+                        mode ? mode->name : "Global");
     }
     start = b->offset;
     for (; kd != NULL; kd = kd->next) {
@@ -1538,9 +1534,9 @@ static void mode_wall_chart(EditBuffer *b, ModeDef *mode, ModeDef *mode0, const 
         buf_put_keys(out, kd->keys, kd->nb_keys);
         if (*prefix && (!strstart(buf, prefix, &p) || *p != ' '))
             continue;
-        eb_print_style(b, style, " %s", buf);
+        eb_style_printf(b, style, " %s", buf);
         eb_putc(b, '\t');
-        eb_print_style(b, QE_STYLE_FUNCTION, "%s\n", kd->cmd->name);
+        eb_style_printf(b, QE_STYLE_FUNCTION, "%s\n", kd->cmd->name);
     }
     if (separate) {
         stop = b->offset;
@@ -2191,7 +2187,7 @@ static void do_describe_buffer(EditState *s, int argval)
     if (!b1)
         return;
 
-    eb_print_style(b1, DESCRIBE_STYLE_HEAD, "Buffer fields:\n");
+    eb_style_puts(b1, DESCRIBE_STYLE_HEAD, "Buffer fields:\n");
 
     b1->tab_width = 12;
     eb_print_field(b1, "name", "%s\n", b->name);
@@ -2321,7 +2317,7 @@ static void do_describe_buffer(EditState *s, int argval)
         if (b->property_list) {
             QEProperty *p;
 
-            eb_print_style(b1, DESCRIBE_STYLE_HEAD, "\nBuffer property list:\n");
+            eb_style_puts(b1, DESCRIBE_STYLE_HEAD, "\nBuffer property list:\n");
 
             for (p = b->property_list; p; p = p->next) {
                 eb_printf(b1, " %7d  %c%c%c  ", p->offset,
@@ -2343,7 +2339,7 @@ static void do_describe_buffer(EditState *s, int argval)
             }
         }
 
-        eb_print_style(b1, DESCRIBE_STYLE_HEAD, "\nByte stats:\n");
+        eb_style_puts(b1, DESCRIBE_STYLE_HEAD, "\nByte stats:\n");
 
         for (col = i = 0; i < 256; i++) {
             if (count[i] == 0)
@@ -2358,8 +2354,8 @@ static void do_describe_buffer(EditState *s, int argval)
             } else {
                 snprintf(buf, countof(buf), "0x%02x", (unsigned)i);
             }
-            col += eb_print_style(b1, QE_STYLE_STRING, "  %5s", buf);
-            col += eb_print_style(b1, QE_STYLE_NUMBER, "  %-*d", count_width, count[i]);
+            col += eb_style_printf(b1, QE_STYLE_STRING, "  %5s", buf);
+            col += eb_style_printf(b1, QE_STYLE_NUMBER, "  %-*d", count_width, count[i]);
             if (col >= 64) {
                 eb_putc(b1, '\n');
                 col = 0;
@@ -2373,9 +2369,9 @@ static void do_describe_buffer(EditState *s, int argval)
         Page *p;
         int i, j;
 
-        eb_print_style(b1, DESCRIBE_STYLE_HEAD, "\nBuffer page layout:\n");
+        eb_style_puts(b1, DESCRIBE_STYLE_HEAD, "\nBuffer page layout:\n");
 
-        eb_print_style(b1, QE_STYLE_VARIABLE, "  page  size  flags  lines   col  chars  addr\n");
+        eb_style_puts(b1, QE_STYLE_VARIABLE, "  page  size  flags  lines   col  chars  addr\n");
         for (i = 0, p = b->page_table; i < b->nb_pages && i < 100; i++, p++) {
             eb_printf(b1, " %5d  %4d  %5x  %5d  %4d  %5d  %p  ",
                       i, p->size, (unsigned)p->flags, p->nb_lines, p->col, p->nb_chars,
@@ -2385,7 +2381,7 @@ static void do_describe_buffer(EditState *s, int argval)
                 buf[j] = (cc >= ' ' && cc < 0x7f) ? cc : '.';
             }
             buf[j] = '\0';
-            eb_print_style(b1, QE_STYLE_COMMENT, "|%s|%s\n", buf, p->size > j ? "..." : "");
+            eb_style_printf(b1, QE_STYLE_COMMENT, "|%s|%s\n", buf, p->size > j ? "..." : "");
         }
         eb_putc(b1, '\n');
     }
@@ -2401,7 +2397,7 @@ static void do_describe_window(EditState *s, int argval)
     if (!b1)
         return;
 
-    eb_print_style(b1, DESCRIBE_STYLE_HEAD, "Window fields:\n");
+    eb_style_puts(b1, DESCRIBE_STYLE_HEAD, "Window fields:\n");
 
     b1->tab_width = 28;
     eb_print_field(b1, "xleft, ytop", "%d, %d\n", s->xleft, s->ytop);
@@ -2500,7 +2496,7 @@ static void do_describe_screen(EditState *e, int argval)
     if (!b1)
         return;
 
-    eb_print_style(b1, DESCRIBE_STYLE_HEAD, "\nScreen fields:\n\n");
+    eb_style_puts(b1, DESCRIBE_STYLE_HEAD, "\nScreen fields:\n\n");
 
     b1->tab_width = 20;
     eb_print_field(b1, "dpy.name", "%s\n", s->dpy.name);
@@ -3082,13 +3078,13 @@ static int eb_print_color(EditBuffer *b, const char *name) {
         style2 = QE_TERM_COMPOSITE | QE_TERM_MAKE_COLOR(bg, 16);
         rgb = qe_unmap_color(bg, 8192);
     }
-    len = eb_print_style(b, QE_STYLE_FUNCTION, "%s", name);
+    len = eb_style_puts(b, QE_STYLE_FUNCTION, name);
     b->tab_width = max_int(b->tab_width, len + 2);
     eb_putc(b, '\t');
     len += 1;
     len += eb_printf(b, " %-10s ", alt_name);
-    len += eb_print_style(b, style, "[   ]");
-    len += eb_print_style(b, style2, "[  Sample  ]");
+    len += eb_style_puts(b, style, "[   ]");
+    len += eb_style_puts(b, style2, "[  Sample  ]");
     len2 = eb_printf(b, "  p%-4d", bg);
     if (dist != 0)
         len2 += eb_printf(b, "  dist=%-4d", dist);
@@ -3111,7 +3107,7 @@ int style_print_entry(CompleteState *cp, EditState *s, const char *name) {
     QETermStyle style = 0;
     int show_sample = 0;
 
-    len = eb_print_style(b, QE_STYLE_FUNCTION, "%s", name);
+    len = eb_style_puts(b, QE_STYLE_FUNCTION, name);
     b->tab_width = max_int(b->tab_width, len + 2);
     if ((stp = find_style(name, &index)) != NULL) {
         style = index;
@@ -3124,7 +3120,7 @@ int style_print_entry(CompleteState *cp, EditState *s, const char *name) {
     }
     if (show_sample) {
         len += eb_putc(b, '\t');
-        len += eb_print_style(b, style, "[  Sample  ]");
+        len += eb_style_puts(b, style, "[  Sample  ]");
         len += eb_printf(b, "  %s", buf);
     }
     return len;
@@ -3141,11 +3137,11 @@ static void do_list_styles(EditState *s, int argval) {
 
     start = b->offset;
     for (i = 0; i < QE_STYLE_NB; i++) {
-        len = eb_print_style(b, QE_STYLE_FUNCTION, "%s", qe_styles[i].name);
+        len = eb_style_puts(b, QE_STYLE_FUNCTION, qe_styles[i].name);
         b->tab_width = max_int(b->tab_width, len + 2);
         eb_putc(b, '\t');
         eb_printf(b, "%2d  ", i);
-        eb_print_style(b, i, "[  Sample  ]");
+        eb_style_puts(b, i, "[  Sample  ]");
         qe_styledef_string(buf, countof(buf), &qe_styles[i]);
         eb_printf(b, "  %s\n", buf);
     }

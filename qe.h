@@ -600,7 +600,9 @@ int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap) qe__attr_printf(2,0);
 int eb_printf(EditBuffer *b, const char *fmt, ...) qe__attr_printf(2,3);
 int eb_puts(EditBuffer *b, const char *s);
 int eb_putc(EditBuffer *b, char32_t c);
-int eb_print_style(EditBuffer *b, QETermStyle style, const char *fmt, ...) qe__attr_printf(3,4);
+int eb_style_printf(EditBuffer *b, QETermStyle style, const char *fmt, ...) qe__attr_printf(3,4);
+int eb_style_puts(EditBuffer *b, QETermStyle style, const char *s);
+int eb_style_putc(EditBuffer *b, QETermStyle style, char32_t c);
 int eb_print_field(EditBuffer *b, const char *name, const char *fmt, ...) qe__attr_printf(3,4);
 
 void eb_line_pad(EditBuffer *b, int offset, int n);

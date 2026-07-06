@@ -2417,7 +2417,27 @@ int eb_printf(EditBuffer *b, const char *fmt, ...) {
     return written;
 }
 
-int eb_print_style(EditBuffer *b, QETermStyle style, const char *fmt, ...) {
+int eb_style_putc(EditBuffer *b, QETermStyle style, char32_t c) {
+    char buf[8];
+    int len = eb_encode_char32(b, buf, c);
+    int written;
+
+    b->cur_style = style;
+    written = eb_insert(b, b->offset, buf, len);
+    b->cur_style = QE_STYLE_DEFAULT;
+    return written;
+}
+
+int eb_style_puts(EditBuffer *b, QETermStyle style, const char *s) {
+    int written;
+
+    b->cur_style = style;
+    written = eb_insert_utf8_buf(b, b->offset, s, strlen(s));
+    b->cur_style = QE_STYLE_DEFAULT;
+    return written;
+}
+
+int eb_style_printf(EditBuffer *b, QETermStyle style, const char *fmt, ...) {
     va_list ap;
     int written;
 
@@ -2433,7 +2453,7 @@ int eb_print_field(EditBuffer *b, const char *name, const char *fmt, ...) {
     va_list ap;
     int written;
 
-    written = eb_print_style(b, QE_STYLE_VARIABLE, "%*s", b->tab_width, name);
+    written = eb_style_printf(b, QE_STYLE_VARIABLE, "%*s", b->tab_width, name);
     written += eb_puts(b, *name ? ": " : "  ");
     va_start(ap, fmt);
     written += eb_vprintf(b, fmt, ap);

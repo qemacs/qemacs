@@ -508,7 +508,7 @@ static void do_show_all_variables(EditState *s) {
 
     // XXX: should create links to markdown documentation
     for (i = 0; i < countof(var_domain); i++) {
-        eb_print_style(b, DESCRIBE_STYLE_HEAD,
+        eb_style_printf(b, DESCRIBE_STYLE_HEAD,
                        "%s variables:\n", var_domain_desc[i]);
         for (vp = s->qs->first_variable; vp; vp = vp->next) {
             if (vp->domain == i) {
@@ -626,21 +626,21 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s, int long_fo
     if (long_format) {
         len += eb_puts(b, "  ");
         if (!vp->rw) {
-            len += eb_print_style(b, QE_STYLE_KEYWORD, "const ");
+            len += eb_style_puts(b, QE_STYLE_KEYWORD, "const ");
         }
-        len += eb_print_style(b, QE_STYLE_TYPE, "%s ", type);
+        len += eb_style_printf(b, QE_STYLE_TYPE, "%s ", type);
     }
-    len += eb_print_style(b, QE_STYLE_VARIABLE, "%s", vp->name);
+    len += eb_style_puts(b, QE_STYLE_VARIABLE, vp->name);
     if (long_format)
         len += eb_puts(b, typebuf);
     len += eb_puts(b, " = ");
     qe_get_variable(s, vp->name, buf, sizeof(buf), NULL, 1);
-    len += eb_print_style(b, *buf == '\"' ? QE_STYLE_STRING : QE_STYLE_NUMBER, "%s", buf);
+    len += eb_style_puts(b, *buf == '\"' ? QE_STYLE_STRING : QE_STYLE_NUMBER, buf);
     if (long_format) {
         eb_putc(b, '\n');
         if (vp->desc && *vp->desc) {
             /* print short description */
-            eb_print_style(b, QE_STYLE_COMMENT, "    %s\n", vp->desc);
+            eb_style_printf(b, QE_STYLE_COMMENT, "    %s\n", vp->desc);
         }
     } else {
         if (len + 2 <= 40) {
@@ -649,9 +649,9 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s, int long_fo
         } else {
             b->tab_width = 40;
         }
-        len += eb_print_style(b, QE_STYLE_COMMENT, "  %s%s",
-                              vp->rw ? "" : "read-only ", var_domain[vp->domain]);
-        len += eb_print_style(b, QE_STYLE_TYPE, " %s%s", type, typebuf);
+        len += eb_style_printf(b, QE_STYLE_COMMENT, "  %s%s",
+                               vp->rw ? "" : "read-only ", var_domain[vp->domain]);
+        len += eb_style_printf(b, QE_STYLE_TYPE, " %s%s", type, typebuf);
     }
     return len;
 }
