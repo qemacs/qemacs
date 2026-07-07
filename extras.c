@@ -409,53 +409,47 @@ void do_compare_windows(EditState *s, int argval)
     }
 }
 
+/* compare a file with another version with the same relative path
+   from the parent directory
+ */
 void do_compare_files(EditState *s, const char *filename, int bflags)
 {
-    char buf[MAX_FILENAME_SIZE + 3];
+    char file1[MAX_FILENAME_SIZE];
+    char file2[MAX_FILENAME_SIZE];
     char dir[MAX_FILENAME_SIZE];
     int pathlen, parent_pathlen;
-    const char *tail;
     EditState *e;
 
-    pathlen = get_basename_offset(filename);
     get_default_path(s->b, s->offset, dir, sizeof(dir));
-
-    if (strstart(filename, dir, &tail)) {
-        snprintf(buf, sizeof(buf), "%s../%s", dir, tail);
-    } else
-    if (pathlen == 0) {
-        snprintf(buf, sizeof(buf), "../%s", filename);
-    } else
-    if (pathlen == 1) {
-        put_error(s, "Reference file is in root directory: %s", filename);
-        return;
-    } else
-    if (pathlen >= MAX_FILENAME_SIZE) {
-        put_error(s, "Filename too long: %s", filename);
-        return;
-    } else {
-        pstrcpy(buf, sizeof(buf), filename);
-        buf[pathlen - 1] = '\0';  /* overwite the path separator */
-        parent_pathlen = get_basename_offset(buf);
-        pstrcpy(buf + parent_pathlen, sizeof(buf) - parent_pathlen, filename + pathlen);
+    canonicalize_absolute_path(s, file1, countof(file1), filename);
+    pathlen = strlen(dir);
+    if (!pathlen || memcmp(file1, dir, pathlen) != 0) {
+        pathlen = get_basename_offset(file1);
     }
+    parent_pathlen = get_parent_offset(file1, pathlen);
+    if (parent_pathlen >= pathlen) {
+        put_error(s, "No parent directory: %s", file1);
+        return;
+    }
+    memcpy(file2, file1, parent_pathlen);
+    pstrcpy(file2 + parent_pathlen, countof(file2) - parent_pathlen, file1 + pathlen);
 
     // XXX: should check for regular file
-    if (access(filename, R_OK)) {
-        put_error(s, "Cannot access file %s: %s", filename, strerror(errno));
+    // XXX: should support protocols
+    if (access(file1, R_OK)) {
+        put_error(s, "Cannot access file %s: %s", file1, strerror(errno));
         return;
     }
-    if (access(buf, R_OK)) {
-        put_error(s, "Cannot access file %s: %s", buf, strerror(errno));
+    if (access(file2, R_OK)) {
+        put_error(s, "Cannot access file %s: %s", file2, strerror(errno));
         return;
     }
 
-    do_find_file(s, filename, bflags);
+    do_find_file(s, file2, bflags);
     do_delete_other_windows(s, 0);
-    e = qe_split_window(s, SW_STACKED, 50);
+    e = qe_split_window(s, SW_STACKED | SW_ABOVE, 50);
     if (e) {
-        s->qs->active_window = e;
-        do_find_file(e, buf, bflags);
+        do_find_file(e, file1, bflags);
     }
 }
 
