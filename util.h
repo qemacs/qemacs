@@ -57,7 +57,7 @@ typedef struct FindFileState FindFileState;
 #define FF_DEPTH    0x00f  /* max recursion depth */
 
 FindFileState *find_file_open(const char *path, const char *pattern, int flags);
-int find_file_next(FindFileState *s, char *filename, int filename_size_max);
+int find_file_next(FindFileState *s, char *filename, int filename_size);
 void find_file_close(FindFileState **sp);
 int qe_shell_match(const char *pattern, const char *string);
 int is_directory(const char *path);
@@ -74,6 +74,7 @@ int match_shell_handler(const char *p, const char *list);
 // XXX: should move these to cutils?
 int remove_slash(char *buf);
 int append_slash(char *buf, int buf_size);
+char *append_filename(char *buf, int buf_size, const char *filename);
 char *makepath(char *buf, int buf_size, const char *path, const char *filename);
 void splitpath(char *dirname, int dirname_size,
                char *filename, int filename_size, const char *pathname);
