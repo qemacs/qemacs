@@ -3791,10 +3791,14 @@ static int shell_check_curpath(ShellState *s, int offset, int trigger)
             stop = stop0;
             break;
         }
-        if (c == ':' && line[i] != '\\'
-        &&  !(line[i] == '/' && line[i + 1] == '/')
-        &&  !(line[i] == '/' && line[i + 1] == '*'))
-            start = i;
+        if (c == ':') {
+            if (match_error(b, bol, NULL))
+                break;
+            if (line[i] != '\\'
+            &&  !(line[i] == '/' && line[i + 1] == '/')
+            &&  !(line[i] == '/' && line[i + 1] == '*'))
+                start = i;
+        }
         if (c == ' ') {
             if (!start || start == i - 1)
                 start = i;
