@@ -152,6 +152,8 @@ static inline int strequal(const char *s1, const char *s2) {
 #define blockcpy(p1, p2, n)   memcpy(p1, p2, (n) * sizeof *(p1) / (sizeof *(p1) == sizeof *(p2)))
 #define blockmove(p1, p2, n) memmove(p1, p2, (n) * sizeof *(p1) / (sizeof *(p1) == sizeof *(p2)))
 
+size_t get_path_offset(const char *url);
+size_t get_parent_offset(const char *path, size_t base);
 size_t get_basename_offset(const char *filename);
 
 static inline const char *get_basename(const char *filename) {

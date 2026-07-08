@@ -2829,8 +2829,7 @@ EditBuffer *qe_new_shell_buffer(QEmacsState *qs, EditBuffer *b0, EditState *e,
     if (e) {
         get_default_path(e->b, e->offset, curpath, countof(curpath));
     } else {
-        *curpath = '\0';
-        getcwd(curpath, countof(curpath));
+        get_curdir(curpath, countof(curpath));
     }
     append_slash(curpath, countof(curpath));
     shell_add_cwd(b, 0, curpath, 1);

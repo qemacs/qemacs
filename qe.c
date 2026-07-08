@@ -9115,41 +9115,24 @@ void canonicalize_absolute_buffer_path(EditBuffer *b, int offset, char *buf, int
 {
     char cwd[MAX_FILENAME_SIZE];
     char path[MAX_FILENAME_SIZE];
-    char *homedir;
 
     if (!is_abs_path(path1)) {
         if (*path1 == '~') {
-            if (path1[1] == '\0' || path1[1] == '/') {
-                homedir = getenv("HOME");
-                if (homedir) {
-                    pstrcpy(path, sizeof(path), homedir);
-#ifdef CONFIG_WIN32
-                    path_win_to_unix(path);
-#endif
-                    remove_slash(path);
-                    pstrcat(path, sizeof(path), path1 + 1);
-                    path1 = path;
-                }
-            } else {
-                /* CG: should get info from getpwnam */
-#ifdef CONFIG_DARWIN
-                pstrcpy(path, sizeof(path), "/Users/");
-#else
-                pstrcpy(path, sizeof(path), "/home/");
-#endif
-                pstrcat(path, sizeof(path), path1 + 1);
+            char login[64];
+            const char *tail = path1 + strcspn(path1, "/");
+            pstrncpy(login, countof(login), path1 + 1, tail - (path1 + 1));
+            if (get_homedir(path, countof(path), login)) {
+                remove_slash(path);
+                pstrcat(path, countof(path), tail);
                 path1 = path;
             }
         } else {
-            /* CG: not sufficient for windows drives */
-            if (!b || !get_default_path(b, offset, cwd, sizeof(cwd))) {
-                if (!getcwd(cwd, sizeof(cwd)))
-                    strcpy(cwd, ".");
-#ifdef CONFIG_WIN32
-                path_win_to_unix(cwd);
-#endif
+            if (b) {
+                get_default_path(b, offset, cwd, countof(cwd));
+            } else {
+                get_curdir(cwd, countof(cwd));
             }
-            makepath(path, sizeof(path), cwd, path1);
+            makepath(path, countof(path), cwd, path1);
             path1 = path;
         }
     }
@@ -9160,7 +9143,7 @@ void canonicalize_absolute_buffer_path(EditBuffer *b, int offset, char *buf, int
 char *get_default_path(EditBuffer *b, int offset, char *buf, int buf_size)
 {
     char buf1[MAX_FILENAME_SIZE];
-    const char *filename;
+    const char *filename = "a";
 
     /* dispatch to mode specific handler if any */
     if (b->default_mode
@@ -9168,15 +9151,13 @@ char *get_default_path(EditBuffer *b, int offset, char *buf, int buf_size)
     &&  b->default_mode->get_default_path(b, offset, buf, buf_size)) {
         return buf;
     }
-
-    if ((b->flags & BF_SYSTEM)
-    ||  b->name[0] == '*'
-    ||  b->filename[0] == '\0') {
-        filename = "a";
-    } else {
+    if (b->filename[0]) {
         filename = b->filename;
     }
-    /* XXX: should just retrieve the current directory */
+    // XXX: should just retrieve the current directory?
+    // XXX: fix this mess: canonicalize_absolute_path calls
+    //canonicalize_absolute_buffer_path(NULL, 0, buf1, sizeof(buf1), filename);
+    // which in turn calls get_default_path if `b` is not NULL
     canonicalize_absolute_path(NULL, buf1, sizeof(buf1), filename);
     splitpath(buf, buf_size, NULL, 0, buf1);
     return buf;
@@ -11632,7 +11613,6 @@ void do_add_resource_path(EditState *s, const char *path)
 static void qe_set_user_option(QEmacsState *qs, const char *user)
 {
     char path[MAX_FILENAME_SIZE];
-    const char *home_path;
 
     qs->user_option = user;
 
@@ -11641,30 +11621,19 @@ static void qe_set_user_option(QEmacsState *qs, const char *user)
 
     /* put current directory first if qe invoked as ./qe */
     if (stristart(qs->argv[0], "./qe", NULL)) {
-        if (!getcwd(path, sizeof(path)))
-            strcpy(path, ".");
+        get_curdir(path, sizeof(path));
         pstrcat(qs->res_path, sizeof(qs->res_path), path);
         pstrcat(qs->res_path, sizeof(qs->res_path), ":");
+        append_slash(path, countof(path));
         pstrcat(qs->res_path, sizeof(qs->res_path), path);
-        pstrcat(qs->res_path, sizeof(qs->res_path), "/unidata:");
+        pstrcat(qs->res_path, sizeof(qs->res_path), "unidata:");
     }
 
     /* put user directory before standard list */
-    if (user) {
-        /* use ~USER/.qe instead of ~/.qe */
-        /* CG: should get user homedir */
-#ifdef CONFIG_DARWIN
-        snprintf(path, sizeof(path), "/Users/%s", user);
-#else
-        snprintf(path, sizeof(path), "/home/%s", user);
-#endif
-        home_path = path;
-    } else {
-        home_path = getenv("HOME");
-    }
-    if (home_path) {
-        pstrcat(qs->res_path, sizeof(qs->res_path), home_path);
-        pstrcat(qs->res_path, sizeof(qs->res_path), "/.qe:");
+    if (get_homedir(path, countof(path), user)) {
+        append_slash(path, countof(path));
+        pstrcat(qs->res_path, sizeof(qs->res_path), path);
+        pstrcat(qs->res_path, sizeof(qs->res_path), ".qe:");
     }
 
     pstrcat(qs->res_path, sizeof(qs->res_path),

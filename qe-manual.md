@@ -1386,6 +1386,23 @@ If there is no extension, return a pointer to the null terminator
 and the end of path.
 Leading dots are skipped, they are not considered part of an extension.
 
+### `size_t get_parent_offset(const char *path, size_t base);`
+
+Get the offset of the parent component of a path for a given base.
+Return the offset to the first character of the parent directory
+part of the path pointed to by string argument `path` where `base`
+is the offset of the basename.
+
+### `size_t get_path_offset(const char *url);`
+
+Get the offset of the path component of a URL.
+Return the offset to the first character of the path
+part of the URL pointed to by string argument `url`.
+The following parts are skipped if present:
+- a protocol name or drive specifier
+- a server name specified as //server_name/
+- the root directory '/'
+
 ### `const char *get_relativename(const char *filename, const char *dirname);`
 
 Get the offset to the filename porting that is relative to the
