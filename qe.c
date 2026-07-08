@@ -9113,7 +9113,6 @@ void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const cha
 
 void canonicalize_absolute_buffer_path(EditBuffer *b, int offset, char *buf, int buf_size, const char *path1)
 {
-    char cwd[MAX_FILENAME_SIZE];
     char path[MAX_FILENAME_SIZE];
 
     if (!is_abs_path(path1)) {
@@ -9128,11 +9127,11 @@ void canonicalize_absolute_buffer_path(EditBuffer *b, int offset, char *buf, int
             }
         } else {
             if (b) {
-                get_default_path(b, offset, cwd, countof(cwd));
+                get_default_path(b, offset, path, countof(path));
             } else {
-                get_curdir(cwd, countof(cwd));
+                get_curdir(path, countof(path));
             }
-            makepath(path, countof(path), cwd, path1);
+            append_filename(path, countof(path), path1);
             path1 = path;
         }
     }

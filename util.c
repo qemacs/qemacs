@@ -116,11 +116,11 @@ FindFileState *find_file_open(const char *path, const char *pattern, int flags) 
     return s;
 }
 
-int find_file_next(FindFileState *s, char *filename, int filename_size_max) {
+int find_file_next(FindFileState *s, char *filename, int filename_size) {
     /*@API utils
        Get the next match in a directory enumeration.
        @argument `filename` a valid pointer to an array for the file name.
-       @argument `filename_size_max` the length if the `filename` destination
+       @argument `filename_size` the length if the `filename` destination
        array in bytes.
        @return `0` if there is a match, `-1` if no more files match the pattern.
      */
@@ -156,11 +156,11 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max) {
         new_dir:
             s->dirlen = strlen(s->dirpath);
             if (s->flags & FF_NOPAT) {
-                makepath(s->dirpath, countof(s->dirpath), s->dirpath, s->pattern);
+                append_filename(s->dirpath, countof(s->dirpath), s->pattern);
                 if (!stat(s->dirpath, &st)) {
                     if ((S_ISDIR(st.st_mode) && !(s->flags & FF_NODIR))
                     ||  (S_ISREG(st.st_mode) && !(s->flags & FF_ONLYDIR))) {
-                        pstrcpy(filename, filename_size_max, s->dirpath);
+                        pstrcpy(filename, filename_size, s->dirpath);
                         return 0;
                     }
                 }
@@ -190,7 +190,7 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max) {
                         s->parent_len[s->depth] = s->dirlen;
                         s->depth++;
                         s->dir = NULL;
-                        makepath(s->dirpath, countof(s->dirpath), s->dirpath, dirent->d_name);
+                        append_filename(s->dirpath, countof(s->dirpath), dirent->d_name);
                         goto new_dir;
                     }
                 }
@@ -203,8 +203,7 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max) {
             if (s->flags & FF_NOPAT)
                 continue;
             if (qe_shell_match(dirent->d_name, s->pattern)) {
-                makepath(filename, filename_size_max,
-                         s->dirpath, dirent->d_name);
+                makepath(filename, filename_size, s->dirpath, dirent->d_name);
                 return 0;
             }
         }
@@ -660,6 +659,16 @@ int append_slash(char *buf, int buf_size) {
     return len;
 }
 
+char *append_filename(char *buf, int buf_size, const char *filename) {
+    /*@API utils
+       Append a filename to a path with a path separator if needed.
+       @return the updated path length.
+       @note: truncation cannot be detected reliably
+     */
+    append_slash(buf, buf_size);
+    return pstrcat(buf, buf_size, filename);
+}
+
 char *makepath(char *buf, int buf_size, const char *path, const char *filename) {
     /*@API utils
        Construct a path from a directory name and a filename into the
@@ -669,8 +678,7 @@ char *makepath(char *buf, int buf_size, const char *path, const char *filename) 
      */
     if (buf != path)
         pstrcpy(buf, buf_size, path);
-    append_slash(buf, buf_size);
-    return pstrcat(buf, buf_size, filename);
+    return append_filename(buf, buf_size, filename);
 }
 
 void splitpath(char *dirname, int dirname_size,

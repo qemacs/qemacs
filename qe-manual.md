@@ -1848,6 +1848,14 @@ Accents are also ignored by this function.
 
 Return `1` if there is a match, `0` otherwise.
 
+### `char *append_filename(char *buf, int buf_size, const char *filename);`
+
+Append a filename to a path with a path separator if needed.
+
+Return the updated path length.
+
+Note: truncation cannot be detected reliably
+
 ### `int append_slash(char *buf, int buf_size);`
 
 Append a trailing slash to a path if none there already.
@@ -2035,13 +2043,13 @@ will be closed.
 Note: `FindFileState` state structures must be freed to avoid memory
 and resource leakage.
 
-### `int find_file_next(FindFileState *s, char *filename, int filename_size_max);`
+### `int find_file_next(FindFileState *s, char *filename, int filename_size);`
 
 Get the next match in a directory enumeration.
 
 * argument `filename` a valid pointer to an array for the file name.
 
-* argument `filename_size_max` the length if the `filename` destination
+* argument `filename_size` the length if the `filename` destination
 array in bytes.
 
 Return `0` if there is a match, `-1` if no more files match the pattern.
