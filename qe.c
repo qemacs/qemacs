@@ -11602,11 +11602,22 @@ static int qe_parse_command_line(QEmacsState *qs, int argc, char **argv)
     return optind_;
 }
 
+static BOOL qe_add_resource_path(QEmacsState *qs, const char *path)
+{
+    // Only append path to resource path if it fits completely
+    size_t path_len = strlen(qs->res_path);
+    size_t len = strlen(path);
+    if (len + 1 >= sizeof(qs->res_path) - path_len)
+        return FALSE;
+    if (path_len)
+        qs->res_path[path_len++] = ':';
+    memcpy(qs->res_path + path_len, path, len + 1);
+    return TRUE;
+}
+
 void do_add_resource_path(EditState *s, const char *path)
 {
-    QEmacsState *qs = s->qs;
-    pstrcat(qs->res_path, sizeof(qs->res_path), ":");
-    pstrcat(qs->res_path, sizeof(qs->res_path), path);
+    qe_add_resource_path(s->qs, path);
 }
 
 static void qe_set_user_option(QEmacsState *qs, const char *user)
@@ -11620,27 +11631,23 @@ static void qe_set_user_option(QEmacsState *qs, const char *user)
 
     /* put current directory first if qe invoked as ./qe */
     if (stristart(qs->argv[0], "./qe", NULL)) {
-        get_curdir(path, sizeof(path));
-        pstrcat(qs->res_path, sizeof(qs->res_path), path);
-        pstrcat(qs->res_path, sizeof(qs->res_path), ":");
-        append_slash(path, countof(path));
-        pstrcat(qs->res_path, sizeof(qs->res_path), path);
-        pstrcat(qs->res_path, sizeof(qs->res_path), "unidata:");
+        get_curdir(path, countof(path));
+        qe_add_resource_path(qs, path);
+        append_filename(path, countof(path), "unidata");
+        qe_add_resource_path(qs, path);
     }
 
     /* put user directory before standard list */
     if (get_homedir(path, countof(path), user)) {
-        append_slash(path, countof(path));
-        pstrcat(qs->res_path, sizeof(qs->res_path), path);
-        pstrcat(qs->res_path, sizeof(qs->res_path), ".qe:");
+        append_filename(path, countof(path), ".qe");
+        qe_add_resource_path(qs, path);
     }
 
-    pstrcat(qs->res_path, sizeof(qs->res_path),
-            CONFIG_QE_DATADIR ":"
-            CONFIG_QE_PREFIX "/share/qe" ":"
-            CONFIG_QE_PREFIX "/lib/qe" ":"
-            "/usr/share/qe" ":"
-            "/usr/lib/qe");
+    qe_add_resource_path(qs, CONFIG_QE_DATADIR);
+    qe_add_resource_path(qs, CONFIG_QE_PREFIX "/share/qe");
+    qe_add_resource_path(qs, CONFIG_QE_PREFIX "/lib/qe");
+    qe_add_resource_path(qs, "/usr/share/qe");
+    qe_add_resource_path(qs, "/usr/lib/qe");
 }
 
 static void qe_set_tty_charset(QEmacsState *qs, const char *name)
@@ -12451,6 +12458,11 @@ static int qe_init(QEmacsState *qs, int argc, char **argv)
 
     // FIXME: Achtung Minen! qs->active_window is NULL until
     //        the first window is created for the "*scratch*" buffer
+
+    // XXX: this is confusing: the initial configuration is performed
+    //      for the current user before the command line option `-u` is
+    //      analysed, which is counter-intuitive.  kmaps and ligatures
+    //      should probably be loaded after the command line is parsed.
 
     /* setup resource path */
     qe_set_user_option(qs, NULL);
