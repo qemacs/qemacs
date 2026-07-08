@@ -31,6 +31,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <unistd.h>
 
 #include "config.h"     /* for CONFIG_WIN32 */
 #include "util.h"
@@ -253,6 +256,40 @@ int is_filepattern(const char *filespec) {
     return filespec[pos] != '\0';
 }
 
+char *get_curdir(char *dest, size_t size) {
+    if (!getcwd(dest, size))
+        pstrcpy(dest, size, ".");
+#ifdef CONFIG_WIN32
+    path_win_to_unix(dest);
+#endif
+    return dest;
+}
+
+char *get_homedir(char *dest, size_t size, const char *login) {
+    const char *homedir = NULL;
+
+    if (login && *login) {
+        struct passwd *pw = getpwnam(login);
+        if (pw)
+            homedir = pw->pw_dir;
+    } else {
+        homedir = getenv("HOME");
+        if (!homedir) {
+            struct passwd *pw = getpwent();
+            if (pw)
+                homedir = pw->pw_dir;
+        }
+    }
+    if (homedir) {
+        pstrcpy(dest, size, homedir);
+#ifdef CONFIG_WIN32
+        path_win_to_unix(dest);
+#endif
+        return dest;
+    }
+    return NULL;
+}
+
 static void canonicalize_path1(char *buf, int buf_size, const char *path) {
     /* XXX: make it better */
     const char *p;
@@ -359,6 +396,7 @@ char *canonicalize_path(char *buf, int buf_size, const char *path) {
 }
 
 char *make_user_path(char *buf, int buf_size, const char *path) {
+    char homedir[MAX_FILENAME_SIZE];
     /*@API utils
        Reduce a path relative to the user's homedir, using the `~`
        shell syntax.
@@ -369,22 +407,15 @@ char *make_user_path(char *buf, int buf_size, const char *path) {
        @note this function uses the `HOME` environment variable to
        determine the user's home directory
      */
-    char *homedir = getenv("HOME");
-    if (homedir) {
-        int len = strlen(homedir);
-
-        if (len && homedir[len - 1] == '/')
-            len--;
-
-        if (!memcmp(path, homedir, len) && (path[len] == '/' || path[len] == '\0')) {
-            if (buf_size > 1) {
+    if (get_homedir(homedir, countof(homedir), NULL)) {
+        if (homedir[0] && homedir[1] && buf_size > 1) {
+            const char *tail;
+            remove_slash(homedir);
+            if (strstart(path, homedir, &tail) && (*tail == '/' || *tail == '\0')) {
                 *buf = '~';
-                pstrcpy(buf + 1, buf_size - 1, path + len);
-            } else {
-                if (buf_size > 0)
-                    *buf = '\0';
+                pstrcpy(buf + 1, buf_size - 1, tail);
+                return buf;
             }
-            return buf;
         }
     }
     return pstrcpy(buf, buf_size, path);
@@ -607,7 +638,6 @@ int remove_slash(char *buf) {
        Remove the trailing slash from path, except for / directory.
        @return the updated path length.
      */
-    // XXX: should we have windows specific behavior?
     // XXX: should we handle protocol prefixes specifically?
     int len = strlen(buf);
     if (len > 1 && buf[len - 1] == '/') {
@@ -622,7 +652,6 @@ int append_slash(char *buf, int buf_size) {
        @return the updated path length.
        @note: truncation cannot be detected reliably
      */
-    // XXX: should we have windows specific behavior?
     int len = strnlen(buf, buf_size);
     if (len > 0 && buf[len - 1] != '/' && len + 1 < buf_size) {
         buf[len++] = '/';

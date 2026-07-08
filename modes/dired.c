@@ -1684,11 +1684,11 @@ static char *dired_get_default_path(EditBuffer *b, int offset,
         } else {
             get_dirname(buf, buf_size, b->filename);
         }
-        append_slash(buf, buf_size);
-        return buf;
     } else {
-        return getcwd(buf, buf_size) ? buf : NULL;
+        get_curdir(buf, buf_size);
     }
+    append_slash(buf, buf_size);
+    return buf;
 }
 
 static int dired_mode_init(EditState *s, EditBuffer *b, int flags)

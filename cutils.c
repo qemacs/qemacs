@@ -157,23 +157,87 @@ int strend(const char *str, const char *val, const char **ptr) {
     }
 }
 
+size_t get_path_offset(const char *url) {
+    /*@API utils.string
+       Get the offset of the path component of a URL.
+       Return the offset to the first character of the path
+       part of the URL pointed to by string argument `url`.
+       The following parts are skipped if present:
+       - a protocol name or drive specifier
+       - a server name specified as //server_name/
+       - the root directory '/'
+     */
+    int i = 0, j;
+    unsigned char c;
+
+    if (url) {
+        // skip drive or protocol prefix (C:, https:...)
+        for (j = 0; j < 6; j++) {
+            c = url[j];
+            if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z')) {
+                if (j && c == ':')
+                    i = j + 1;
+                break;
+            }
+        }
+        // skip server name
+        if (url[i] == '/' && url[i + 1] == '/') {
+            i += 2;
+            while (url[i] && url[i] != '/')
+                i++;
+        }
+        // skip root directory
+#ifdef CONFIG_WIN32
+        if (url[i] == '/' || url[i] == '\\')
+            i++;
+#else
+        if (url[i] == '/')
+            i++;
+#endif
+    }
+    return i;
+}
+
+size_t get_parent_offset(const char *path, size_t base) {
+    /*@API utils.string
+       Get the offset of the parent component of a path for a given base.
+       Return the offset to the first character of the parent directory
+       part of the path pointed to by string argument `path` where `base`
+       is the offset of the basename.
+     */
+    size_t i, parent = get_path_offset(path);
+
+    if (path) {
+        for (i = parent; i + 1 < base && path[i]; i++) {
+#ifdef CONFIG_WIN32
+            /* Simplistic DOS/Windows filename support */
+            if (path[i] == '/' || path[i] == '\\')
+                parent = i + 1;
+#else
+            if (path[i] == '/')
+                parent = i + 1;
+#endif
+        }
+    }
+    return parent;
+}
+
 size_t get_basename_offset(const char *path) {
     /*@API utils.string
        Get the offset of the filename component of a path.
        Return the offset to the first character of the filename part of
        the path pointed to by string argument `path`.
      */
-    size_t i, base = 0;
-    const char *p = path;
+    size_t i, base = get_path_offset(path);
 
-    if (p) {
-        for (i = 0; p[i]; i++) {
+    if (path) {
+        for (i = base; path[i]; i++) {
 #ifdef CONFIG_WIN32
             /* Simplistic DOS/Windows filename support */
-            if (p[i] == '/' || p[i] == '\\' || (p[i] == ':' && i == 1))
+            if (path[i] == '/' || path[i] == '\\')
                 base = i + 1;
 #else
-            if (p[i] == '/')
+            if (path[i] == '/')
                 base = i + 1;
 #endif
         }

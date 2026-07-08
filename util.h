@@ -62,6 +62,8 @@ void find_file_close(FindFileState **sp);
 int qe_shell_match(const char *pattern, const char *string);
 int is_directory(const char *path);
 int is_filepattern(const char *filespec);
+char *get_curdir(char *dest, size_t size);
+char *get_homedir(char *dest, size_t size, const char *login);
 char *canonicalize_path(char *buf, int buf_size, const char *path);
 char *make_user_path(char *buf, int buf_size, const char *path);
 char *reduce_filename(char *dest, int size, const char *filename);
