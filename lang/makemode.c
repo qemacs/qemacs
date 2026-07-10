@@ -149,7 +149,7 @@ static int makefile_mode_init(EditState *s, EditBuffer *b, int flags)
 static ModeDef makefile_mode = {
     .name = "Makefile",
     .extensions = "mak|make|mk|gmk",
-    .filenames = "makefile|gnumakefile",
+    .filenames = "makefile|gnumakefile|makefile.in",
     .mode_init = makefile_mode_init,
     .colorize_func = makefile_colorize_line,
 };
