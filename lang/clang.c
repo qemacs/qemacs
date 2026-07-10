@@ -1546,7 +1546,7 @@ static const char c2_keywords[] = {
     "module|import|as|public|"
     // Types -> c2_types
     // Type related
-    "asm|cast|const|elemsof|enum|extern|"
+    "asm|cast|const|countof|elemsof|enum|extern|"
     "false|fn|local|nil|offsetof|to_container|public|"
     "sizeof|static|struct|template|tlocal|true|type|union|volatile|"
     // Control flow related
@@ -1564,6 +1564,7 @@ static const char c2_keywords[] = {
 static const char c2_types[] = {
     "void|bool|char|i8|i16|i32|i64|u8|u16|u32|u64|isize|usize|f32|f64|"
     "reg8|reg16|reg32|reg64|va_list|"
+    // C keywords (accepted in extern "C" blocks)
     "int|short|long|float|double|signed|unsigned|size_t|ssize_t"
 };
 
@@ -1571,7 +1572,7 @@ static ModeDef c2_mode = {
     .name = "C2",
     .extensions = "c2|c2h|c2i|c2t",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_C2 | CLANG_PREPROC | CLANG_CAP_TYPE,
+    .colorize_flags = CLANG_C2 | CLANG_PREPROC | CLANG_CAP_TYPE | CLANG_C_DEFS,
     .keywords = c2_keywords,
     .types = c2_types,
     .indent_func = c_indent_line,
