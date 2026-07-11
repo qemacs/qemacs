@@ -8586,18 +8586,18 @@ static const CmdDef minibuffer_commands[] = {
           "Yank from kill buffer with side effects",
           do_minibuffer_electric_yank, ES, "*")
     /* commands used to configure search flags */
-    CMD0( "minibuffer-toggle-case-fold", "M-c, C-c",
+    CMD0( "minibuffer-toggle-case-fold", "",
           "toggle search case-sensitivity",
           isearch_toggle_case_fold)
-    CMD0( "minibuffer-toggle-hex", "M-h, M-C-b",
+    CMD0( "minibuffer-toggle-hex", "",
           "toggle normal/hex/unihex searching",
           isearch_toggle_hex)
 #ifdef CONFIG_REGEX
-    CMD0( "minibuffer-toggle-regexp", "M-r, C-t",
+    CMD0( "minibuffer-toggle-regexp", "",
           "toggle regular-expression mode",
           isearch_toggle_regexp)
 #endif
-    CMD0( "minibuffer-toggle-word-match", "M-w",
+    CMD0( "minibuffer-toggle-word-match", "",
           "toggle word match",
           isearch_toggle_word_match)
 };

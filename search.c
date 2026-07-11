@@ -1474,11 +1474,32 @@ void do_search_string(EditState *s, const char *search_str, int mode)
     }
 }
 
+static void minibuffer_search_bindings(EditState *s, int enable)
+{
+    /* bindings used to configure search flags */
+    if (enable) {
+        do_set_key(s, "M-c, C-c", "minibuffer-toggle-case-fold", 1);
+        do_set_key(s, "M-h, M-C-b", "minibuffer-toggle-hex", 1);
+        do_set_key(s, "M-w", "minibuffer-toggle-word-match", 1);
+#ifdef CONFIG_REGEX
+        do_set_key(s, "M-r, C-t", "minibuffer-toggle-regexp", 1);
+#endif
+    } else {
+        do_unset_key(s, "M-c, C-c", 1);
+        do_unset_key(s, "M-h, M-C-b", 1);
+        do_unset_key(s, "M-w", 1);
+#ifdef CONFIG_REGEX
+        do_unset_key(s, "M-r, C-t", 1);
+#endif
+    }
+}
+
 static void minibuffer_search_start_edit(EditState *s) {
     ISearchState *is = set_search_state(s->target_window, 1, 1);
     if (is != NULL) {
         is->minibuffer = s;
         isearch_cycle_flags(s, 0);
+        minibuffer_search_bindings(s, 1);
     }
 }
 
@@ -1489,6 +1510,7 @@ static void minibuffer_search_end_edit(EditState *s, char *dest, int size) {
         s1->isearch_state->minibuffer = NULL;
         s1->isearch_state = NULL;
         // XXX: should free the ISearchState structure
+        minibuffer_search_bindings(s, 0);
     }
 }
 
