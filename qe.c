@@ -1548,6 +1548,7 @@ void perform_scroll_up_down(EditState *s, int h)
     display1(ds);
     display_close(ds);
 
+    s->qs->mouse_clicks = 0;
     s->offset = m->offset_found;
 }
 
