@@ -8393,6 +8393,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
             }
             if (mb->completion->flags & CF_NO_AUTO_SUBMIT) {
                 edit_close(&mb->completion_popup_window);
+                do_refresh(s);
                 return;
             }
         }
