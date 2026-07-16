@@ -80,6 +80,7 @@ static int free_everything;
 
 enum { SB_OK = 0, SB_SUSPEND = 1, SB_ABORTED = 2 };
 
+// XXX: group these in a separate structure ?
 static int save_buffers_request_flags;
 static int save_buffers_request_completed;
 
@@ -103,20 +104,29 @@ int qe_save_buffers(QEmacsState *qs, int flags)
     if (!modified)
         return SB_OK;
 
-    if (flags & (SBF_EXAMINE | SBF_CONFIRM)) {
+    /* asynchronous handling */
+    if (flags & (SBF_EXAMINE | SBF_CONFIRM_EXEC)) {
         save_buffers_request_flags = flags;
         return SB_SUSPEND;
     }
 
-    /* synchronous saving is requested */
+    modified = 0;
+    /* synchronous handling */
     for (; b != NULL; b = b->next) {
         if (!b->modified || b->filename[0] == '\0'
         ||  (b->flags & (BF_SYSTEM | BF_DIRED | BF_SHELL)))
             continue;
-
+        if (qe_check_buffer_file(b, CBF_SILENT) == CBF_PROMPT) {
+            modified = 1;
+            continue;
+        }
         if (eb_save_buffer(b) < 0)
             return SB_ABORTED;
     }
+
+    // switch to async handling to confirm saving of modified files on disk
+    if (modified)
+        return qe_save_buffers(qs, SBF_EXAMINE | SBF_CONFIRM_SAVE);
 
     return SB_OK;
 }
@@ -5859,39 +5869,66 @@ static void cmd_save_buffer_key(QEmacsState *qs, void *opaque, int ch)
         return;
     }
 
-    switch (ch) {
-    case 'y':
-    case ' ':
-        /* save buffer */
-        goto do_save;
-    case 'n':
-    case KEY_DELETE:
-        es->ss->modified = 1;
-        break;
-    case 'q':
-    case KEY_RET:
-    case KEY_LF:
-        es->ss->state = SBS_NOSAVE;
-        es->ss->modified = 1;
-        break;
-    case '!':
-        /* save all buffers */
-        es->ss->state = SBS_SAVE;
-        goto do_save;
-    case '.':
-        /* save current and exit */
-        es->ss->state = SBS_NOSAVE;
-    do_save:
-        eb_save_buffer(b);
-        break;
-    case KEY_CTRL('g'):
-        /* abort */
-        qe_ungrab_keys(qs); // XXX: free grab data
-        put_error(qs->active_window, "&Quit");
-        return;
-    default:
-        /* get another key */
-        return;
+    if (es->ss->confirm_save) {
+        switch (ch) {
+        case KEY_CTRL('g'): /* abort */
+            qe_ungrab_keys(qs);
+            put_error(qs->active_window, "&Quit");
+            return;
+        case 'y':
+            es->ss->confirm_save = 0;
+            eb_save_buffer(b);
+            break;
+        case 'n':
+            es->ss->confirm_save = 0;
+            es->ss->modified = 1;
+            break;
+        default:
+            dpy_sound_bell(qs->screen);
+            return;
+        }
+    } else {
+        switch (ch) {
+        case 'y':
+        case ' ':
+            /* save buffer */
+            goto do_save;
+        case 'n':
+        case KEY_DELETE:
+            es->ss->modified = 1;
+            break;
+        case 'q':
+        case KEY_RET:
+        case KEY_LF:
+            es->ss->state = SBS_NOSAVE;
+            es->ss->modified = 1;
+            break;
+        case '!':
+            /* save all buffers */
+            es->ss->state = SBS_SAVE;
+            goto do_save;
+        case '.':
+            /* save current and exit */
+            es->ss->state = SBS_NOSAVE;
+        do_save:
+            if (qe_check_buffer_file(b, CBF_SILENT) == CBF_PROMPT) {
+                es->ss->confirm_save = 1;
+                put_error(qs->active_window,
+                          "&%s changed on disk; really save the buffer? (y, n)", b->filename);
+                return;
+            }
+            eb_save_buffer(b);
+            break;
+        case KEY_CTRL('g'):
+            /* abort */
+            qe_ungrab_keys(qs); // XXX: free grab data
+            put_error(qs->active_window, "&Quit");
+            return;
+        default:
+            /* get another key */
+            dpy_sound_bell(qs->screen);
+            return;
+        }
     }
 
     es->ss->b = b->next;
@@ -6014,14 +6051,22 @@ static void parse_arguments(ExecCmdState *es)
             &&  !(b->flags & (BF_SYSTEM | BF_DIRED | BF_SHELL))) {
                 switch (es->ss->state) {
                 case SBS_ASK:
+                    put_status(s, "&Save file %s? (y, n, !, ., q) ", b->filename);
+                do_ask:
                     qe_stop_macro(qs);
                     qe_grab_keys(qs, cmd_save_buffer_key, es);
-                    put_status(s, "&Save file %s? (y, n, !, ., q) ", b->filename);
                     return;
                 case SBS_NOSAVE:
                     es->ss->modified = 1;
                     break;
                 case SBS_SAVE:
+                    if ((es->ss->flags & SBF_CONFIRM_SAVE)
+                    ||  (qe_check_buffer_file(b, CBF_SILENT) == CBF_PROMPT)) {
+                        es->ss->confirm_save = 1;
+                        put_error(qs->active_window,
+                                  "&%s changed on disk; really save the buffer? (y, n)", b->filename);
+                        goto do_ask;
+                    }
                     eb_save_buffer(b);
                     break;
                 }
@@ -6031,7 +6076,7 @@ static void parse_arguments(ExecCmdState *es)
         qe_ungrab_keys(qs);
 
         /* now optionally ask for confirmation then execute */
-        if (es->ss->modified && (es->ss->flags & SBF_CONFIRM)) {
+        if (es->ss->modified && (es->ss->flags & SBF_CONFIRM_EXEC)) {
             qe_stop_macro(qs);
             minibuffer_edit(s, NULL, "Modified buffers exist; proceed anyway? (yes or no) ",
                             NULL, NULL, cmd_save_buffer_confirm_cb, es);
@@ -6095,8 +6140,12 @@ static void parse_arguments(ExecCmdState *es)
         save_buffers_request_completed = 1;
 
         es->ss->b = qs->first_buffer;
-        es->ss->state = SBS_ASK;
         es->ss->modified = 0;
+        es->ss->confirm_save = 0;
+        if (es->ss->flags & SBF_CONFIRM_SAVE)
+            es->ss->state = SBS_SAVE;
+        else
+            es->ss->state = SBS_ASK;
 
         parse_arguments(es);
         return;
@@ -9711,6 +9760,56 @@ void do_save_buffer(EditState *s)
     put_save_message(s, s->b->filename, eb_save_buffer(s->b));
 }
 
+void do_save_some_buffers(EditState *s, int argval)
+{
+    if (argval != NO_ARG)
+        qe_save_buffers(s->qs, 0); // save all, only ask for changed files on disk
+    else
+        qe_save_buffers(s->qs, SBF_EXAMINE); // ask about each one
+}
+
+static void revert_buffer_confirm_cb(void *opaque, char *reply, CompletionDef *completion)
+{
+    EditState *s = opaque;
+    int yes_replied;
+
+    if (!reply)
+        return;
+    yes_replied = strequal(reply, "yes");
+    qe_free(&reply);
+    if (!yes_replied)
+        return;
+    reload_buffer(s, s->b, TRUE);
+}
+
+void do_revert_buffer(EditState *s, int argval)
+{
+    char buf[MAX_FILENAME_SIZE];
+
+    if ((s->b->flags & (BF_SYSTEM | BF_SHELL | BF_DIRED))
+    || (s->b->filename[0] == '\0'))
+        return;
+
+    if (argval != NO_ARG && !s->b->modified) {
+        reload_buffer(s, s->b, TRUE);
+        return;
+    }
+
+    snprintf(buf, sizeof(buf), s->b->modified ?
+             "Disacard edits and read from %s? (yes or no) " :
+             "Revert buffer from file %s? (yes or no) ", s->b->filename);
+    minibuffer_edit(s, NULL, buf, NULL, NULL,
+                    revert_buffer_confirm_cb, s);
+}
+
+void do_rename_buffer(EditState *s, const char *name)
+{
+    if (!name || !*name)
+        return;
+    if (!(s->b->flags & (BF_SYSTEM | BF_SHELL)))
+        eb_set_buffer_name(s->b, name);
+}
+
 void do_write_file(EditState *s, const char *filename)
 {
     do_set_visited_file_name(s, filename, "n");
@@ -9916,6 +10015,8 @@ int qe_check_buffer_file(EditBuffer *b, int mode)
                   "%s changed on disk; really save the buffer? (ynqrs[d]?)",
                   b->filename);
         break;
+    default:
+        break;
     }
     return CBF_PROMPT;
 }
@@ -9936,7 +10037,7 @@ void do_exit_qemacs(EditState *s, int argval)
         return;
     }
 
-    if (qe_save_buffers(qs, SBF_EXAMINE | SBF_CONFIRM))
+    if (qe_save_buffers(qs, SBF_EXAMINE | SBF_CONFIRM_EXEC))
         return;
 
 #ifdef CONFIG_SESSION
@@ -11881,6 +11982,16 @@ static const CmdDef basic_commands[] = {
     CMD0( "save-buffer", "C-x C-s",
           "Save the buffer contents to the associated file if modified",
           do_save_buffer) /* u? */
+    CMD2( "save-some-buffers", "C-x s",
+          "Save modified file-visiting buffers, asks user about each one",
+          do_save_some_buffers, ESi, "P")
+    CMD2( "revert-buffer", "C-x C-r",
+          "Replace current buffer text with the text of the visited file on disk",
+          do_revert_buffer, ESi, "#" "P")
+    CMD2( "rename-buffer", "C-x x r",
+          "Change current buffer's name to new name",
+          do_rename_buffer, ESs,
+          "#" "s{Rename buffer: }")
     CMD2( "write-file", "C-x C-w",
           "Write the buffer contents to a specified file and associate it to the buffer",
           do_write_file, ESs,
