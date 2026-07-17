@@ -30,13 +30,6 @@
 #include <pwd.h>
 
 enum {
-    DIRED_STYLE_NORMAL = QE_STYLE_DEFAULT,
-    DIRED_STYLE_HEADER = QE_STYLE_STRING,
-    DIRED_STYLE_DIRECTORY = QE_STYLE_COMMENT,
-    DIRED_STYLE_FILENAME = QE_STYLE_FUNCTION,
-};
-
-enum {
     DIRED_SORT_FULLNAME = 0,
     DIRED_SORT_NAME = 1,
     DIRED_SORT_EXTENSION = 2,
@@ -936,13 +929,13 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
     eb_clear(b);
 
     if (ds->header_lines == 1) {
-        eb_style_puts(b, DIRED_STYLE_HEADER, "  Explorer \n");
+        eb_style_puts(b, QE_STYLE_DIRED_HEADER, "  Explorer \n");
     } else {
         int seq = ' ';
-        eb_style_puts(b, DIRED_STYLE_HEADER, "  Directory of ");
-        b->cur_style = DIRED_STYLE_DIRECTORY;
+        eb_style_puts(b, QE_STYLE_DIRED_HEADER, "  Directory of ");
+        b->cur_style = QE_STYLE_DIRED_DIRECTORY;
         eb_put_filename(b, ds->path, ds->pf_flags);
-        b->cur_style = DIRED_STYLE_HEADER;
+        b->cur_style = QE_STYLE_DIRED_HEADER;
         eb_puts(b, "\n  ");
         if (ds->ndirs) {
             eb_printf(b, "%c %d %s", seq, ds->ndirs,
@@ -975,7 +968,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
         }
         eb_putc(b, '\n');
     }
-    b->cur_style = DIRED_STYLE_NORMAL;
+    b->cur_style = QE_STYLE_DIRED_DEFAULT;
 
     for (i = 0; i < ds->nb_items; i++) {
         dip = ds->items[i];
@@ -1006,9 +999,9 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
         col += eb_printf(b, "%*s%c ", indent, "", dip->tick);
 
         if (dip->flags & DI_ISDIR)
-            b->cur_style = DIRED_STYLE_DIRECTORY;
+            b->cur_style = QE_STYLE_DIRED_DIRECTORY;
         else
-            b->cur_style = DIRED_STYLE_FILENAME;
+            b->cur_style = QE_STYLE_DIRED_FILENAME;
 
         eb_put_filename(b, fname, ds->pf_flags);
 
@@ -1023,7 +1016,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
             eb_puts(b, " -> ");
             eb_put_filename(b, buf, ds->pf_flags);
         }
-        b->cur_style = DIRED_STYLE_NORMAL;
+        b->cur_style = QE_STYLE_DIRED_DEFAULT;
         eb_putc(b, '\n');
     }
     b->modified = 0;
@@ -2032,10 +2025,10 @@ int file_print_entry(CompleteState *cp, EditState *s, const char *name) {
     int len, sizelen = 10, linklen = 2, uidlen = 8, gidlen = 8;
 
     if (!stat(name, &st)) {
-        b->cur_style = S_ISDIR(st.st_mode) ? DIRED_STYLE_DIRECTORY : DIRED_STYLE_FILENAME;
+        b->cur_style = S_ISDIR(st.st_mode) ? QE_STYLE_DIRED_DIRECTORY : QE_STYLE_DIRED_FILENAME;
         len = eb_put_filename(b, name, dired_pf_flags);
         b->tab_width = max3_int(16, len + 2, b->tab_width);
-        b->cur_style = DIRED_STYLE_NORMAL;
+        b->cur_style = QE_STYLE_DIRED_DEFAULT;
         format_size(buf, sizeof(buf), dired_hflag, st.st_mode, st.st_dev, st.st_size);
         len += eb_printf(b, "\t%*s", sizelen, buf);
         format_date(buf, sizeof(buf), st.st_mtime, dired_time_format);
