@@ -678,7 +678,8 @@ static void c_colorize_line(QEColorizeContext *cp,
                 ||  ((mode_flags & CLANG_C_KEYWORDS) && strfind(c_keywords, kbuf))
                 ||  ((flavor == CLANG_CSS) && str[i] == ':')) {
                     SET_STYLE(sbuf, start, i, C_STYLE_KEYWORD);
-                    type_start = i + 1;
+                    if (strfind(kbuf, "const|volatile|extern|inline|static|register|typedef|constexpr"))
+                        type_start = i + 1;
                     continue;
                 }
 

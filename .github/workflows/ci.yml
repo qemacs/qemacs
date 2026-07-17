@@ -6,8 +6,7 @@ on:
       - '**'
       - '!.gitignore'
       - '!LICENSE'
-      - '!README.md'
-      - '!TODO.md'
+      - '!*.md'
       - '.github/workflows/ci.yml'
   push:
     branches:
