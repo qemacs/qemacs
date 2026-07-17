@@ -1499,7 +1499,7 @@ static void minibuffer_search_start_edit(EditState *s) {
     if (is != NULL) {
         is->minibuffer = s;
         isearch_cycle_flags(s, 0);
-        minibuffer_search_bindings(s, 1);
+        minibuffer_search_bindings(s, TRUE);
     }
 }
 
@@ -1510,7 +1510,7 @@ static void minibuffer_search_end_edit(EditState *s, char *dest, int size) {
         s1->isearch_state->minibuffer = NULL;
         s1->isearch_state = NULL;
         // XXX: should free the ISearchState structure
-        minibuffer_search_bindings(s, 0);
+        minibuffer_search_bindings(s, FALSE);
     }
 }
 
