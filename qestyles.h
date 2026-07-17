@@ -96,4 +96,14 @@
     STYLE_DEF(QE_STYLE_HTML_TAG, "html-tag", /* #80ccf0 */
               QERGB(0x80, 0xcc, 0xf0), COLOR_TRANSPARENT, 0, 0)
 
+    /* dired coloring styles */
+    STYLE_DEF(QE_STYLE_DIRED_DEFAULT, "dired-default", /* default */
+              COLOR_DEFAULT, COLOR_TRANSPARENT, 0, 0)
+    STYLE_DEF(QE_STYLE_DIRED_HEADER, "dired-header", /* #f8a078 */
+              QERGB(0xf8, 0xa0, 0x78), COLOR_TRANSPARENT, 0, 0)
+    STYLE_DEF(QE_STYLE_DIRED_DIRECTORY, "dired-directory", /* #f84400 */
+              QERGB(0xf8, 0x44, 0x00), COLOR_TRANSPARENT, 0, 0)
+    STYLE_DEF(QE_STYLE_DIRED_FILENAME, "dired-file", /* #80ccf0 */
+              QERGB(0x80, 0xcc, 0xf0), COLOR_TRANSPARENT, 0, 0)
+
 #endif
