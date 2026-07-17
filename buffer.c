@@ -2972,6 +2972,15 @@ int eb_save_buffer(EditBuffer *b)
     if (!b->data_type->buffer_save)
         return -1;
 
+    if (b->data_type == &raw_data_type && b->total_size > 0) {
+        int offset = b->total_size;
+        if (eb_prevc(b, offset, &offset) != '\n') {
+            eb_putc(b, '\n');
+            put_error(b->qs->active_window,
+                      "Added missing trailing newline to buffer: %s", b->name);
+        }
+    }
+
     filename = b->filename;
     /* get old file permission */
     st_mode = 0644;
