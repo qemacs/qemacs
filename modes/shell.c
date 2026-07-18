@@ -4469,6 +4469,86 @@ void shell_colorize_line(QEColorizeContext *cp,
     }
 }
 
+static void shellcmd_complete(CompleteState *cp, CompleteFunc enumerate)
+{
+    char path[MAX_FILENAME_SIZE];
+    char file[MAX_FILENAME_SIZE];
+    char buf[MAX_FILENAME_SIZE];
+    char completion_buf[MAX_FILENAME_SIZE];
+    const char *current = cp->current, *cmd = current;
+    const char *p, *start, *path1;
+    FindFileState *ffst;
+    int flags = FF_NOXXDIR;
+    enum { SHC_PATH, SHC_EXPLICIT, SHC_ARGUMENT } completion;
+
+    qe_skip_spaces(&cmd);
+    p = strrchr(cmd, ' ');
+    start = p ? p + 1 : cmd;
+
+    if (!p && !strchr(cmd, '/')) {
+        completion = SHC_PATH;
+        flags |= FF_PATH;
+        pstrcpy(file, sizeof(file), cmd);
+
+        path1 = getenv("PATH");
+        if (!path1)
+            path1 = "/bin:/usr/bin";
+    } else {
+        completion = p ? SHC_ARGUMENT : SHC_EXPLICIT;
+        splitpath(path, sizeof(path), file, sizeof(file), start);
+
+        pstrcpy(buf, sizeof(buf), path);
+        if (buf[0] == '~')
+            canonicalize_absolute_path(cp->s, buf, sizeof(buf), path);
+        path1 = *buf ? buf : ".";
+    }
+    pstrcat(file, sizeof(file), "*");
+    if (cp->fuzzy)
+        flags |= 1;  // recursion level
+    ffst = find_file_open(path1, file, flags);
+    while (find_file_next(ffst, buf, sizeof(buf)) == 0) {
+        struct stat sb;
+        buf_t out[1];
+        int is_dir;
+
+        if (stat(buf, &sb))
+            continue;
+
+        is_dir = S_ISDIR(sb.st_mode);
+
+        switch (completion) {
+        case SHC_ARGUMENT:
+            break;
+        case SHC_EXPLICIT:
+            if (!is_dir && !(sb.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)))
+                continue;
+            break;
+        case SHC_PATH:
+            if (!S_ISREG(sb.st_mode) || !(sb.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)))
+                continue;
+            break;
+        }
+
+        buf_init(out, completion_buf, sizeof(completion_buf));
+        buf_write(out, current, (int)(start - current));
+        if (completion != SHC_PATH)
+            buf_puts(out, path);
+        buf_puts(out, get_basename(buf));
+        if (is_dir)
+            buf_put_byte(out, '/');
+
+        (*enumerate)(cp, completion_buf, CT_SET);
+    }
+    find_file_close(&ffst);
+}
+
+static CompletionDef shellcmd_completion = {
+    .name = "shellcmd",
+    .enumerate = shellcmd_complete,
+    .print_entry = shellcmd_print_entry,
+    .flags = CF_SPACE_OK | CF_SAVE_LIST,
+};
+
 /* shell mode specific commands */
 static const CmdDef shell_commands[] = {
     CMD0( "shell-toggle-input", "C-o, C-c C-o",
@@ -4549,11 +4629,11 @@ static const CmdDef shell_global_commands[] = {
     CMD2( "shell-command", "M-!",
           "Run a shell command and display a new buffer with its collected output",
           do_shell_command, ESs,
-          "s{Shell command: }|shell-command|")
+          "s{Shell command: }[shellcmd]|shell-command|")
     CMD2( "interactive-shell-command", "",
           "Run a shell command interactively and display a new buffer with its collected output",
           do_interactive_shell_command, ESs,
-          "#" "s{Interactive shell command: }|interactive-shell-command|")
+          "#" "s{Interactive shell command: }[shellcmd]|interactive-shell-command|")
     CMD2( "ssh", "",
           "Start a shell buffer with a new remote shell connection",
           do_ssh, ESs,
@@ -4561,7 +4641,7 @@ static const CmdDef shell_global_commands[] = {
     CMD2( "compile", "C-x C-e",
           "Run a compiler command and display a new buffer with its collected output",
           do_compile, ESs,
-          "#" "s{Compile command: }|compile|")
+          "#" "s{Compile command: }[shellcmd]|compile|")
     CMD2( "make", "C-x m",
           "Run make and display a new buffer with its collected output",
           do_compile, ESs,
@@ -4751,6 +4831,7 @@ static int shell_init(QEmacsState *qs)
     qe_register_mode(qs, &shell_mode, MODEF_NOCMD | MODEF_VIEW);
     qe_register_commands(qs, &shell_mode, shell_commands, countof(shell_commands));
     qe_register_commands(qs, NULL, shell_global_commands, countof(shell_global_commands));
+    qe_register_completion(qs, &shellcmd_completion);
 
     /* populate and register pager mode and commands */
     // XXX: remove this mess: should just inherit with fallback
