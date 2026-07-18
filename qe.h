@@ -1486,6 +1486,7 @@ int command_print_entry(CompleteState *cp, EditState *s, const char *name);
 int command_get_entry(EditState *s, char *dest, int size, int offset);
 void file_complete(CompleteState *cp, CompleteFunc enumerate);
 int file_print_entry(CompleteState *cp, EditState *s, const char *name);
+int shellcmd_print_entry(CompleteState *cp, EditState *s, const char *name);
 void buffer_complete(CompleteState *cp, CompleteFunc enumerate);
 int buffer_print_entry(CompleteState *cp, EditState *s, const char *name);
 

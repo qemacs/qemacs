@@ -2045,6 +2045,30 @@ int file_print_entry(CompleteState *cp, EditState *s, const char *name) {
     return len;
 }
 
+int shellcmd_print_entry(CompleteState *cp, EditState *s, const char *name)
+{
+    EditBuffer *b = s->b;
+    const char *p;
+    int len;
+
+    qe_skip_spaces(&name);
+
+    /* display only the last command argument */
+    if ((p = strrchr(name, ' ')))
+        name = p + 1;
+
+    if (strend(name, "/", NULL))
+        b->cur_style = QE_STYLE_DIRED_DIRECTORY;
+    else
+        b->cur_style = QE_STYLE_DIRED_FILENAME;
+
+    len = eb_put_filename(b, name, dired_pf_flags);
+    b->tab_width = max3_int(16, len + 2, b->tab_width);
+    b->cur_style = QE_STYLE_DIRED_DEFAULT;
+
+    return len;
+}
+
 /*---------------- filelist mode ----------------*/
 
 static char filelist_last_buf[MAX_FILENAME_SIZE];
