@@ -245,8 +245,8 @@ static int x11_dpy_init(QEditScreen *s, QEmacsState *qs, int w, int h)
         fprintf(stderr, "Could not open default font\n");
         exit(1);
     }
-    font_ysize = max_int(font->ascent + font->descent, 1);
-    font_xsize = max_int(glyph_width(s, font, 'x'), 1);
+    font_ysize = max_int(1, font->ascent + font->descent);
+    font_xsize = max_int(1, glyph_width(s, font, 'x'));
     x11_dpy_close_font(s, &font);
 
     if (w > 0 && h > 0) {
@@ -1035,7 +1035,7 @@ static void x11_dpy_draw_text(QEditScreen *s, QEFont *font,
         int y1 = y_base + font->descent;
         int w = x1 - x0;
         int h = y1 - y0;
-        int dh = max_int((font->descent + 2) / 4, 1);
+        int dh = max_int(1, (font->descent + 2) / 4);
         int dw = dh;    // assume 1.0 aspect ratio
         if (font->style & QE_FONT_STYLE_UNDERLINE) {
             int y = y_base + (font->descent + 1) / 3;

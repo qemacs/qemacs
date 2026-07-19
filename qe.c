@@ -10010,23 +10010,21 @@ void do_refresh(EditState *s1)
     if (qs->screen->media & CSS_MEDIA_TTY) {
         qs->separator_width = 1;
         qs->border_width = 1;
+        new_status_height = 1;
+        new_mode_line_height = 1;
     } else {
         qs->separator_width = 4;
         qs->border_width = 4; /* XXX: adapt to display type */
+        /* Prevent potential division overflow */
+        new_status_height = max_int(1, get_line_height(qs->screen, NULL, QE_STYLE_STATUS));
+        new_mode_line_height = max_int(1, get_line_height(qs->screen, NULL, QE_STYLE_MODE_LINE));
     }
 
     width = qs->screen->width;
     height = qs->screen->height;
-    new_status_height = get_line_height(qs->screen, NULL, QE_STYLE_STATUS);
-    new_mode_line_height = get_line_height(qs->screen, NULL, QE_STYLE_MODE_LINE);
     content_height = height;
     if (!qs->hide_status)
         content_height -= new_status_height;
-
-    /* Prevent potential division overflow */
-    width = max_int(1, width);
-    height = max_int(1, height);
-    content_height = max_int(1, content_height);
 
     resized = 0;
 
