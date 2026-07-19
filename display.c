@@ -32,8 +32,11 @@ static QEDisplay *first_dpy;
 static int dummy_dpy_init(QEditScreen *s, QEmacsState *qs, qe__unused__ int w, qe__unused__ int h)
 {
     s->qs = qs;
-    s->charset = &charset_8859_1;
-
+    s->priv_data = NULL;
+    s->media = CSS_MEDIA_TTY;
+    s->charset = &charset_utf8;
+    s->width = 132;
+    s->height = 50;
     return 0;
 }
 
@@ -272,6 +275,7 @@ QEDisplay *probe_display(void)
 
 int qe_screen_init(QEmacsState *qs, QEditScreen *s, QEDisplay *dpy, int w, int h)
 {
+    free_font_cache(s);
     s->dpy = dpy ? *dpy : dummy_dpy;
     return s->dpy.dpy_init(s, qs, w, h);
 }
@@ -344,6 +348,7 @@ QEFont *select_font(QEditScreen *s, int style, int size)
     /* select_font never returns NULL */
     /* CG: This is bogus, dummy font is not device compatible? */
     fc = &dummy_font;
+    fc->descent = 1;
     fc->system_font = 1;
     return fc;
 }

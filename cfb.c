@@ -312,7 +312,7 @@ static void cfb_draw_text(QEditScreen *s, QEFont *font,
         int y1 = y_base + font->descent;
         int w = x1 - x0;
         int h = y1 - y0;
-        int dh = max_int((font->descent + 2) / 4, 1);
+        int dh = max_int(1, (font->descent + 2) / 4);
         int dw = dh;    // assume 1.0 aspect ratio
         if (font->style & QE_FONT_STYLE_UNDERLINE) {
             int y = y_base + (font->descent + 1) / 3;
