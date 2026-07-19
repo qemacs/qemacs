@@ -577,7 +577,6 @@ static int tty_dpy_init(QEditScreen *s, QEmacsState *qs,
             s->charset = &charset_utf8;
         }
     }
-    put_status(qs->active_window, "TTY charset: %s", s->charset->name);
 
     atexit(tty_term_exit);
 
@@ -599,6 +598,7 @@ static int tty_dpy_init(QEditScreen *s, QEmacsState *qs,
 
     url_set_read_handler(qs->up, fileno(s->STDIN), tty_read_handler, s);
 
+    /* get screen dimensions and allocate screen buffer */
     tty_dpy_invalidate(s);
 
 #if 0
