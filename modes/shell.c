@@ -4498,8 +4498,8 @@ static void shellcmd_complete(CompleteState *cp, CompleteFunc enumerate)
         splitpath(path, sizeof(path), file, sizeof(file), start);
 
         pstrcpy(buf, sizeof(buf), path);
-        if (buf[0] == '~')
-            canonicalize_absolute_path(cp->s, buf, sizeof(buf), path);
+        if (*buf == '\0' || !is_abs_path(buf))
+            canonicalize_absolute_path(cp->target, buf, sizeof(buf), path);
         path1 = *buf ? buf : ".";
     }
     pstrcat(file, sizeof(file), "*");

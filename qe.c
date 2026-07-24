@@ -7736,8 +7736,8 @@ void file_complete(CompleteState *cp, CompleteFunc enumerate)
     int len;
 
     current = cp->current;
-    if (*current == '~') {
-        canonicalize_absolute_path(cp->s, filename, sizeof(filename), cp->current);
+    if (*current == '\0' || !is_abs_path(current)) {
+        canonicalize_absolute_path(cp->target, filename, sizeof(filename), cp->current);
         current = filename;
     }
 
