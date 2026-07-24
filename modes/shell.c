@@ -4749,6 +4749,29 @@ static const char * const pager_bindings[] = {
     NULL
 };
 
+static void do_recompile(EditState *s)
+{
+    StringArray *hist;
+    const char *p, *cmd = NULL;
+    int i;
+
+    hist = qe_get_history(s->qs, "compile");
+    if (!hist || !hist->nb_items) {
+        do_execute_command(s, "compile", NO_ARG);
+        return;
+    }
+
+    for (i = 1; i <= hist->nb_items; ++i) {
+        p = hist->items[hist->nb_items - i]->str;
+        if (p && *p != '\0') {
+            cmd = p;
+            break;
+        }
+    }
+    if (cmd && *cmd)
+        do_compile(s, cmd);
+}
+
 static void do_kill_compilation(EditState *e)
 {
     ShellState *s;
@@ -4786,6 +4809,9 @@ static void do_goto_error(EditState *s)
 }
 
 static const CmdDef compilation_commands[] = {
+    CMD0( "recompile", "g",
+          "Re-run the last compiler command",
+          do_recompile)
     CMD0( "goto-error", "RET, LF", // XXX: mouse click ?
           "Move to the error matching the current error message at point",
           do_goto_error)
