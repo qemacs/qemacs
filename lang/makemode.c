@@ -37,6 +37,8 @@ enum {
     MAKEFILE_STYLE_MACRO      = QE_STYLE_TYPE,
 };
 
+static ModeDef makefile_mode;
+
 static void makefile_colorize_line(QEColorizeContext *cp,
                                    const char32_t *str, int n,
                                    QETermStyle *sbuf, ModeDef *syn)
@@ -139,9 +141,12 @@ static void makefile_colorize_line(QEColorizeContext *cp,
 static int makefile_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
-        /* XXX: should use the default values from mode variables */
-        s->b->tab_width = 8;
         s->indent_tabs_mode = 1;
+    }
+    if (b) {
+        /* XXX: should use the default values from mode variables */
+        b->tab_width = 8;
+        b->untabify = 0;
     }
     return 0;
 }

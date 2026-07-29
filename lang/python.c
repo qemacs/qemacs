@@ -351,6 +351,8 @@ static ModeDef rapydscript_mode = {
 
 /*---- Bazel mode: a build system with a Python-like syntax ----*/
 
+static ModeDef bazel_mode;
+
 static int bazel_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
