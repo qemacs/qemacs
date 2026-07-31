@@ -112,7 +112,7 @@ static int mkd_add_lang(QEmacsState *qs, const char *lang_name, char c) {
     ModeDef *m;
     int lang = 0;
 
-    if (lang_name && (m = qe_find_mode(qs, lang_name, MODEF_SYNTAX)) != NULL) {
+    if ((m = qe_find_mode(qs, lang_name, MODEF_SYNTAX)) != NULL) {
         for (lang = 1; lang < MKD_LANG_MAX; lang++) {
             if (mkd_lang_def[lang] == NULL)
                 mkd_lang_def[lang] = m;
@@ -180,8 +180,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         ||  ustrstart(str + j, "```", NULL)
         ||  (indent < 4 && mkd_lang_char[lang] == ':')) {
             colstate &= ~IN_MKD_BLOCK;
-            i = n;
-            SET_STYLE(sbuf, start, i, MKD_STYLE_TILDE);
+            SET_STYLE(sbuf, start, n, MKD_STYLE_TILDE);
         } else {
             if (mkd_lang_def[lang]) {
                 cp->colorize_state = colstate & IN_MKD_LANG_STATE;
@@ -191,7 +190,6 @@ static void mkd_colorize_line(QEColorizeContext *cp,
             } else {
                 SET_STYLE(sbuf, start, n, MKD_STYLE_CODE);
             }
-            i = n;
         }
         cp->colorize_state = colstate;
         return;
@@ -260,7 +258,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         int len;
         int lang = (colstate & IN_MKD_LANG) >> MKD_LANG_SHIFT;
 
-        colstate &= ~(IN_MKD_BLOCK | IN_MKD_LANG_STATE);
+        colstate &= ~(IN_MKD_BLOCK | IN_MKD_LANG | IN_MKD_LANG_STATE);
         i = cp_skip_blanks(str, j + 3, n);
         /* extract info-string */
         for (len = 0; i < n && !qe_isblank(str[i]); i++) {
@@ -279,8 +277,9 @@ static void mkd_colorize_line(QEColorizeContext *cp,
             // use last specified lang for current buffer
         }
         colstate |= IN_MKD_BLOCK | (lang << MKD_LANG_SHIFT);
-        i = n;
-        SET_STYLE(sbuf, start, i, MKD_STYLE_TILDE);
+        SET_STYLE(sbuf, start, n, MKD_STYLE_TILDE);
+        cp->colorize_state = colstate;
+        return;
     }
 
     /* [X] unordered lists: /[-*+] / */
