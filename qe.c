@@ -668,6 +668,17 @@ struct QETraceDef const qe_trace_defs[] = {
 };
 size_t const qe_trace_defs_count = sizeof(qe_trace_defs) / sizeof (qe_trace_defs[0]);
 
+static void trace_complete(CompleteState *cp, CompleteFunc enumerate) {
+    size_t i;
+    for (i = 0; i < qe_trace_defs_count; i++)
+        (*enumerate)(cp, qe_trace_defs[i].name, CT_GLOB);
+}
+
+static CompletionDef trace_completion = {
+    .name = "trace",
+    .enumerate = trace_complete,
+};
+
 void do_set_trace_flags(EditState *s, int flags) {
     QEmacsState *qs = s->qs;
 
@@ -12140,7 +12151,7 @@ static const CmdDef basic_commands[] = {
     CMD2( "set-trace-options", "C-h t",
          "Select the trace options: all, none, command, debug, emulate, shell, tty, pty",
           do_set_trace_options, ESs,
-          "s{Trace options: }|trace|")
+          "s{Trace options: }[trace]|trace|")
     CMD2( "describe-key-briefly", "C-h c, C-h k, f6",
           "Describe a key binding",
           do_describe_key_briefly, ESsi,
@@ -12496,6 +12507,7 @@ static int qe_init(QEmacsState *qs, int argc, char **argv)
     qe_register_completion(qs, &style_name_completion);
     qe_register_completion(qs, &style_completion);
     qe_register_completion(qs, &style_property_completion);
+    qe_register_completion(qs, &trace_completion);
 #ifndef CONFIG_TINY
     qe_register_completion(qs, &dir_completion);
     qe_register_completion(qs, &resource_completion);

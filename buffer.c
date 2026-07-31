@@ -897,6 +897,15 @@ EditState *eb_find_window(EditBuffer *b, EditState *s)
     return e;
 }
 
+void qe_trace_debug(QEmacsState *qs, const char *fmt, ...) {
+    char buf[1024];
+    va_list ap;
+    va_start(ap, fmt);
+    int len = vsnprintf(buf, countof(buf), fmt, ap);
+    va_end(ap);
+    qe_trace_bytes(qs, buf, len, EB_TRACE_DEBUG | EB_TRACE_FLUSH);
+}
+
 void qe_trace_bytes(QEmacsState *qs, const void *buf, int size, int state)
 {
     EditBuffer *b = qs->trace_buffer;
