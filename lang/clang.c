@@ -416,6 +416,13 @@ static void c_colorize_line(QEColorizeContext *cp,
                 SET_STYLE(sbuf, start, i, C_STYLE_PREPROCESS);
                 break;
             }
+            if (flavor == CLANG_V) {
+                if (str[i] == '[')
+                    break;
+                i = n;
+                SET_STYLE(sbuf, start, i, C_STYLE_PREPROCESS);
+                continue;
+            }
             if (flavor == CLANG_AWK || flavor == CLANG_PHP
             ||  flavor == CLANG_LIMBO || flavor == CLANG_SQUIRREL) {
                 goto parse_comment1;
@@ -531,6 +538,19 @@ static void c_colorize_line(QEColorizeContext *cp,
                 SET_STYLE(sbuf, start, i, style1);
                 continue;
             }
+            if (flavor == CLANG_V) {
+                /* vlang character constant */
+                while (i < n) {
+                    c = str[i++];
+                    if (c == '\\' && i < n)
+                        i++;
+                    else
+                    if (c == '`')
+                        break;
+                }
+                SET_STYLE(sbuf, start, i, C_STYLE_STRING_Q);
+                continue;
+            }
             break;
         case '@':
             if (flavor == CLANG_C2) {
@@ -568,6 +588,15 @@ static void c_colorize_line(QEColorizeContext *cp,
                 if (start == 0 || str[start - 1] != '.')
                     SET_STYLE(sbuf, start, i, C_STYLE_PREPROCESS);
                 continue;
+            }
+            if (flavor == CLANG_V) {
+                // attribute: @[xxx]
+                if (str[i] == '[') {
+                    while (i < n && str[i++] != ']')
+                        continue;
+                    SET_STYLE(sbuf, start, i, C_STYLE_PREPROCESS);
+                    continue;
+                }
             }
             goto normal;
 
@@ -643,6 +672,18 @@ static void c_colorize_line(QEColorizeContext *cp,
         case '{':
             tag = 0;
             break;
+        case '$':
+            if (flavor == CLANG_V) {
+                int klen = get_c_identifier(kbuf, countof(kbuf), c, str, i, n, flavor);
+                // conditional compilation
+                //if (strfind("if|else|for|match|name|compile_error|compile_warn", kbuf))
+                {
+                    i += klen;
+                    SET_STYLE(sbuf, start, i, C_STYLE_PREPROCESS);
+                    continue;
+                }
+            }
+            goto normal;
         default:
         normal:
             if (state & IN_C_PREPROCESS)
@@ -3586,15 +3627,16 @@ static ModeDef smac_mode = {
 
 static const char v_keywords[] = {
     /* keywords */
-    "fn|mut|in|map|pub|struct|const|module|import|interface|enum|asm|type|"
-    "as|atomic|embed|__global|sizeof|union|static|"
-    "if|else|for|break|continue|match|return|or|assert|defer|$if|go|goto|"
-    "switch|case|default|"
+    "assert|struct|if|else|asm|return|module|sizeof|isreftype|"
+    "go|goto|const|mut|shared|lock|rlock|type|for|fn|continue|"
+    "break|import|unsafe|typeof|dump|enum|interface|pub|in|atomic|"
+    "or|union|static|volatile|as|defer|match|select|like|ilike|"
+    "is|spawn|implements|_likely_|_unlikely_|__global|__offsetof|"
     ///* builtins */
     //"append|cap|close|complex|copy|delete|imag|len|make|new|panic|"
     //"print|println|real|recover|"
     /* Constants */
-    "true|false|none|err|"
+    "true|false|none|nil|err|it"
 };
 
 static const char v_types[] = {
@@ -3609,7 +3651,7 @@ static const char v_types[] = {
 
 static ModeDef v_mode = {
     .name = "V",
-    .extensions = "v",
+    .extensions = "v|vv|vsh",
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_V | CLANG_PREPROC | CLANG_CAP_TYPE | CLANG_NEST_COMMENTS,
     .keywords = v_keywords,
