@@ -498,6 +498,7 @@ typedef struct LogBuffer {
 } LogBuffer;
 
 void qe_trace_bytes(QEmacsState *qs, const void *buf, int size, int state);
+void qe_trace_debug(QEmacsState *qs, const char *fmt, ...) qe__attr_printf(2,3);
 void qe_data_init(QEmacsState *qs);
 
 EditBuffer *qe_find_buffer_name(QEmacsState *qs, const char *name);
@@ -1032,10 +1033,10 @@ struct QEmacsState {
 #define EB_TRACE_SHELL    0x10
 #define EB_TRACE_PTY      0x20
 #define EB_TRACE_EMULATE  0x40
-#define EB_TRACE_DEBUG    0x60
 #define EB_TRACE_CLIPBOARD  0x80
-#define EB_TRACE_ALL      0xFF
-#define EB_TRACE_FLUSH    0x100
+#define EB_TRACE_DEBUG    0x100
+#define EB_TRACE_ALL      0x1FF
+#define EB_TRACE_FLUSH    0x200
 
     /* global layout info : DO NOT modify these directly. do_refresh
        does it */
