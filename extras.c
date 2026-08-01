@@ -882,17 +882,15 @@ static int is_escaped_backward(EditBuffer *b, int offset) {
 
 static void forward_block(EditState *s, int dir, int stop_at_parent)
 {
-    // We skip characters, balancing blocks delimited by (){}[]
-    // * we use the colorizer to determine the token type.
-    // * If starting in a string or in a comment, we stop at the end of the
-    //   string or comment otherwise, we skip comments and strings.
-    // * we prioritize string skipping when starting at a quote.
+    // Skip characters, balancing blocks delimited by (){}[]:
+    // * use the colorizer to determine the token type;
+    // * if starting inside a string or comment, stop at the end of the
+    //   string or comment, otherwise skip comments and strings;
+    // * we prioritize string skipping when starting at a quote;
     // * block delimiters are balanced inside the region and skipping stops
-    //   when a closing delimiter is found.
-    // * we prioritize bracket skipping inside comment/string when starting
-    //   at a bracket.
-    //   if a nesting error occurs, point and mark are set around the mismatched
-    //   delimiters. use C-x C-x to skip between them
+    //   when a closing delimiter is found;
+    //   If a nesting error occurs, point and mark are set around the mismatched
+    //   delimiters. Use C-x C-x to skip between them.
 
     QEColorizeContext cp[1];
     char32_t balance[MAX_LEVEL];
@@ -942,10 +940,12 @@ static void forward_block(EditState *s, int dir, int stop_at_parent)
     level = 0;
 
     if (dir < 0) {
-        char32_t c0; /* character before cursor */
-        int is_delim; /* true if c0 is a bracket delimiter */
-        c0 = eb_prevc(s->b, offset, &dummy_offset);
-        is_delim = c0 != matching_delimiter(c0);
+        /* initial  character before point */
+        char32_t c0 = eb_prevc(s->b, offset, &dummy_offset);
+#if 0
+        /* true if c0 is a bracket delimiter */
+        int is_delim = (c0 != matching_delimiter(c0));
+#endif
         for (;;) {
             int this_offset = offset;
             c = eb_prevc(s->b, offset, &offset);
@@ -978,10 +978,9 @@ static void forward_block(EditState *s, int dir, int stop_at_parent)
                         // scanning: skip it
                         continue;
                     }
-                    if (style0 == QE_STYLE_COMMENT && !style) {
+                    if (style0 == QE_STYLE_COMMENT && qe_isspace(c)) {
                         // skip whitespace and continue if inside a block of comments
-                        if (qe_isspace(c))
-                            continue;
+                        continue;
                     }
                     // stop at string or comment boundary
                     break;
@@ -1040,6 +1039,7 @@ static void forward_block(EditState *s, int dir, int stop_at_parent)
             case '{':
                 if (level > 0) {
                     --level;
+#if 0
                     /* continue if started inside a string or a comment unless
                        starting exactly at a delimiter */
                     // XXX: should refine this: should balance blocks
@@ -1047,8 +1047,9 @@ static void forward_block(EditState *s, int dir, int stop_at_parent)
                     //      or at a closing block delimiter.
                     if (style0 && !is_delim)
                         break;
+#endif
                     if (level < MAX_LEVEL && balance[level] != c) {
-                        /* XXX: should set mark and offset */
+                        // set mark and offset around offending block
                         s->b->mark = delim_offset[level];
                         s->offset = offset;
                         put_error(s, "Unmatched delimiter %c <> %c",
@@ -1070,10 +1071,12 @@ static void forward_block(EditState *s, int dir, int stop_at_parent)
             }
         }
     } else {
-        char32_t c0; /* character after cursor */
-        int is_delim; /* true if c0 is a bracket delimiter */
-        c0 = eb_nextc(s->b, offset, &dummy_offset);
-        is_delim = c0 != matching_delimiter(c0);
+        /* initial character at point */
+        char32_t c0 = eb_nextc(s->b, offset, &dummy_offset);
+#if 0
+        /* true if c0 is a bracket delimiter */
+        int is_delim = (c0 != matching_delimiter(c0));
+#endif
         for (;;) {
             int this_offset = offset;
             c = eb_nextc(s->b, offset, &offset);
@@ -1103,13 +1106,12 @@ static void forward_block(EditState *s, int dir, int stop_at_parent)
                 }
                 if (style != style0) {
                     if (style0 == 0) {
-                        // skip string or comment
+                        // started in regular code: skip string or comment
                         continue;
                     }
-                    if (style0 == QE_STYLE_COMMENT && !style) {
-                        // skip whitespace and continue if inside a block of comments
-                        if (qe_isspace(c))
-                            continue;
+                    if (style0 == QE_STYLE_COMMENT && qe_isspace(c)) {
+                        // skip whitespace and continue if between consecutive comments
+                        continue;
                     }
                     // stop at string or comment boundary
                     break;
@@ -1154,6 +1156,8 @@ static void forward_block(EditState *s, int dir, int stop_at_parent)
                             pos++;
                         }
                     }
+                    // XXX if started inside a string but not at the quote, should
+                    // we also stop at the boundary?
                     if (c1 == c && c == c0) {
                         s->offset = offset;
                         goto done;
@@ -1174,6 +1178,7 @@ static void forward_block(EditState *s, int dir, int stop_at_parent)
             case '}':
                 if (level > 0) {
                     --level;
+#if 0
                     /* continue if started inside a string or a comment unless
                        starting exactly at a delimiter */
                     // XXX: should refine this: should balance blocks
@@ -1181,8 +1186,9 @@ static void forward_block(EditState *s, int dir, int stop_at_parent)
                     //      or at an opening block delimiter.
                     if (style0 && !is_delim)
                         break;
+#endif
                     if (level < MAX_LEVEL && balance[level] != c) {
-                        /* XXX: should set mark and offset */
+                        // set mark and offset around offending block
                         s->b->mark = delim_offset[level];
                         s->offset = offset;
                         put_error(s, "Unmatched delimiter %c <> %c",
@@ -1190,11 +1196,13 @@ static void forward_block(EditState *s, int dir, int stop_at_parent)
                         goto done;
                     }
                     if (level == 0) {
+                        // XXX should we set the mark at the other end?
                         s->offset = offset;
                         goto done;
                     }
                 } else {
                     if (stop_at_parent) {
+                        // XXX should we set the mark at the other end?
                         s->offset = offset;
                         goto done;
                     }
@@ -1230,10 +1238,8 @@ static void do_kill_block(EditState *s, int n)
 {
     int start = s->offset;
 
-    if (n != 0) {
-        do_forward_block(s, n);
-        do_kill(s, start, s->offset, n, 0);
-    }
+    do_forward_block(s, n);
+    do_kill(s, start, s->offset, n, 0);
 }
 
 void do_transpose(EditState *s, int cmd)
