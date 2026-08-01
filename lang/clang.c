@@ -158,6 +158,15 @@ int get_c_identifier(char *dest, int size, char32_t c,
                     dest[pos++] = ':';
                 i += 2;
                 c = str[i];
+            } else
+            if (c == '.'
+            &&  (flavor == CLANG_C2 || flavor == CLANG_V)
+            &&  is_c_identifier_start(str[i + 1], flavor)) {
+                /* include c2/vlang . separator in identifier */
+                if (pos + 1 < size)
+                    dest[pos++] = '.';
+                i += 1;
+                c = str[i];
             } else {
                 break;
             }
@@ -172,6 +181,17 @@ static int has_c_decl(const char32_t *str, int i, int flavor) {
     while (str[i] == ' ' || str[i] == '\t' || str[i] == '*')
         i++;
     return is_c_identifier_start(str[i], flavor);
+}
+
+static int is_cap_type(const char *str) {
+    for (;;) {
+        if (qe_isupper(*str) && qe_haslower(str))
+            return 1;
+        str = strchr(str, '.');
+        if (!str)
+            return 0;
+        str++;
+    }
 }
 
 enum {
@@ -709,15 +729,17 @@ static void c_colorize_line(QEColorizeContext *cp,
                 continue;
             }
             if (is_c_identifier_start(c, flavor)) {
+                int is_member = (start > 0 && str[start - 1] == '.');
                 i += get_c_identifier(kbuf, countof(kbuf), c, str, i, n, flavor);
                 if (str[i] == '\'' || str[i] == '\"') {
                     /* check for encoding prefix */
                     if ((mode_flags & CLANG_WLITERALS) && strfind("L|u|U|u8", kbuf))
                         goto reswitch;
                 }
-                if (strfind(syn->keywords, kbuf)
+                if (!is_member
+                && (strfind(syn->keywords, kbuf)
                 ||  ((mode_flags & CLANG_C_KEYWORDS) && strfind(c_keywords, kbuf))
-                ||  ((flavor == CLANG_CSS) && str[i] == ':')) {
+                ||  ((flavor == CLANG_CSS) && str[i] == ':'))) {
                     SET_STYLE(sbuf, start, i, C_STYLE_KEYWORD);
                     if (strfind(kbuf, "const|volatile|extern|inline|static|register|typedef|constexpr"))
                         type_start = i + 1;
@@ -733,12 +755,12 @@ static void c_colorize_line(QEColorizeContext *cp,
                     eb_add_tag(cp->b, cp->offset + start, kbuf);
                 }
 
-                if ((start == 0 || str[start - 1] != '.')
+                if (!is_member
                 &&  (!qe_findchar(".(:", str[i]) || flavor == CLANG_PIKE)
                 &&  (sreg_match(syn->types, kbuf, 1)
                 ||   ((mode_flags & CLANG_C_TYPES) && strfind(c_types, kbuf))
                 ||   ((mode_flags & CLANG_T_TYPES) && strend(kbuf, "_t", NULL))
-                ||   ((mode_flags & CLANG_CAP_TYPE) && qe_isupper(c) && qe_haslower(kbuf))
+                ||   ((mode_flags & CLANG_CAP_TYPE) && is_cap_type(kbuf))
                 ||   ((mode_flags & CLANG_C_DEFS) && (!indent || type_start == start) &&
                        has_c_decl(str, i, flavor))
                 ||   (flavor == CLANG_HAXE && qe_isupper(c) && qe_haslower(kbuf) &&
@@ -3640,11 +3662,10 @@ static const char v_keywords[] = {
 };
 
 static const char v_types[] = {
-    "bool|string|i8|i16|i32|i64|i128|u8|u16|u32|u64|u128|"
-    "byte|" // alias for u8
+    "byte|bool|char|i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|"
     "int|"  // alias for i32
     "rune|" // alias for i32, represents a Unicode code point
-    "f32|f64|byteptr|voidptr|"
+    "map|string|usize|isize|voidptr|thread|array|"
 };
 
 /* V identifiers start with a Unicode letter or _ */
