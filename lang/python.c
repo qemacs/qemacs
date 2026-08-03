@@ -65,6 +65,7 @@ enum {  // Python flavors
     PYTHON_RAPYDSCRIPT,
     PYTHON_BAZEL,
     PYTHON_MOJO,
+    PYTHON_LOBSTER,
 };
 
 static void python_colorize_line(QEColorizeContext *cp,
@@ -81,6 +82,8 @@ static void python_colorize_line(QEColorizeContext *cp,
     &&  !(state & IN_PYTHON_TEMPLATE_EXPR)) {
         goto parse_string;
     }
+    if (state & IN_PYTHON_COMMENT)
+        goto in_lobster_comment;
 
     tag = !qe_isblank(str[i]);
 
@@ -183,6 +186,27 @@ static void python_colorize_line(QEColorizeContext *cp,
                      style = PYTHON_STYLE_REGEX;
                      break;
                  }
+            }
+            if (mode_flags == PYTHON_LOBSTER) {
+                if (str[i] == '/') {
+                    style = PYTHON_STYLE_COMMENT;
+                    i = n;
+                    break;
+                }
+                if (str[i] == '*') {
+                    i++;
+                    state |= IN_PYTHON_COMMENT;
+                in_lobster_comment:
+                    for (; i < n; i++) {
+                        if (str[i] == '*' && str[i + 1] == '/') {
+                            state &= ~IN_PYTHON_COMMENT;
+                            i += 2;
+                            break;
+                        }
+                    }
+                    style = PYTHON_STYLE_COMMENT;
+                    break;
+                }
             }
             continue;
 
@@ -415,6 +439,35 @@ static ModeDef mojo_mode = {
     .colorize_flags = PYTHON_MOJO,
 };
 
+/*---- Lobster: a stringly typed language with a Pythonesque syntax ----*/
+
+static char const lobster_keywords[] = {
+    // Python keywords
+    "|constructor|abstract|struct|class|import|def|var|let|member"
+    "|member_frame|static|static_frame|attribute"
+    "|enum|enum_flags"
+    "|break|continue|return|from|program|namespace|and|or|not|is"
+    "|guard|if|else|elif|do|for|while|switch|case|default|map|filter"
+    "|collectwhile|exists|fold|reduce|connect|reducerev|find|zip|split"
+    "|reverse|reverselist|qsort|qsort_in_place|insertion_sort|nest_if"
+    "|return_after|forbias|forscale|forrange|forrangeincl|collect|try"
+    "|catch|throw|protect|finally"
+    "|nil|true|false"
+};
+
+static char const lobster_types[] = {
+    "int|float|string|vector|bool|void|resource"
+};
+
+static ModeDef lobster_mode = {
+    .name = "Lobster",
+    .extensions = "lobster",
+    .keywords = lobster_keywords,
+    .types = lobster_types,
+    .colorize_func = python_colorize_line,
+    .colorize_flags = PYTHON_LOBSTER,
+};
+
 /*---- loading functions ----*/
 
 static int python_init(QEmacsState *qs)
@@ -423,6 +476,7 @@ static int python_init(QEmacsState *qs)
     qe_register_mode(qs, &rapydscript_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &bazel_mode, MODEF_SYNTAX);
     qe_register_mode(qs, &mojo_mode, MODEF_SYNTAX);
+    qe_register_mode(qs, &lobster_mode, MODEF_SYNTAX);
     return 0;
 }
 
