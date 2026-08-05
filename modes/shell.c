@@ -4679,13 +4679,15 @@ static int shell_mode_init(EditState *e, EditBuffer *b, int flags)
         if (!(s = shell_get_state(e, 1)))
             return -1;
 
-        e->b->tab_width = 8;
-        e->wrap = WRAP_TERM;
+        e->wrap = shell_mode.default_wrap;
         e->wrap_cols = s->cols;
         if ((s->shell_flags & SF_INTERACTIVE) && !s->grab_keys) {
             e->interactive = 1;
             e->b->flags &= ~BF_READONLY;
         }
+    }
+    if (b) {
+        b->tab_width = 8;
     }
     return 0;
 }
@@ -4693,10 +4695,10 @@ static int shell_mode_init(EditState *e, EditBuffer *b, int flags)
 static int pager_mode_init(EditState *e, EditBuffer *b, int flags)
 {
     if (e) {
-        e->b->tab_width = 8;
         e->wrap = pager_mode.default_wrap;
     }
     if (b) {
+        b->tab_width = 8;
         b->modified = 0;
         b->flags |= BF_READONLY;
     }
@@ -4706,10 +4708,10 @@ static int pager_mode_init(EditState *e, EditBuffer *b, int flags)
 static int compilation_mode_init(EditState *e, EditBuffer *b, int flags)
 {
     if (e) {
-        e->b->tab_width = 8;
         e->wrap = compilation_mode.default_wrap;
     }
     if (b) {
+        b->tab_width = 8;
         b->modified = 0;
         b->flags |= BF_ERROR | BF_READONLY;
     }
@@ -4853,6 +4855,7 @@ static int shell_init(QEmacsState *qs)
     shell_mode.write_char = shell_write_char;
     shell_mode.delete_bytes = shell_delete_bytes;
     shell_mode.get_default_path = shell_get_default_path;
+    shell_mode.default_wrap = WRAP_TERM;
 
     qe_register_mode(qs, &shell_mode, MODEF_NOCMD | MODEF_VIEW);
     qe_register_commands(qs, &shell_mode, shell_commands, countof(shell_commands));

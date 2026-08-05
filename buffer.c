@@ -732,6 +732,12 @@ EditBuffer *qe_new_buffer(QEmacsState *qs, const char *name, int flags)
     b->eol_type = qs->default_eol_type;
     b->atime = b->mtime = b->ctime = get_clock_ms();
 
+#ifndef CONFIG_TINY
+    b->require_final_newline = qs->default_require_final_newline;
+    b->delete_trailing_whitespace = qs->default_delete_trailing_whitespace;
+    b->untabify = qs->default_untabify;
+#endif
+
     /* set the buffer name to a unique name */
     // XXX: `b` is not in the buffer list nor in the buffer cache
     //      `eb_set_buffer_name` will insert it into the cache.

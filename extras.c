@@ -712,7 +712,7 @@ static void do_tabify_region(EditState *s)
     eb_tabify(s->b, s->b->mark, s->offset);
 }
 #endif
-static void do_untabify(EditState *s, int p1, int p2)
+void do_untabify(EditState *s, int p1, int p2)
 {
     /* We implement a complete analysis of the region instead of
      * potentially faster scan for '\t'.  It is fast enough and even

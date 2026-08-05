@@ -30,6 +30,8 @@ enum {
     UNIHEX_STYLE_DUMP   = QE_STYLE_FUNCTION,
 };
 
+static ModeDef unihex_mode;
+
 static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
@@ -53,8 +55,14 @@ static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
         s->unihex_mode = w = snprintf(NULL, 0, "%x", maxc);
         s->dump_width = clamp_int((s->width - 8 - 2 - 2 - 1) / (w + 3), 8, 16);
         s->overwrite = 1;
-        /* XXX: should come from mode.default_wrap */
-        s->wrap = WRAP_TRUNCATE;
+        s->wrap = unihex_mode.default_wrap;
+    }
+    if (b) {
+#ifndef CONFIG_TINY
+        b->untabify = 0;
+        b->require_final_newline = 0;
+        b->delete_trailing_whitespace = 0;
+#endif
     }
     return 0;
 }
@@ -267,6 +275,7 @@ static ModeDef unihex_mode = {
 };
 
 static int unihex_init(QEmacsState *qs) {
+    unihex_mode.default_wrap = WRAP_TRUNCATE;
     qe_register_mode(qs, &unihex_mode, MODEF_VIEW);
     return 0;
 }

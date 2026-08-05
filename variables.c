@@ -98,6 +98,12 @@ static VarDef var_table[] = {
            "Default value of `tab-width` for buffers that do not override it." )
     S_VAR( "default-fill-column", default_fill_column, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_value function
            "Default value of `fill-column` for buffers that do not override it" )
+    S_VAR( "default-require-final-newline", default_require_final_newline, VAR_NUMBER, VAR_RW_SAVE,
+           "Default value of `require-final-newline` for buffers that do not override it.")
+    S_VAR( "default-delete-trailing-whitespace", default_delete_trailing_whitespace, VAR_NUMBER, VAR_RW_SAVE,
+           "Default value of `delete-trailing-whitespace` for buffers that do not override it." )
+    S_VAR( "default-untabify", default_untabify, VAR_NUMBER, VAR_RW_SAVE,
+           "Default value of `untabify` for buffers that do not override it." )
     S_VAR( "backup-inhibited", backup_inhibited, VAR_NUMBER, VAR_RW_SAVE,
            "Set to prevent automatic backups of modified files" )
     S_VAR( "c-label-indent", c_label_indent, VAR_NUMBER, VAR_RW_SAVE,
@@ -119,6 +125,13 @@ static VarDef var_table[] = {
            "Distance between tab stops (for display of tab characters), in columns." )
     B_VAR( "fill-column", fill_column, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
            "Column beyond which automatic line-wrapping should happen." )
+    B_VAR( "require-final-newline", require_final_newline, VAR_NUMBER, VAR_RW,
+           "Set for automatic insertion of trailing new line before saving." )
+    B_VAR( "delete-trailing-whitespace", delete_trailing_whitespace, VAR_NUMBER, VAR_RW,
+           "Set for automatic deletion of trailing whitespace before saving." )
+    B_VAR( "untabify", untabify, VAR_NUMBER, VAR_RW,
+           "Set for automatic expansion of tabs to spaces before saving." )
+
 
     W_VAR_F( "point", offset, VAR_NUMBER, VAR_RW, qe_variable_set_value_offset,    /* should be window-point */
            "Current value of point in this window." )

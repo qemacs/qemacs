@@ -2147,8 +2147,7 @@ void do_filelist(EditState *s, int argval)
 static int filelist_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
-        /* XXX: should come from mode.default_wrap */
-        s->wrap = WRAP_TRUNCATE;
+        s->wrap = filelist_mode.default_wrap;
     }
     return 0;
 }
@@ -2181,6 +2180,7 @@ static int filelist_init(QEmacsState *qs)
     filelist_mode.mode_probe = NULL;
     filelist_mode.mode_init = filelist_mode_init;
     filelist_mode.display_hook = filelist_display_hook;
+    filelist_mode.default_wrap = WRAP_TRUNCATE;
 
     qe_register_mode(qs, &filelist_mode, MODEF_VIEW);
     qe_register_commands(qs, &filelist_mode, filelist_commands, countof(filelist_commands));

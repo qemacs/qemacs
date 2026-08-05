@@ -24,7 +24,7 @@
 
 #include "qe.h"
 
-static ModeDef litcoffee_mode;
+static ModeDef litcoffee_mode, mkd_mode;
 
 enum {
     /* TODO: define specific styles */
@@ -895,10 +895,11 @@ static const CmdDef mkd_commands[] = {
 static int mkd_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
-        s->b->tab_width = 4;
         s->indent_tabs_mode = 0;
-        /* XXX: should come from mode.default_wrap */
-        s->wrap = WRAP_WORD;
+        s->wrap = mkd_mode.default_wrap;
+    }
+    if (b) {
+        b->tab_width = 4;
     }
     return 0;
 }
@@ -921,11 +922,12 @@ static ModeDef mdx_mode = {
 static int litcoffee_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
-        s->b->tab_width = 4;
         s->indent_tabs_mode = 0;
-        /* XXX: should come from mode.default_wrap */
-        s->wrap = WRAP_WORD;
+        s->wrap = litcoffee_mode.default_wrap;
         s->mode->colorize_flags = mkd_add_lang(s->qs, "coffee", 0);
+    }
+    if (b) {
+        b->tab_width = 4;
     }
     return 0;
 }
@@ -940,10 +942,13 @@ static ModeDef litcoffee_mode = {
 
 static int mkd_init(QEmacsState *qs)
 {
+    mkd_mode.default_wrap = WRAP_WORD;
     qe_register_mode(qs, &mkd_mode, MODEF_SYNTAX);
     qe_register_commands(qs, &mkd_mode, mkd_commands, countof(mkd_commands));
     qe_register_mode(qs, &mdx_mode, MODEF_SYNTAX);
     qe_register_commands(qs, &mdx_mode, mkd_commands, countof(mkd_commands));
+
+    litcoffee_mode.default_wrap = WRAP_WORD;
     qe_register_mode(qs, &litcoffee_mode, MODEF_SYNTAX);
     qe_register_commands(qs, &litcoffee_mode, mkd_commands, countof(mkd_commands));
 

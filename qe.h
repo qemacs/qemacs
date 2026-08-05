@@ -469,6 +469,11 @@ struct EditBuffer {
     int tab_width;
     int fill_column;
     EOLType eol_type;
+#ifndef CONFIG_TINY
+    int require_final_newline;
+    int delete_trailing_whitespace;
+    int untabify;
+#endif
 
     OWNED EditBuffer *next; /* next editbuffer in qe_state buffer list */
 
@@ -566,6 +571,10 @@ int eb_mmap_buffer(EditBuffer *b, const char *filename);
 void eb_munmap_buffer(EditBuffer *b);
 int eb_write_buffer(EditBuffer *b, int start, int end, const char *filename);
 int eb_save_buffer(EditBuffer *b);
+#ifndef CONFIG_TINY
+void do_delete_horizontal_space(EditState *s, int mode);
+void do_untabify(EditState *s, int p1, int p2);
+#endif
 
 int eb_set_buffer_name(EditBuffer *b, const char *name1);
 void eb_set_filename(EditBuffer *b, const char *filename);
@@ -1107,6 +1116,11 @@ struct QEmacsState {
     int default_tab_width;      /* DEFAULT_TAB_WIDTH */
     int default_fill_column;    /* DEFAULT_FILL_COLUMN */
     EOLType default_eol_type;  /* EOL_UNIX */
+#ifndef CONFIG_TINY
+    int default_require_final_newline;
+    int default_delete_trailing_whitespace;
+    int default_untabify;
+#endif
     int flag_split_window_change_focus;
     int shell_buffer_read_only;
     int shell_mode_auto_interactive;

@@ -30,7 +30,7 @@ enum {
     HEX_STYLE_DUMP   = QE_STYLE_FUNCTION,
 };
 
-static ModeDef hex_mode;
+static ModeDef hex_mode, binary_mode;
 
 static int bin_to_disp(int c)
 {
@@ -181,8 +181,14 @@ static int binary_mode_init(EditState *s, EditBuffer *b, int flags)
         s->hex_mode = 0;
         s->unihex_mode = 0;
         s->overwrite = 1;
-        /* XXX: should come from mode.default_wrap */
-        s->wrap = WRAP_TRUNCATE;
+        s->wrap = binary_mode.default_wrap;
+    }
+    if (b) {
+#ifndef CONFIG_TINY
+        b->untabify = 0;
+        b->require_final_newline = 0;
+        b->delete_trailing_whitespace = 0;
+#endif
     }
     return 0;
 }
@@ -195,8 +201,14 @@ static int hex_mode_init(EditState *s, EditBuffer *b, int flags)
         s->hex_nibble = 0;
         s->unihex_mode = 0;
         s->overwrite = 1;
-        /* XXX: should come from mode.default_wrap */
-        s->wrap = WRAP_TRUNCATE;
+        s->wrap = hex_mode.default_wrap;
+    }
+    if (b) {
+#ifndef CONFIG_TINY
+        b->untabify = 0;
+        b->require_final_newline = 0;
+        b->delete_trailing_whitespace = 0;
+#endif
     }
     return 0;
 }
@@ -366,12 +378,12 @@ static ModeDef hex_mode = {
 
 static int hex_init(QEmacsState *qs)
 {
-    /* first register mode(s) */
+    binary_mode.default_wrap = WRAP_TRUNCATE;
     qe_register_mode(qs, &binary_mode, MODEF_VIEW);
-    qe_register_mode(qs, &hex_mode, MODEF_VIEW);
-
-    /* commands and default keys */
     qe_register_commands(qs, &binary_mode, binary_commands, countof(binary_commands));
+
+    hex_mode.default_wrap = WRAP_TRUNCATE;
+    qe_register_mode(qs, &hex_mode, MODEF_VIEW);
     qe_register_commands(qs, &hex_mode, hex_commands, countof(hex_commands));
 
     return 0;

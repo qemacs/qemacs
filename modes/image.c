@@ -548,6 +548,13 @@ static int image_mode_init(EditState *s, EditBuffer *b, int flags)
 
         eb_add_callback(s->b, image_callback, s, 1);
     }
+    if (b) {
+#ifndef CONFIG_TINY
+        b->require_final_newline = 0;
+        b->delete_trailing_whitespace = 0;
+        b->untabify = 0;
+#endif
+    }
     return 0;
 }
 

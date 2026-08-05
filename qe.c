@@ -9709,6 +9709,123 @@ static void put_save_message(EditState *s, const char *filename, int nb)
     }
 }
 
+#ifndef CONFIG_TINY
+enum {
+    SAVE_SCAN_EOF,
+    SAVE_SCAN_WHITESPACE,
+    SAVE_SCAN_TABS,
+    SAVE_SCAN_NONE,
+};
+
+typedef struct SaveContext {
+    int state;
+    EditState *s;
+} SaveContext;
+
+static void save_scan_next(SaveContext *save_ctx);
+
+static void save_scan_key(QEmacsState *qs, void *opaque, int key)
+{
+    SaveContext *save_ctx = opaque;
+    EditState *s = save_ctx->s;
+
+    switch (key) {
+    case KEY_CTRL('g'):
+        put_error(qs->active_window, "&Quit");
+        qe_free(&save_ctx);
+        qe_ungrab_keys(qs);
+        return;
+    case 'n':
+        break;
+    case 'y':
+        switch (save_ctx->state) {
+        case SAVE_SCAN_EOF:
+            eb_putc(s->b, '\n');
+            break;
+        case SAVE_SCAN_WHITESPACE:
+            do_delete_horizontal_space(s, 3); // DH_FULL
+            break;
+        case SAVE_SCAN_TABS:
+            do_untabify(s, 0, s->b->total_size);
+            break;
+        default:
+            break;
+        }
+        break;
+    default:
+        dpy_sound_bell(s->screen);
+        return;
+    }
+    qe_display(qs);
+    qe_ungrab_keys(qs);
+
+    save_ctx->state++;
+    save_scan_next(save_ctx);
+}
+
+void save_scan_next(SaveContext *save_ctx)
+{
+    EditState *s = save_ctx->s;
+    EditBuffer *b = s->b;
+    QEmacsState *qs = s->qs;
+
+    switch (save_ctx->state) {
+    case SAVE_SCAN_EOF:
+        if (b->total_size > 0 && eb_peek_prevc(b, b->total_size) != '\n') {
+            switch (b->require_final_newline) {
+            case +1:
+                eb_putc(b, '\n');
+                break;
+            case -1:
+                qe_grab_keys(qs, save_scan_key, save_ctx);
+                put_error(qs->active_window,
+                          "&Buffer does not end in newline. Add one? (y or n) ");
+                return;
+            default:
+                break;
+            }
+        }
+        save_ctx->state++;
+        FALLTHROUGH;
+    case SAVE_SCAN_WHITESPACE:
+        switch (b->delete_trailing_whitespace) {
+        case +1:
+            do_delete_horizontal_space(s, 3); // DH_FULL
+            break;
+        case -1:
+            qe_grab_keys(qs, save_scan_key, save_ctx);
+            put_error(qs->active_window,
+                      "&Scan buffer and delete trailing whitespace? (y or n) ");
+            return;
+        default:
+            break;
+        }
+        save_ctx->state++;
+        FALLTHROUGH;
+    case SAVE_SCAN_TABS:
+        switch (b->untabify) {
+        case +1:
+            do_untabify(s, 0, b->total_size);
+            break;
+        case -1:
+            qe_grab_keys(qs, save_scan_key, save_ctx);
+            put_error(qs->active_window,
+                      "&Scan buffer and expand tabs to spaces? (y or n) ");
+            return;
+        default:
+            break;
+        }
+        save_ctx->state++;
+        FALLTHROUGH;
+    case SAVE_SCAN_NONE:
+        qe_free(&save_ctx);
+        put_save_message(s, b->filename, eb_save_buffer(b));
+        qe_display(qs);
+        return;
+    }
+}
+#endif /* CONFIG_TINY */
+
 void do_save_buffer(EditState *s)
 {
     if (qe_check_buffer_file(s->b, CBF_SAVE) == CBF_PROMPT)
@@ -9719,6 +9836,16 @@ void do_save_buffer(EditState *s)
         put_status(s, "(No changes need to be saved)");
         return;
     }
+
+#ifndef CONFIG_TINY
+    SaveContext *save_ctx = qe_mallocz(SaveContext);
+    if (save_ctx) {
+        save_ctx->s = s;
+        save_ctx->state = SAVE_SCAN_EOF;
+        save_scan_next(save_ctx);
+        return;
+    }
+#endif
     put_save_message(s, s->b->filename, eb_save_buffer(s->b));
 }
 

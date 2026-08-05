@@ -147,8 +147,14 @@ static int mpeg_mode_init(EditState *s, EditBuffer *b, int flags)
     if (s) {
         s->hex_mode = 1;
         s->hex_nibble = 0;
-        /* XXX: should come from mode.default_wrap */
-        s->wrap = WRAP_TRUNCATE;
+        s->wrap = mpeg_mode.default_wrap;
+    }
+    if (b) {
+#ifndef CONFIG_TINY
+        b->require_final_newline = 0;
+        b->delete_trailing_whitespace = 0;
+        b->untabify = 0;
+#endif
     }
     return 0;
 }
@@ -176,6 +182,7 @@ static ModeDef mpeg_mode = {
 
 static int mpeg_init(QEmacsState *qs)
 {
+    mpeg_mode.default_wrap = WRAP_TRUNCATE;
     qe_register_mode(qs, &mpeg_mode, MODEF_MAJOR | MODEF_VIEW);
     return 0;
 }
