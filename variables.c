@@ -62,6 +62,8 @@ static VarDef var_table[] = {
            "Set if this window is displayed in full screen (without borders)." )
     S_VAR( "flag-split-window-change-focus", flag_split_window_change_focus, VAR_NUMBER, VAR_RW_SAVE,
            "Set if `split-window` should set focus to the new window." )
+    S_VAR( "flag-ido-mode", flag_ido_mode, VAR_NUMBER, VAR_RW_SAVE,
+           "set for ido-mode")
     S_VAR( "shell-buffer-read-only", shell_buffer_read_only, VAR_NUMBER, VAR_RW_SAVE,
            "Set if shell buffers should become read-only." )
     S_VAR( "shell-mode-auto-interactive", shell_mode_auto_interactive, VAR_NUMBER, VAR_RW_SAVE,

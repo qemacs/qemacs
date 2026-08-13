@@ -82,7 +82,7 @@ enum { SB_OK = 0, SB_SUSPEND = 1, SB_ABORTED = 2 };
 
 static int save_buffers_request_flags;
 static int save_buffers_request_completed;
-
+int qe__fast_test_event_poll_flag;
 int qe_save_buffers(QEmacsState *qs, int flags)
 {
     EditBuffer *b;
@@ -5315,8 +5315,22 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
         if (offset >= s->b->total_size) {
             /* the offset passed here is for cursor positioning
                when s->offset == s->b->total_size.
-            */
-            display_eol(ds, offset0, offset0 + 1);
+             */
+            if(s->ido_overlay){
+                const char *p = s->ido_overlay;
+                ds->style = QE_STYLE_COMMENT;
+
+                display_char(ds, offset0, offset0 + 1, utf8_decode(&p)); 
+
+                while(*p){
+                    display_char(ds,-1,-1,utf8_decode(&p));
+                }
+                ds->style = 0;
+                display_eol(ds, offset0 + 1, offset0 + 2);
+
+            } else {
+                display_eol(ds, offset0, offset0 + 1);
+            }
             offset = -1; /* signal end of text */
             break;
         } else {
@@ -7711,7 +7725,7 @@ void edit_close(EditState **sp)
     }
 }
 
-static const char *file_completion_ignore_extensions = {
+const char *file_completion_ignore_extensions = {
     "|bak"
     "|xls|xlsx|ppt|pptx|swf" /* binary formats */
     "|apk"
@@ -7946,6 +7960,8 @@ static void complete_end(CompleteState *cp)
 typedef struct MinibufState {
     QEModeData base;
 
+    int ido_selection;
+    size_t overlay_size;
     void (*cb)(void *opaque, char *buf, CompletionDef *completion);
     void *opaque;
 
@@ -7990,8 +8006,53 @@ static int match_strings(const char *s1, const char *s2, int len) {
     }
     return len;
 }
+static void ido_rebuild_overlay(EditState *s, MinibufState *mb)
+{
+    DynBuf ido_candidate[1];
+    dbuf_init(ido_candidate);
+    dbuf_putstr(ido_candidate, " {");
+
+    int count = mb->completion_list.nb_items;
+    for (int i = 0; i < count; i++) {
+        int idx = (mb->ido_selection + i) % count;   // <-- rotate, not highlight
+        StringItem *item = mb->completion_list.items[idx];
+        size_t base_offset = get_basename_offset_ido(item->str);
+        const char *candidate = item->str + base_offset;
+
+        char output_candidate[strlen(candidate) + 4];
+        if (i + 1 == count) {
+            snprintf(output_candidate, sizeof(output_candidate), " %s ", candidate);
+        } else {
+            snprintf(output_candidate, sizeof(output_candidate), " %s |", candidate);
+        }
+        dbuf_putstr(ido_candidate, output_candidate);
+    }
+    dbuf_putstr(ido_candidate, "}");
+    
+    qe_free(&s->ido_overlay);
+    s->ido_overlay = qe_strdup(dbuf_str(ido_candidate));
+    dbuf_free(ido_candidate);
+}
+
+static void do_minibuffer_ido_cycle(EditState *s, int dir)
+{
+
+    QEmacsState *qs = s->qs;
+    if(!qs->flag_ido_mode) 
+	return;
+    MinibufState *mb = minibuffer_get_state(s, 0);
+
+    if (!mb || mb->completion_list.nb_items <= 0)
+        return;
+
+    int count = mb->completion_list.nb_items;
+    mb->ido_selection = (mb->ido_selection + dir + count) % count;
+    ido_rebuild_overlay(s, mb);
+    do_refresh(s);
+}
 
 void do_minibuffer_complete(EditState *s, int type, int key, int argval) {
+    
     QEmacsState *qs = s->qs;
     int count, i, match_len, start, end;
     CompleteState cs;
@@ -8019,26 +8080,27 @@ void do_minibuffer_complete(EditState *s, int type, int key, int argval) {
      * through the window, if at end, should remove focus from
      * completion_popup_window or close it.
      */
+    if (!qs->flag_ido_mode) {
+        if (type == COMPLETION_TAB && qs->last_cmd_func == qs->this_cmd_func) {
+                mb->completion_stage++;
+                if (mb->completion->flags & CF_NO_FUZZY)
+                    mb->completion_stage = 2;
+        } else {
+            mb->completion_stage = 0;
+        }
 
-    if (type == COMPLETION_TAB && qs->last_cmd_func == qs->this_cmd_func) {
-        mb->completion_stage++;
-        if (mb->completion->flags & CF_NO_FUZZY)
-            mb->completion_stage = 2;
-    } else {
-        mb->completion_stage = 0;
+        /* check completion window */
+        qe_check_window(s->qs, &mb->completion_popup_window);
+        if (mb->completion_popup_window && mb->completion_stage > 1) {
+            /* toggle completion popup on TAB */
+            mb->completion_stage = 0;
+            qs->this_cmd_func = 0;
+            edit_close(&mb->completion_popup_window);
+            do_refresh(s);
+            return;
+        }
     }
-
-    /* check completion window */
-    qe_check_window(s->qs, &mb->completion_popup_window);
-    if (mb->completion_popup_window && mb->completion_stage > 1) {
-        /* toggle completion popup on TAB */
-        mb->completion_stage = 0;
-        qs->this_cmd_func = 0;
-        edit_close(&mb->completion_popup_window);
-        do_refresh(s);
-        return;
-    }
-
+    
     start = 0;
     end = s->offset;
     if (mb->completion_flags) {
@@ -8050,6 +8112,7 @@ void do_minibuffer_complete(EditState *s, int type, int key, int argval) {
                 break;
         }
     }
+
     mb->completion_start = start;
     mb->completion_end = end;
     complete_start(&cs, s, start, end, s->target_window);
@@ -8062,93 +8125,73 @@ void do_minibuffer_complete(EditState *s, int type, int key, int argval) {
     count = cs.cs.nb_items;
     outputs = cs.cs.items;
     mb->completion_count = count;
-#if 0
-    printf("count=%d\n", count);
-    for (i = 0; i < count; i++)
-        printf("out[%d]=%s\n", i, outputs[i]->str);
-#endif
-    /* compute the longest match len */
-    match_len = cs.len;
 
-    if (count > 0) {
-        /* find the longest common prefix */
-        match_len = strlen(outputs[0]->str);
-        for (i = 1; i < count; i++) {
-            match_len = match_strings(outputs[0]->str, outputs[i]->str,
-                                      match_len);
-        }
-        /* strip extra data */
-        p = memchr(outputs[0]->str, '\t', match_len);
-        if (p)
-            match_len = p - outputs[0]->str;
+    if (count > 0 && qs->flag_ido_mode) {
+        free_strings(&mb->completion_list);
+	    mb->completion_list = cs.cs;
+	    memset(&cs.cs, 0, sizeof(cs.cs)); 
+
+	    ido_rebuild_overlay(s, mb);
+	    complete_end(&cs);
+	    return;
     }
-    if (match_len > cs.len) {
-        /* add the possible chars */
-        // XXX: potential UTF-8 issue?
-        // XXX: replace the completed part, not necessarily at the start (use mark?)
-        // XXX: should delete region and insert as UTF-8
-        // XXX: should not replace if fuzzy match?
-        eb_replace(s->b, cs.start, cs.end - cs.start, outputs[0]->str, match_len);
-        s->offset = cs.start + match_len;
-        mb->completion_end = s->offset;
-        if (type == COMPLETION_OTHER) {
-            /* mark the region with extra common characters */
-            do_mark_region(s, cs.start + match_len, cs.start + cs.len);
-        }
-    } else {
-        if (count > 1) {
-            /* if more than one match, then display them in a new popup
-               buffer */
-            if (!mb->completion_popup_window) {
-                char buf[60];
 
-                b = qe_new_buffer(qs, "*completion*",
-                                  BF_SYSTEM | BF_UTF8 | BF_TRANSIENT | BF_STYLE_COMP);
-                if (!b)
-                    return;
-                b->default_mode = &list_mode;
-                w1 = qs->screen->width;
-                h1 = qs->screen->height - qs->status_height;
-                w = (w1 * 3) / 4;
-                h = (h1 * 3) / 4;
-                e = qe_new_window(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
-                if (!e)
-                    return;
-                snprintf(buf, sizeof buf, "Select a %s:", mb->completion->name);
-                e->caption = qe_strdup(buf);
-                e->target_window = s;
-                mb->completion_popup_window = e;
-                do_refresh(e);
-            }
+
+   if (count > 1) {
+        /* if more than one match, then display them in a new popup
+           buffer */
+        if (!mb->completion_popup_window && !qs->flag_ido_mode) {
+            char buf[60];
+
+            b = qe_new_buffer(qs, "*completion*",
+                              BF_SYSTEM | BF_UTF8 | BF_TRANSIENT | BF_STYLE_COMP);
+            if (!b)
+                return;
+            b->default_mode = &list_mode;
+            w1 = qs->screen->width;
+            h1 = qs->screen->height - qs->status_height;
+            w = (w1 * 3) / 4;
+            h = (h1 * 3) / 4;
+            e = qe_new_window(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
+            if (!e)
+                return;
+            snprintf(buf, sizeof buf, "Select a %s:", mb->completion->name);
+            e->caption = qe_strdup(buf);
+            e->target_window = s;
+            mb->completion_popup_window = e;
+            do_refresh(e);
+	} 
         } else
-        if (count == 0 || type != COMPLETION_OTHER) {
+        if ((count == 0 || type != COMPLETION_OTHER) && !qs->flag_ido_mode) {
             /* close the popup when minibuf contents matches nothing */
             edit_close(&mb->completion_popup_window);
             do_refresh(s);
-        }
+      }
+
+	if (mb->completion_popup_window && !qs->flag_ido_mode) {
+		/* modify the list with the current matches */
+		e = mb->completion_popup_window;
+		b = e->b;
+		b->flags &= ~BF_READONLY;
+		eb_delete(b, 0, b->total_size);
+		b->tab_width = 4;
+		for (i = 0; i < count; i++) {
+			eb_putc(b, ' ');    /* XXX: should use window margins */
+			mb->completion->print_entry(&cs, e, outputs[i]->str);
+			eb_putc(b, '\n');
+		}
+		b->flags |= BF_READONLY;
+		e->mouse_force_highlight = 1;
+		e->force_highlight = 1;
+		e->offset = 0;
+		free_strings(&mb->completion_list);
+	}
+
+    if (mb->completion->flags & CF_SAVE_LIST) {
+       mb->completion_list = cs.cs;
+       memset(&cs.cs, 0, sizeof(cs.cs));
     }
-    if (mb->completion_popup_window) {
-        /* modify the list with the current matches */
-        e = mb->completion_popup_window;
-        b = e->b;
-        b->flags &= ~BF_READONLY;
-        eb_delete(b, 0, b->total_size);
-        b->tab_width = 4;
-        for (i = 0; i < count; i++) {
-            eb_putc(b, ' ');    /* XXX: should use window margins */
-            mb->completion->print_entry(&cs, e, outputs[i]->str);
-            eb_putc(b, '\n');
-        }
-        b->flags |= BF_READONLY;
-        e->mouse_force_highlight = 1;
-        e->force_highlight = 1;
-        e->offset = 0;
-        free_strings(&mb->completion_list);
-        if (mb->completion->flags & CF_SAVE_LIST) {
-            mb->completion_list = cs.cs;
-            memset(&cs.cs, 0, sizeof(cs.cs));
-        }
-    }
+
     complete_end(&cs);
 }
 
@@ -8224,8 +8267,14 @@ void do_minibuffer_complete_space(EditState *s, int key, int argval) {
 static void do_minibuffer_char(EditState *s, int key, int argval)
 {
     MinibufState *mb = minibuffer_get_state(s, 0);
+    QEmacsState *qs = s->qs;
 
     do_char(s, key, argval);
+
+    if(mb && qs->flag_ido_mode){
+        do_minibuffer_complete(s, COMPLETION_OTHER, key, argval);
+	return;
+    }
     // XXX: this should be triggered by any minibuffer modification
     if (mb && qe_check_window(s->qs, &mb->completion_popup_window)) {
         /* automatic filtering of completion list */
@@ -8362,6 +8411,8 @@ static void do_minibuffer_get_binary(EditState *s)
 
 void do_minibuffer_exit(EditState *s, int do_abort)
 {
+
+    QEmacsState *qs = s->qs;
     char buf[4096], *retstr;
     MinibufState *mb;
     CompletionDef *completion;
@@ -8376,7 +8427,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
 
     cw = qe_check_window(s->qs, &mb->completion_popup_window);
 
-    if (!do_abort) {
+   if (!do_abort && !qs->flag_ido_mode) {
         /* if completion is activated, then select current file only if
            the selection is highlighted */
         if (cw && cw->force_highlight) {
@@ -8411,9 +8462,48 @@ void do_minibuffer_exit(EditState *s, int do_abort)
                 add_string(hist, buf, 0);
         }
     }
+   
+   if(!do_abort && qs->flag_ido_mode) {
+
+       int len;
+       qe_free(&s->ido_overlay);
+	    if (mb->completion_list.nb_items < 1) {
+
+		    eb_read(s->b,0,buf,s->offset);
+		    len = strlen(buf);
+	    } else {
+
+		    pstrcpy(buf, sizeof(buf), mb->completion_list.items[mb->ido_selection]->str);
+		    len = strlen(buf);
+	    }
+
+	    if (len > 0) {
+		    // insert completion string (delete highlighted part)
+		    minibuffer_set_str(s, mb->completion_start, mb->completion_end, buf);
+        }
+        
+        if(is_directory(buf)) {
+            do_minibuffer_complete(s, COMPLETION_OTHER, 0, 0);
+            return;
+        }
+	    eb_get_contents(s->b, buf, sizeof(buf), 1);
+
+	    /* Append response to history list */
+	    hist = mb->history;
+	    if (hist && hist->nb_items > 0) {
+		    /* if null string, do not insert in history */
+		    hist->nb_items--;
+		    qe_free(&hist->items[hist->nb_items]);
+		    if (buf[0] != '\0')
+			    add_string(hist, buf, 0);
+	    }
+
+	    free_strings(&mb->completion_list);
+
+    }
 
     /* remove completion popup if present */
-    if (cw) {
+    if (cw && !qs->flag_ido_mode) {
         edit_close(&mb->completion_popup_window);
         cw = NULL;
         free_strings(&mb->completion_list);
@@ -8517,6 +8607,10 @@ void minibuffer_edit(EditState *e, const char *input, const char *prompt,
     if (mb->completion && mb->completion->start_edit) {
         mb->completion->start_edit(s);
     }
+    
+    if (mb->completion && mb->completion->enumerate && qs->flag_ido_mode) {
+        do_minibuffer_complete(s, COMPLETION_OTHER, 0, 0);
+    }
 }
 
 static void minibuffer_mode_free(EditBuffer *b, void *state)
@@ -8553,7 +8647,7 @@ static const CmdDef minibuffer_commands[] = {
           do_minibuffer_exit, 0)
     CMD1( "minibuffer-abort", "C-g, C-x C-g, M-C-g",
           "Abort the minibuffer input",
-          do_minibuffer_exit, 1)
+         do_minibuffer_exit, 1)
     CMD3( "minibuffer-complete", "TAB",
           "Try and complete the minibuffer input",
           do_minibuffer_complete, ESiii,
@@ -8571,7 +8665,16 @@ static const CmdDef minibuffer_commands[] = {
           do_minibuffer_history, ESi, "q")
     CMD2( "minibuffer-next-history-element", "C-n, down",
           "Replace contents of the minibuffer with the next historical entry",
-          do_minibuffer_history, ESi, "p")
+         do_minibuffer_history, ESi, "p")
+
+    CMD1( "minibuffer-previous-history-element", "C-r",
+          "Replace contents of the minibuffer with the previous historical entry",
+          do_minibuffer_ido_cycle, -1)
+    CMD1( "minibuffer-next-history-element", "C-s",
+          "Replace contents of the minibuffer with the next historical entry",
+         do_minibuffer_ido_cycle, 1)
+
+
     CMD1( "minibuffer-next-fourth-history-element", "M-n",
           "Replace contents of the minibuffer with the fourth next historical entry",
           do_minibuffer_history, 4)
@@ -10724,7 +10827,7 @@ void qe_event_init(QEmacsState *qs)
 /* we install a signal handler to set poll_flag to one so that we can
    avoid polling too often in some cases */
 
-int qe__fast_test_event_poll_flag = 0;
+
 
 static void poll_action(qe__unused__ int sig)
 {
