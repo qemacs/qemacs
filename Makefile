@@ -170,7 +170,7 @@ TARGET_OBJ:=$(TARGET)
 endif
 
 OBJS:= qe.o cutils.o  util.o color.o charset.o buffer.o search.o input.o display.o \
-       qescript.o modes/hex.o fuzzy.o
+       qescript.o modes/hex.o 
 
 ifdef TARGET_TINY
 ECHO_CFLAGS += -DCONFIG_TINY
