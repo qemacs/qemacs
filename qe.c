@@ -1,4 +1,4 @@
-/*
+./*
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
@@ -8425,9 +8425,45 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     if ((mb = minibuffer_get_state(s, 1)) == NULL)
         return;
 
+
+   if(do_abort == 2 && qs->flag_ido_mode) {
+
+        int len;
+        qe_free(&s->ido_overlay);
+        eb_read(s->b,0,buf,s->offset);
+
+        if(!is_directory(buf)) {
+            size_t base = get_basename_offset(buf);
+            pstrcpy(buf,base+1, buf);
+            if(!is_directory(buf))
+                return;
+        }
+
+        len = strlen(buf);
+	    if (len > 0) {
+		    // insert completion string (delete highlighted part)
+		    minibuffer_set_str(s, mb->completion_start, mb->completion_end, buf);
+        }
+
+	    eb_get_contents(s->b, buf, sizeof(buf), 1);
+
+	    /* Append response to history list */
+	    hist = mb->history;
+	    if (hist && hist->nb_items > 0) {
+		    /* if null string, do not insert in history */
+		    hist->nb_items--;
+		    qe_free(&hist->items[hist->nb_items]);
+		    if (buf[0] != '\0')
+			    add_string(hist, buf, 0);
+	    }
+
+	    free_strings(&mb->completion_list);
+
+    }
+        
     cw = qe_check_window(s->qs, &mb->completion_popup_window);
 
-   if (!do_abort && !qs->flag_ido_mode) {
+   if (do_abort == 0 && !qs->flag_ido_mode) {
         /* if completion is activated, then select current file only if
            the selection is highlighted */
         if (cw && cw->force_highlight) {
@@ -8463,10 +8499,10 @@ void do_minibuffer_exit(EditState *s, int do_abort)
         }
     }
    
-   if(!do_abort && qs->flag_ido_mode) {
+   if(do_abort == 0 && qs->flag_ido_mode) {
 
-       int len;
-       qe_free(&s->ido_overlay);
+        int len;
+        qe_free(&s->ido_overlay);
 	    if (mb->completion_list.nb_items < 1) {
 
 		    eb_read(s->b,0,buf,s->offset);
@@ -8518,7 +8554,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     mb->opaque = NULL;
 
     if (completion && completion->end_edit) {
-        if (do_abort)
+        if (do_abort == 1)
             completion->end_edit(s, NULL, 0);
         else
             completion->end_edit(s, buf, countof(buf));
@@ -8529,7 +8565,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     edit_close(&s);
 
     /* Force status update and call the callback */
-    if (do_abort) {
+    if (do_abort == 1) {
         put_error(target, "Canceled.");
         (*cb)(opaque, NULL, NULL);
     } else {
@@ -8648,6 +8684,10 @@ static const CmdDef minibuffer_commands[] = {
     CMD1( "minibuffer-abort", "C-g, C-x C-g, M-C-g",
           "Abort the minibuffer input",
          do_minibuffer_exit, 1)
+    CMD1( "minibuffer-abort", "C-j",
+         "Abort the minibuffer input",
+         do_minibuffer_exit, 2)
+
     CMD3( "minibuffer-complete", "TAB",
           "Try and complete the minibuffer input",
           do_minibuffer_complete, ESiii,
