@@ -1061,6 +1061,7 @@ static int qe_cfg_skip_expr(QEmacsDataSource *ds) {
        parentheses are skipped in pairs but not balanced.
      */
     int level = 0;
+    int first = 1;
 
     // XXX: should match bracket types
     for (;;) {
@@ -1078,8 +1079,19 @@ static int qe_cfg_skip_expr(QEmacsDataSource *ds) {
         case '}':
         case ']':
         case ')':
-            if (!level)
+            if (!level) {
+                if (first) {
+                    /* This closing token has no opener to match within the
+                       expression being skipped, so it isn't a real
+                       boundary left for an enclosing caller: it is just
+                       stray input. Consume it here, otherwise the caller
+                       (qe_cfg_stmt's statement loop) never advances past
+                       it and spins forever re-reporting the same error. */
+                    qe_cfg_error(ds, "unexpected '%c'", ds->tok);
+                    qe_cfg_next_token(ds);
+                }
                 return 1;
+            }
             level--;
             break;
         case ';':
@@ -1087,6 +1099,7 @@ static int qe_cfg_skip_expr(QEmacsDataSource *ds) {
                 return 1;
             break;
         }
+        first = 0;
         qe_cfg_next_token(ds);
     }
 }
