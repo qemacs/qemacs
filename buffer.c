@@ -1740,12 +1740,12 @@ char32_t eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
     return ch;
 }
 
-int eb_goto_pos(EditBuffer *b, int line1, int col1)
+int eb_goto_pos(EditBuffer *b, int target_line, int target_col)
 {
     Page *p, *p_end;
-    int line2, col2, line, col, offset, offset1;
+    int line, col, offset, offset1;
 
-    line = 0;
+    line = 0;       /* line, col and offset of beginning of the current page */
     col = 0;
     offset = 0;
 
@@ -1754,32 +1754,34 @@ int eb_goto_pos(EditBuffer *b, int line1, int col1)
         return 0;
     p_end = b->page_table + b->nb_pages;
     while (p < p_end) {
+        int end_line, end_col;
+
         if (!(p->flags & PG_VALID_POS)) {
             p->flags |= PG_VALID_POS;
             b->charset_state.get_pos_func(&b->charset_state, p->data, p->size,
                                           &p->nb_lines, &p->col);
         }
-        line2 = line + p->nb_lines;
-        if (p->nb_lines)
-            col2 = 0;
-        col2 = col + p->col;
-        if (line2 > line1 || (line2 == line1 && col2 >= col1)) {
-            /* compute offset */
-            if (line < line1) {
-                /* seek to the correct line */
+        end_line = line + p->nb_lines;
+        end_col = p->col;
+        if (!p->nb_lines)
+            end_col += col;
+        if (end_line > target_line || (end_line == target_line && end_col >= target_col)) {
+            /* target is in the page: compute offset */
+            if (line < target_line) {
+                /* skip to the target line */
                 offset += b->charset->goto_line_func(&b->charset_state,
-                    p->data, p->size, line1 - line);
-                line = line1;
+                                                     p->data, p->size, target_line - line);
+                line = target_line;
                 col = 0;
             }
-            while (col < col1 && eb_nextc(b, offset, &offset1) != '\n') {
+            while (col < target_col && eb_nextc(b, offset, &offset1) != '\n') {
                 col++;
                 offset = offset1;
             }
             return offset;
         }
-        line = line2;
-        col = col2;
+        line = end_line;
+        col = end_col;
         offset += p->size;
         p++;
     }

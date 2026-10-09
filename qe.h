@@ -320,7 +320,7 @@ typedef struct Page {   /* should pack this */
     u8 *data;
     /* the following are needed to handle line / column computation */
     int nb_lines; /* Number of EOL characters in data */
-    int col;      /* Number of chars since the last EOL */
+    int col;      /* Number of chars after the last EOL in page */
     /* the following is needed for char offset computation */
     int nb_chars;
 } Page;
