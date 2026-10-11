@@ -1888,7 +1888,7 @@ static const CmdDef dired_commands[] = {
           "Move focus to the current file",
           do_other_window, ESi, "#" "v", 1)
     /* dired-abort should restore previous buffer in right-window */
-    CMD1( "dired-abort", "C-g, q",
+    CMD1( "dired-abort", "q",
           "Quit the dired mode",
           do_delete_window, 0)
     CMD1( "dired-unmark-backward", "DEL",
