@@ -81,7 +81,7 @@ typedef struct ModeDef ModeDef;
 typedef struct QEColorizeContext QEColorizeContext;
 typedef struct KeyDef KeyDef;
 typedef struct InputMethod InputMethod;
-typedef struct ISearchState ISearchState;
+typedef struct QESearchState QESearchState;
 typedef struct QEProperty QEProperty;
 
 #ifndef INT_MAX
@@ -761,7 +761,7 @@ struct EditState {
     EditBuffer *b;
 
     EditBuffer *last_buffer;    /* for predict_switch_to_buffer */
-    ISearchState *isearch_state;  /* active search to colorize matches */
+    QESearchState *isearch_state;  /* active search to colorize matches */
     EditState *target_window;   /* for minibuf, popleft and popup windows */
 
     /* mode specific info */
@@ -1187,10 +1187,11 @@ typedef enum CmdSig {
     CMD_ESiii,  /* (ES*, int, int, int) -> void */
     CMD_ESsii,  /* (ES*, string, int, int) -> void */
     CMD_ESssi,  /* (ES*, string, string, int) -> void */
+    CMD_ESssiii,/* (ES*, string, string, int, int, int) -> void */
     CMD_ESsss,  /* (ES*, string, string, string) -> void */
 } CmdSig;
 
-#define MAX_CMD_ARGS 5
+#define MAX_CMD_ARGS 6
 
 typedef union CmdArg {
     EditState *s;
@@ -1218,6 +1219,7 @@ typedef union CmdProto {
     void (*ESiii)(EditState *, int, int, int);
     void (*ESsii)(EditState *, const char *, int, int);
     void (*ESssi)(EditState *, const char *, const char *, int);
+    void (*ESssiii)(EditState *, const char *, const char *, int, int, int);
     void (*ESsss)(EditState *, const char *, const char *, const char *);
 } CmdProto;
 
@@ -1609,9 +1611,9 @@ void isearch_colorize_matches(EditState *s, char32_t *buf, int len,
                               QETermStyle *sbuf, int offset);
 void do_isearch(EditState *s, int argval, int dir);
 void do_query_replace(EditState *s, const char *search_str,
-                      const char *replace_str, int argval);
+                      const char *replace_str, int argval, int start, int end);
 void do_replace_string(EditState *s, const char *search_str,
-                       const char *replace_str, int argval);
+                       const char *replace_str, int argval, int start, int end);
 void do_search_string(EditState *s, const char *search_str, int dir);
 void do_refresh_complete(EditState *s);
 void do_kill_buffer(EditState *s, const char *bufname, int force);

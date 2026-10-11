@@ -60,12 +60,15 @@ void *lre_realloc(void *opaque, void *ptr, size_t size) {
 #define FOUND_TAG      0x80000000
 #define FOUND_REV      0x40000000
 
-struct ISearchState {
+struct QESearchState {
+    /* common */
     EditState *s;
     int search_flags;
     int start_offset;
     int found_offset, found_end;
     int search_u32_len;
+    char search_str[SEARCH_LENGTH * 3];     /* may be in hex */
+    char32_t search_u32[SEARCH_LENGTH];
     /* isearch */
     EditState *minibuffer;     /* set if delegated from minibuffer */
     int saved_mark;
@@ -74,15 +77,21 @@ struct ISearchState {
     int dir;
     int pos;  /* position in search_u32_steps */
     unsigned int search_u32_steps[SEARCH_STEPS];
-    /* common */
-    char search_str[SEARCH_LENGTH * 3];     /* may be in hex */
-    char32_t search_u32[SEARCH_LENGTH];
+    /* query-replace */
+    EditState *help_window;
+    int replace_all;
+    int nb_reps;
+    int replace_u32_len;
+    int end_offset;
+    int last_offset;
+    char replace_str[SEARCH_LENGTH * 3];  /* may be in hex */
+    char32_t replace_u32[SEARCH_LENGTH];  /* code points */
 };
 
 static ModeDef isearch_mode;
 
 /* XXX: should store to screen */
-static ISearchState global_isearch_state;
+static QESearchState global_isearch_state;
 
 static int eb_search(EditBuffer *b, int dir, int flags,
                      int start_offset, int end_offset,
@@ -389,7 +398,7 @@ static void buf_disp_search_flags(buf_t *out, int search_flags) {
     }
 }
 
-static void isearch_run(ISearchState *is) {
+static void isearch_run(QESearchState *is) {
     /* Incremental search engine: this function is run after all
        incremental search commands. It updates the search flags
        and search string and searches for the next match.
@@ -542,7 +551,7 @@ static void isearch_run(ISearchState *is) {
         put_status(s, "&|isearch_run: %dms", elapsed_time);
 }
 
-static int isearch_grab(ISearchState *is, EditBuffer *b, int from, int to) {
+static int isearch_grab(QESearchState *is, EditBuffer *b, int from, int to) {
     /* Retrieve search bytes from the buffer contents */
     // XXX: should special case hex search modes
     int offset, last = is->pos;
@@ -564,7 +573,7 @@ static void isearch_yank_word_or_char(EditState *s) {
        to the search string.
      */
     // XXX: does not work for hex search modes
-    ISearchState *is = s->isearch_state;
+    QESearchState *is = s->isearch_state;
     if (is) {
         int offset0, offset1;
         offset0 = s->offset;
@@ -582,7 +591,7 @@ static void isearch_yank_char(EditState *s) {
        to the search string.
      */
     // XXX: does not work for hex search modes
-    ISearchState *is = s->isearch_state;
+    QESearchState *is = s->isearch_state;
     if (is) {
         int offset0 = s->offset;
         int offset1 = eb_next(s->b, offset0);
@@ -597,7 +606,7 @@ static void isearch_yank_line(EditState *s) {
        search string.
      */
     // XXX: does not work for hex search modes
-    ISearchState *is = s->isearch_state;
+    QESearchState *is = s->isearch_state;
     if (is) {
         int offset0, offset1;
         offset0 = s->offset;
@@ -616,7 +625,7 @@ static void isearch_yank_kill(EditState *s) {
        Append the contents of the last kill to the search string.
      */
     // XXX: does not work for hex search modes
-    ISearchState *is = s->isearch_state;
+    QESearchState *is = s->isearch_state;
     if (is) {
         QEmacsState *qs = is->s->qs;
         isearch_grab(is, qs->yank_buffers[qs->yank_current], 0, -1);
@@ -635,7 +644,7 @@ static void isearch_addpos(EditState *s, int dir) {
        Retrieve the last search string if search string is empty.
      */
     int curdir;
-    ISearchState *is = s->isearch_state;
+    QESearchState *is = s->isearch_state;
     if (!is)
         return;
 
@@ -671,7 +680,7 @@ static void isearch_addpos(EditState *s, int dir) {
 }
 
 static void isearch_printing_char(EditState *s, int key) {
-    ISearchState *is = s->isearch_state;
+    QESearchState *is = s->isearch_state;
     if (is) {
         if (is->pos < countof(is->search_u32_steps))
             is->search_u32_steps[is->pos++] = key;
@@ -679,14 +688,14 @@ static void isearch_printing_char(EditState *s, int key) {
 }
 
 static void isearch_quote_char(EditState *s) {
-    ISearchState *is = s->isearch_state;
+    QESearchState *is = s->isearch_state;
     if (is) {
         is->quoting = 1;
     }
 }
 
 static void isearch_delete_char(EditState *s) {
-    ISearchState *is = s->isearch_state;
+    QESearchState *is = s->isearch_state;
     if (is) {
         if (is->pos > 0)
             is->pos--;
@@ -711,7 +720,7 @@ static int search_flags_cycle(int flags, int f1) {
 }
 
 static void isearch_cycle_flags(EditState *s, int f1) {
-    ISearchState *is = s->isearch_state;
+    QESearchState *is = s->isearch_state;
 
     if (s->flags & WF_MINIBUF) {
         if (s->prompt && s->target_window)
@@ -759,7 +768,7 @@ void isearch_toggle_word_match(EditState *s) {
     isearch_cycle_flags(s, SEARCH_FLAG_WORD);
 }
 
-static void isearch_end(ISearchState *is) {
+static void isearch_end(QESearchState *is) {
     /* save current search string to the search history buffer */
     QEmacsState *qs = is->s->qs;
     StringArray *hist = qe_get_history(qs, "search");
@@ -772,7 +781,7 @@ static void isearch_end(ISearchState *is) {
 }
 
 static void isearch_cancel(EditState *s) {
-    ISearchState *is = s->isearch_state;
+    QESearchState *is = s->isearch_state;
     if (is) {
         s->b->mark = is->saved_mark;
         s->offset = is->start_offset;
@@ -793,7 +802,7 @@ static void isearch_abort(EditState *s) {
 }
 
 static void isearch_exit(EditState *s, int key) {
-    ISearchState *is = s->isearch_state;
+    QESearchState *is = s->isearch_state;
     if (is) {
         /* exit search mode */
         s->b->mark = min_offset(is->start_offset, s->b->total_size);
@@ -810,7 +819,7 @@ static void isearch_exit(EditState *s, int key) {
 }
 
 static void isearch_key(QEmacsState *qs, void *opaque, int key) {
-    ISearchState *is = opaque;
+    QESearchState *is = opaque;
     EditState *s;
     unsigned int keys[1] = { key };
 
@@ -841,13 +850,13 @@ static void isearch_key(QEmacsState *qs, void *opaque, int key) {
         isearch_run(is);
     }
     if (!(is->search_flags & SEARCH_FLAG_ACTIVE)) {
-        /* This should free the ISearchState grab data if allocated */
+        /* This should free the QESearchState grab data if allocated */
         qe_ungrab_keys(qs);
     }
 }
 
-static ISearchState *set_search_state(EditState *s, int argval, int dir) {
-    ISearchState *is = &global_isearch_state;
+static QESearchState *set_search_state(EditState *s, int argval, int dir) {
+    QESearchState *is = &global_isearch_state;
     EditState *e;
     int flags = SEARCH_FLAG_DEFAULT | SEARCH_FLAG_ACTIVE;
 
@@ -882,7 +891,7 @@ static ISearchState *set_search_state(EditState *s, int argval, int dir) {
 
 /* XXX: handle busy */
 void do_isearch(EditState *s, int argval, int dir) {
-    ISearchState *is;
+    QESearchState *is;
     QEmacsState *qs = s->qs;
 
     /* prevent search from minibuffer */
@@ -942,7 +951,7 @@ static int search_to_u32(char32_t *buf, int size,
 void isearch_colorize_matches(EditState *s, char32_t *buf, int len,
                               QETermStyle *sbuf, int offset_start)
 {
-    ISearchState *is = s->isearch_state;
+    QESearchState *is = s->isearch_state;
     EditBuffer *b = s->b;
     int offset, char_offset, found_offset, found_end, offset_end;
     int search_flags;
@@ -1006,27 +1015,7 @@ void isearch_colorize_matches(EditState *s, char32_t *buf, int len,
     }
 }
 
-typedef struct QueryReplaceState {
-    EditState *s;
-    int search_flags;
-    int start_offset;
-    int found_offset, found_end;
-    int search_u32_len;
-    /* query-replace */
-    EditState *help_window;
-    int replace_all;
-    int nb_reps;
-    int replace_u32_len;
-    int last_offset;
-    /* common */
-    char search_str[SEARCH_LENGTH * 3];   /* may be in hex */
-    char32_t search_u32[SEARCH_LENGTH];   /* code points */
-    /* query-replace */
-    char replace_str[SEARCH_LENGTH * 3];  /* may be in hex */
-    char32_t replace_u32[SEARCH_LENGTH];  /* code points */
-} QueryReplaceState;
-
-static void query_replace_help(QueryReplaceState *is) {
+static void query_replace_help(QESearchState *is) {
     EditState *s = is->s;
     EditBuffer *b;
 
@@ -1060,7 +1049,7 @@ static void query_replace_help(QueryReplaceState *is) {
     is->help_window = show_popup(s, b, "Query Replace Help");
 }
 
-static void query_replace_abort(QueryReplaceState *is)
+static void query_replace_abort(QESearchState *is)
 {
     EditState *s = is->s;
 
@@ -1073,18 +1062,23 @@ static void query_replace_abort(QueryReplaceState *is)
     qe_display(s->qs);
 }
 
-static void query_replace_replace(QueryReplaceState *is)
+static void query_replace_replace(QESearchState *is)
 {
     EditState *s = is->s;
+    int len, end = is->found_end;
 
     /* XXX: handle smart case replacement */
     is->nb_reps++;
     eb_delete_range(s->b, is->found_offset, is->found_end);
-    is->found_offset += eb_insert_char32_buf(s->b, is->found_offset,
-                                             is->replace_u32, is->replace_u32_len);
+    len = eb_insert_char32_buf(s->b, is->found_offset,
+                               is->replace_u32, is->replace_u32_len);
+
+    is->found_end = is->found_offset + len;
+    is->end_offset += is->found_end - end;
+    is->found_offset = is->found_end;
 }
 
-static void query_replace_run(QueryReplaceState *is)
+static void query_replace_run(QESearchState *is)
 {
     EditState *s = is->s;
     char ubuf[4096];
@@ -1100,7 +1094,7 @@ static void query_replace_run(QueryReplaceState *is)
 
     for (;;) {
         if (eb_search(s->b, 1, is->search_flags,
-                      is->found_offset, s->b->total_size,
+                      is->found_offset, is->end_offset,
                       is->search_u32, is->search_u32_len,
                       NULL, NULL, &is->found_offset, &is->found_end) <= 0) {
             query_replace_abort(is);
@@ -1131,7 +1125,7 @@ static void query_replace_run(QueryReplaceState *is)
 
 static void query_replace_key(QEmacsState *qs, void *opaque, int key)
 {
-    QueryReplaceState *is = opaque;
+    QESearchState *is = opaque;
     EditState *s;
 
     if (!is || !(s = qe_check_window(qs, &is->s))) {
@@ -1216,13 +1210,11 @@ static void query_replace_key(QEmacsState *qs, void *opaque, int key)
 }
 
 static void query_replace(EditState *s, const char *search_str,
-                          const char *replace_str, int all, int flags)
+                          const char *replace_str, int all, int flags, int start, int end)
 {
     /* search_str starts with encoded search flags */
-    // TODO: merge QueryReplaceState and ISearchState
     // TODO: use pseudo mode bindings like isearch
-    // XXX: should restrict the search to the current region if highlighted
-    QueryReplaceState *is;
+    QESearchState *is;
 
     /* prevent replace from minibuffer */
     if (s->flags & WF_MINIBUF)
@@ -1231,7 +1223,7 @@ static void query_replace(EditState *s, const char *search_str,
     if (s->b->flags & BF_READONLY)
         return;
 
-    is = qe_mallocz(QueryReplaceState);
+    is = qe_mallocz(QESearchState);
     if (!is)
         return;
     is->s = s;
@@ -1240,17 +1232,23 @@ static void query_replace(EditState *s, const char *search_str,
     pstrcpy(is->search_str, sizeof(is->search_str), search_str);
     pstrcpy(is->replace_str, sizeof(is->replace_str), replace_str);
 
+    if (end < start) {
+        int tmp = start;
+        start = end;
+        end = tmp;
+    }
     is->search_flags = flags;
     is->replace_all = all;
-    is->start_offset = is->last_offset = s->offset;
-    is->found_offset = is->found_end = s->offset;
+    is->start_offset = is->last_offset = start;
+    is->found_offset = is->found_end = start;
+    is->end_offset = end;
 
     qe_grab_keys(s->qs, query_replace_key, is);
     query_replace_run(is);
 }
 
 void do_query_replace(EditState *s, const char *search_str,
-                      const char *replace_str, int argval)
+                      const char *replace_str, int argval, int start, int end)
 {
     /*@CMD query-replace
        ### `query-replace(string FROM-STRING, string TO-STRING, int DELIMITED=argval, int START=point, int END=end)`
@@ -1259,7 +1257,7 @@ void do_query_replace(EditState *s, const char *search_str,
        As each match is found, the user must type a character saying
        what to do with it.  For directions, type '?' at that time.
 
-       FROM-STRING is analyzed for search flag names with determine how
+       FROM-STRING is analyzed for search flag names to determine how
        matches are found.  Supported flags are [UniHex], [Hex], [Folding],
        [Exact], [Regex] and [Word].
 
@@ -1279,15 +1277,14 @@ void do_query_replace(EditState *s, const char *search_str,
        To customize possible responses, change the "bindings" in
        `query-replace-mode`.
      */
-    // TODO: region restriction
     int flags = SEARCH_FLAG_SMARTCASE;
     if (argval != 1)
         flags |= SEARCH_FLAG_WORD;
-    query_replace(s, search_str, replace_str, 0, flags);
+    query_replace(s, search_str, replace_str, 0, flags, start, end);
 }
 
 void do_replace_string(EditState *s, const char *search_str,
-                       const char *replace_str, int argval)
+                       const char *replace_str, int argval, int start, int end)
 {
     /*@CMD replace-string
        ### `replace-string(string FROM-STRING, string TO-STRING, int DELIMITED=argval, int START=point, int END=end)`
@@ -1316,11 +1313,10 @@ void do_replace_string(EditState *s, const char *search_str,
        The loop will not work if FROM-STRING can match the null string
        and TO-STRING is also null
      */
-    // TODO: region restriction
     int flags = SEARCH_FLAG_SMARTCASE;
     if (argval != 1)
         flags |= SEARCH_FLAG_WORD;
-    query_replace(s, search_str, replace_str, 1, flags);
+    query_replace(s, search_str, replace_str, 1, flags, start, end);
 }
 
 enum {
@@ -1495,7 +1491,7 @@ static void minibuffer_search_bindings(EditState *s, int enable)
 }
 
 static void minibuffer_search_start_edit(EditState *s) {
-    ISearchState *is = set_search_state(s->target_window, 1, 1);
+    QESearchState *is = set_search_state(s->target_window, 1, 1);
     if (is != NULL) {
         is->minibuffer = s;
         isearch_cycle_flags(s, 0);
@@ -1509,7 +1505,7 @@ static void minibuffer_search_end_edit(EditState *s, char *dest, int size) {
         // XXX: prefix the output string with search flags?
         s1->isearch_state->minibuffer = NULL;
         s1->isearch_state = NULL;
-        // XXX: should free the ISearchState structure
+        // XXX: should free the QESearchState structure
         minibuffer_search_bindings(s, FALSE);
     }
 }
@@ -1671,18 +1667,18 @@ static const CmdDef search_commands[] = {
           do_isearch, ESii, "p" "v", 1)
     CMD2( "query-replace", "M-%",
           "Replace a string with another interactively",
-          do_query_replace, ESssi, "*"
+          do_query_replace, ESssiii, "*"
           "s{Query replace: }[search]|search|"
           "s{With: }|replace|"
-          "p")
+          "p" "d" "M")
     /* passing argument restricts replace to word matches */
     /* XXX: non standard binding */
     CMD2( "replace-string", "M-r",
-          "Replace a string with another till the end of the buffer",
-          do_replace_string, ESssi, "*"
+          "Replace a string with another",
+          do_replace_string, ESssiii, "*"
           "s{Replace String: }[search]|search|"
           "s{With: }|replace|"
-          "p")
+          "p" "d" "M")
 };
 
 static ModeDef isearch_mode = {

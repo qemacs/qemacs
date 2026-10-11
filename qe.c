@@ -5592,8 +5592,8 @@ typedef struct ExecCmdState {
    - void (*)(EditState *, const char *, int, int); (0)
    - void (*)(EditState *, const char *, const char *, int); (2)
    - void (*)(EditState *, const char *, const char *, const char *); (2)
-   - void (*)(ISearchState *); (?)
-   - void (*)(ISearchState *, int); (?)
+   - void (*)(QESearchState *); (?)
+   - void (*)(QESearchState *, int); (?)
 */
 void call_func(CmdSig sig, CmdProto func, qe__unused__ int nb_args,
                CmdArg *args, qe__unused__ unsigned char *args_type)
@@ -5628,6 +5628,9 @@ void call_func(CmdSig sig, CmdProto func, qe__unused__ int nb_args,
         break;
     case CMD_ESssi:  /* ES + string + string + integer */
         (*func.ESssi)(args[0].s, args[1].p, args[2].p, args[3].n);
+        break;
+    case CMD_ESssiii:  /* ES + string + string + integer + integer + integer */
+        (*func.ESssiii)(args[0].s, args[1].p, args[2].p, args[3].n, args[4].n, args[5].n);
         break;
     case CMD_ESsss:  /* ES + string + string + string */
         (*func.ESsss)(args[0].s, args[1].p, args[2].p, args[3].p);
@@ -5692,6 +5695,9 @@ int parse_arg(const char **pp, CmdArgSpec *ap)
         break;
     case 'm':  /* buffer mark as a number */
         type = CMD_ARG_INT | CMD_ARG_USE_MARK;
+        break;
+    case 'M':  /* buffer mark as a number or buffer size */
+        type = CMD_ARG_INT | (CMD_ARG_USE_MARK | CMD_ARG_USE_BSIZE);
         break;
     case 'n':  /* number read from minibuffer */
         type = CMD_ARG_INT;
@@ -5961,6 +5967,7 @@ static void parse_arguments(ExecCmdState *es)
             case 'd':   argp->n = s->offset;    break;
             case 'e':   argp->n = s->b->total_size; break;
             case 'k':   argp->n = es->key;      break;
+            case 'M':   argp->n = s->region_style ? s->b->mark : s->b->total_size; break;
             case 'm':   argp->n = s->b->mark;   break;
             case 'n':   argp->n = 0; get_arg = 1; break;
             case 'N':   argp->n = es->argval; get_arg = !es->has_arg; goto consume_arg;

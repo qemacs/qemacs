@@ -1189,6 +1189,9 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
             case CMD_ARG_INT | CMD_ARG_USE_MARK:
                 args[i].n = s->b->mark;
                 continue;
+            case CMD_ARG_INT | (CMD_ARG_USE_MARK | CMD_ARG_USE_BSIZE):
+                args[i].n = s->region_style ? s->b->mark : s->b->total_size;
+                continue;
             case CMD_ARG_INT | CMD_ARG_USE_POINT:
                 args[i].n = s->offset;
                 continue;

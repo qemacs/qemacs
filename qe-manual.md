@@ -116,7 +116,7 @@ Replace some occurrences of FROM-STRING with TO-STRING.
 As each match is found, the user must type a character saying
 what to do with it.  For directions, type '?' at that time.
 
-FROM-STRING is analyzed for search flag names with determine how
+FROM-STRING is analyzed for search flag names to determine how
 matches are found.  Supported flags are [UniHex], [Hex], [Folding],
 [Exact], [Regex] and [Word].
 
