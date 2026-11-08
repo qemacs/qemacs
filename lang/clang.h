@@ -89,11 +89,47 @@ enum {
     CLANG_PPL,
     CLANG_JAKT,
     CLANG_C3,
+    CLANG_SILK,
     CLANG_FLAVOR = 0x7F,
 };
 
+/* C mode options */
+#define CLANG_C_TYPES     0x00080   /* add C types to syn->types list */
+#define CLANG_C_KEYWORDS  0x00100   /* add C keywords to syn->keywords list */
+#define CLANG_LEX         0x00200
+#define CLANG_YACC        0x00400
+#define CLANG_REGEX       0x00800   /* recognize / delimited regular expressions */
+#define CLANG_WLITERALS   0x01000   /* recognize L, u, U, u8 string prefix */
+#define CLANG_PREPROC     0x02000   /* colorize preprocessing directives */
+#define CLANG_CAP_TYPE    0x04000   /* Mixed case initial cap is type */
+#define CLANG_STR3        0x08000   /* Support """strings""" */
+#define CLANG_LINECONT    0x10000   /* support \<newline> as line continuation */
+#define CLANG_NEST_COMMENTS  0x20000  /* block comments are nested */
+#define CLANG_T_TYPES     0x40000   /* _t suffix indicates type identifier */
+#define CLANG_C_DEFS      0x80000   /* word followed by another word is a definition */
+
+/* FIXME: need flags for
+   '@' in identifiers(start / next),
+   '$' in identifiers(start / next),
+   '-' in identifiers next
+   '#' as comment char
+   UnicodeIDStart and UnicodeIDContinue in identifiers
+ */
+
+/* all C language features */
+#define CLANG_CC  (CLANG_LINECONT | CLANG_WLITERALS | CLANG_PREPROC | \
+                   CLANG_C_KEYWORDS | CLANG_C_TYPES | CLANG_T_TYPES | \
+                   CLANG_C_DEFS)
+
+int is_c_identifier_start(char32_t c, int flavor);
+int is_c_identifier_part(char32_t c, int flavor);
 int get_c_identifier(char *dest, int size, char32_t c,
                      const char32_t *str, int i, int n, int flavor);
+int has_c_decl(const char32_t *str, int i, int flavor);
+int is_cap_type(const char *str);
+void c_colorize_line(QEColorizeContext *cp,
+                     const char32_t *str, int n,
+                     QETermStyle *sbuf, ModeDef *syn);
 void c_indent_line(EditState *s, int offset0);
 
 #endif /* CLANG_H */
