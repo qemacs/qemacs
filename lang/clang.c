@@ -26,34 +26,6 @@
 #include "qe.h"
 #include "clang.h"
 
-/* C mode options */
-#define CLANG_C_TYPES     0x00080   /* add C types to syn->types list */
-#define CLANG_C_KEYWORDS  0x00100   /* add C keywords to syn->keywords list */
-#define CLANG_LEX         0x00200
-#define CLANG_YACC        0x00400
-#define CLANG_REGEX       0x00800   /* recognize / delimited regular expressions */
-#define CLANG_WLITERALS   0x01000   /* recognize L, u, U, u8 string prefix */
-#define CLANG_PREPROC     0x02000   /* colorize preprocessing directives */
-#define CLANG_CAP_TYPE    0x04000   /* Mixed case initial cap is type */
-#define CLANG_STR3        0x08000   /* Support """strings""" */
-#define CLANG_LINECONT    0x10000   /* support \<newline> as line continuation */
-#define CLANG_NEST_COMMENTS  0x20000  /* block comments are nested */
-#define CLANG_T_TYPES     0x40000   /* _t suffix indicates type identifier */
-#define CLANG_C_DEFS      0x80000   /* word followed by another word is a definition */
-
-/* FIXME: need flags for
-   '@' in identifiers(start / next),
-   '$' in identifiers(start / next),
-   '-' in identifiers next
-   '#' as comment char
-   UnicodeIDStart and UnicodeIDContinue in identifiers
- */
-
-/* all C language features */
-#define CLANG_CC  (CLANG_LINECONT | CLANG_WLITERALS | CLANG_PREPROC | \
-                   CLANG_C_KEYWORDS | CLANG_C_TYPES | CLANG_T_TYPES | \
-                   CLANG_C_DEFS)
-
 static const char c_keywords[] = {
     "auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
     "if|inline|register|restrict|return|sizeof|static|struct|switch|"
@@ -88,7 +60,7 @@ static const char c_extensions[] = {
     "h.in|c.in|"        /* preprocessed C input (should use more generic approach) */
 };
 
-static int is_c_identifier_start(char32_t c, int flavor) {
+int is_c_identifier_start(char32_t c, int flavor) {
     // should accept unicode escape sequence, UnicodeIDStart
     return (qe_isalpha_(c)
         ||  c == '$'
@@ -96,7 +68,7 @@ static int is_c_identifier_start(char32_t c, int flavor) {
         ||  (flavor == CLANG_RUST && c >= 128));
 }
 
-static int is_c_identifier_part(char32_t c, int flavor) {
+int is_c_identifier_part(char32_t c, int flavor) {
     // should accept unicode escape sequence, UnicodeIDContinue, ZWJ or ZWNJ
     return (qe_isalnum_(c)
         ||  (c == '-' && flavor == CLANG_CSS)
@@ -177,13 +149,13 @@ int get_c_identifier(char *dest, int size, char32_t c,
     return i - i0;
 }
 
-static int has_c_decl(const char32_t *str, int i, int flavor) {
+int has_c_decl(const char32_t *str, int i, int flavor) {
     while (str[i] == ' ' || str[i] == '\t' || str[i] == '*')
         i++;
     return is_c_identifier_start(str[i], flavor);
 }
 
-static int is_cap_type(const char *str) {
+int is_cap_type(const char *str) {
     for (;;) {
         if (qe_isupper(*str) && qe_haslower(str))
             return 1;
@@ -236,9 +208,9 @@ static int rep_count(const char32_t *str, char32_t c) {
     return count;
 }
 
-static void c_colorize_line(QEColorizeContext *cp,
-                            const char32_t *str, int n,
-                            QETermStyle *sbuf, ModeDef *syn)
+void c_colorize_line(QEColorizeContext *cp,
+                     const char32_t *str, int n,
+                     QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start, i1, i2, indent, level, type_start;
     int style, style0, style1, type_decl, tag;
@@ -2227,7 +2199,7 @@ static void js_colorize_line(QEColorizeContext *cp,
 ModeDef js_mode = {
     .name = "Javascript",
     .alt_name = "js",
-    .extensions = "js",
+    .extensions = "js|mjs",
     .shell_handlers = "node|qjs",
     .colorize_func = js_colorize_line,
     .colorize_flags = CLANG_JS | CLANG_REGEX,
@@ -2307,7 +2279,7 @@ static const char ts_types[] = {
 static ModeDef ts_mode = {
     .name = "TypeScript",
     .alt_name = "ts",
-    .extensions = "ts|tsx",
+    .extensions = "ts|tsx|mts",
     //.shell_handlers = "ts",
     .colorize_func = js_colorize_line,
     .colorize_flags = CLANG_TS | CLANG_REGEX,
