@@ -2395,7 +2395,7 @@ int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap) {
     va_list ap2;
 
 #ifndef va_copy
-#define va_copy(s,d)  __va_copy(s,d)
+#define va_copy(d,s)  __va_copy(d,s)
 #endif
 
     va_copy(ap2, ap);
