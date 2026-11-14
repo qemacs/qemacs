@@ -155,6 +155,7 @@ static inline int strequal(const char *s1, const char *s2) {
 size_t get_path_offset(const char *url);
 size_t get_parent_offset(const char *path, size_t base);
 size_t get_basename_offset(const char *filename);
+size_t get_basename_offset_ido(const char *filename);
 
 static inline const char *get_basename(const char *filename) {
     /*@API utils.string

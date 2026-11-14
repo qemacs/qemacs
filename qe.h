@@ -808,6 +808,7 @@ struct EditState {
 #define WF_FILELIST   0x1000 /* window is interactive file list */
 
     OWNED char *prompt;  /* optional window prompt, utf8 */
+    char *ido_overlay;
     OWNED char *caption;  /* optional window caption or title, utf8 */
     //const char *mode_line;
     //const char *title;
@@ -1108,6 +1109,7 @@ struct QEmacsState {
     int default_fill_column;    /* DEFAULT_FILL_COLUMN */
     EOLType default_eol_type;  /* EOL_UNIX */
     int flag_split_window_change_focus;
+    int flag_ido_mode;
     int shell_buffer_read_only;
     int shell_mode_auto_interactive;
     int shell_command_other_window;
@@ -1485,7 +1487,10 @@ void command_complete(CompleteState *cp, CompleteFunc enumerate);
 int eb_command_print_entry(EditBuffer *b, const CmdDef *d, EditState *s);
 int command_print_entry(CompleteState *cp, EditState *s, const char *name);
 int command_get_entry(EditState *s, char *dest, int size, int offset);
+extern const char *file_completion_ignore_extensions;
 void file_complete(CompleteState *cp, CompleteFunc enumerate);
+void file_complete_fuzzy(CompleteState *cp, CompleteFunc enumerate);
+int completion_sort_func_fuzzy(const void *a, const void *b);
 int file_print_entry(CompleteState *cp, EditState *s, const char *name);
 int shellcmd_print_entry(CompleteState *cp, EditState *s, const char *name);
 void buffer_complete(CompleteState *cp, CompleteFunc enumerate);

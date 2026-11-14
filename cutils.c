@@ -244,7 +244,41 @@ size_t get_basename_offset(const char *path) {
     }
     return base;
 }
+size_t get_basename_offset_ido(const char *path)
+{
+    /* Like get_basename_offset(), but a trailing '/' (or '\\' on
+       Windows) is not treated as a separator — so a directory entry
+       like "foo/bar/" returns the offset of "bar", not an empty
+       string past the end. */
+    size_t i, base, len;
 
+    if (!path)
+        return 0;
+
+    len = strlen(path);
+    /* effective end: skip exactly one trailing separator, if present */
+    if (len > 0
+#ifdef CONFIG_WIN32
+    &&  (path[len - 1] == '/' || path[len - 1] == '\\')
+#else
+    &&  path[len - 1] == '/'
+#endif
+        ) {
+            len--;
+        }
+
+    base = get_path_offset(path);
+    for (i = base; i < len; i++) {
+#ifdef CONFIG_WIN32
+        if (path[i] == '/' || path[i] == '\\')
+            base = i + 1;
+#else
+        if (path[i] == '/')
+            base = i + 1;
+#endif
+    }
+    return base;
+}
 size_t get_extension_offset(const char *path) {
     /*@API utils.string
        Get the filename extension portion of a path.
