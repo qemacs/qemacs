@@ -45,7 +45,7 @@
 static ModeDef shell_mode, pager_mode, compilation_mode;
 
 #define MAX_CSI_PARAMS  16
-#define MAX_OSC_SIZE    512 + MAX_FILENAME_SIZE
+#define MAX_OSC_SIZE    (512 + MAX_FILENAME_SIZE)
 
 enum QETermState {
     QE_TERM_STATE_NORM,
@@ -3739,7 +3739,7 @@ static int shell_check_curpath(ShellState *s, int offset, int trigger)
             // Push new directory onto the stack and add a property
             ShellCwdEntry *cwdp;
             p += strlen("Entering directory ");
-            if (*p == '`') p++;
+            if (*p == '`' || *p == '\'') p++;
             start = p - line;
             for (stop = start; line[stop] && line[stop] != '\''; stop++)
                 continue;
@@ -3776,7 +3776,7 @@ static int shell_check_curpath(ShellState *s, int offset, int trigger)
         //   is out of sync with the corresponding file.
         if (match_error(b, bol, NULL)) {
             if (s->cwd_stack_depth) {
-                s->cwd_stack[--s->cwd_stack_depth].error_count += 1;
+                s->cwd_stack[s->cwd_stack_depth - 1].error_count += 1;
             }
             return 1;
         }
