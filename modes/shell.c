@@ -120,7 +120,7 @@ typedef struct ShellError {
 } ShellError;
 
 typedef struct ShellKillContext {
-    ShellState *s;
+    QEmacsState *qs;
     EditBuffer *b;
     void (*callback)(EditState*, const char*);
     EditState *e;
@@ -3832,11 +3832,17 @@ static void shell_kill_process_confirm_cb(void *opaque, char *reply, CompletionD
     int yes_replied;
 
     if (reply) {
+        QEmacsState *qs = sc->qs;
+        ShellState *s;
+
         yes_replied = strequal(reply, "yes");
         qe_free(&reply);
-        if (!yes_replied)
+        if (!yes_replied || !qe_check_buffer(qs, &sc->b)
+        ||  !qe_check_window(qs, &sc->e))
             goto end;
-        shell_mode_free(sc->b, sc->s);
+        s = qe_get_buffer_mode_data(sc->b, &shell_mode, NULL);
+        if (s && s->pid > 0)
+            shell_mode_free(sc->b, s);
         sc->callback(sc->e, sc->cmd);
     }
 
@@ -3849,21 +3855,22 @@ static int shell_check_active_process(QEmacsState *qs, const char *bufname,
                                       void (*cb)(EditState*, const char*),
                                       EditState *e, const char *cmd)
 {
-    EditBuffer *b;
     char buf[256];
+    ShellState *s;
+    ShellKillContext *sc;
+    EditBuffer *b = qe_find_buffer_name(qs, bufname);
 
-    b = qe_find_buffer_name(qs, bufname);
     if (b == NULL)
         return 0;
 
-    ShellState *s = qe_get_buffer_mode_data(b, &shell_mode, NULL);
+    s = qe_get_buffer_mode_data(b, &shell_mode, NULL);
     if (s == NULL || s->pid < 0)
         return 0;
 
-    ShellKillContext *sc = qe_mallocz(ShellKillContext);
+    sc = qe_mallocz(ShellKillContext);
     if (!sc)
         return 0;
-    sc->s = s;
+    sc->qs = qs;
     sc->e = e;
     sc->b = b;
     sc->callback = cb;
