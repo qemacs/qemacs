@@ -6675,6 +6675,8 @@ void do_call_last_kbd_macro(EditState *s, int argval)
     }
 }
 
+#define MAX_MACRO_DEPTH 64
+
 void do_execute_macro_keys(EditState *s, const char *keys)
 {
     QEmacsState *qs = s->qs;
@@ -6682,10 +6684,13 @@ void do_execute_macro_keys(EditState *s, const char *keys)
     int key;
 
     qs->executing_macro++;
-
+    if (qs->executing_macro > MAX_MACRO_DEPTH) {
+        put_error(s, "Keyboard macro recursion level exceeded");
+        qe_stop_macro(qs);
+        return;
+    }
     /* Interactive commands get their input from the macro, unless some
-     * suspend mechanism is added to create interactive macros.
-     */
+     * suspend mechanism is added to create interactive macros. */
 
     p = keys;
     while (qe_skip_spaces(&p)) {
